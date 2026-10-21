@@ -9,7 +9,7 @@ import {
 } from '@/lib/course-service';
 import { extractDriveFolderId, DEFAULT_COURSE_BANNER } from '@/lib/course-manifest';
 import { CourseCreateSchema } from '@/lib/validation';
-import { asc, eq, and, isNull, isNotNull } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 
 export async function GET() {
   try {
@@ -20,7 +20,6 @@ export async function GET() {
     const allCourses = await db
       .select()
       .from(courses)
-      .where(isNull(courses.deletedAt))
       .orderBy(asc(courses.createdAt))
       .all();
 
@@ -76,99 +75,50 @@ export async function POST(request: Request) {
       (folderId ? `https://drive.google.com/drive/folders/${folderId}` : null);
     const banner = banner_url || DEFAULT_COURSE_BANNER;
 
-    // 1. Check if an ACTIVE course already exists by Google Drive Folder ID
+    // 1. Check if a course already exists by Google Drive Folder ID
     if (folderId) {
-      const activeByFolder = await db
+      const existingByFolder = await db
         .select()
         .from(courses)
-        .where(and(eq(courses.driveFolderId, folderId), isNull(courses.deletedAt)))
+        .where(eq(courses.driveFolderId, folderId))
         .get();
 
-      if (activeByFolder) {
+      if (existingByFolder) {
         return NextResponse.json(
           {
-            detail: `Khóa học từ thư mục Google Drive này đã tồn tại trong thư viện: "${activeByFolder.title}". Không được thêm khóa học đã có trong repo.`,
-            existing_course_id: activeByFolder.id,
+            detail: `Khóa học từ thư mục Google Drive này đã tồn tại trong thư viện: "${existingByFolder.title}". Không được thêm khóa học đã có trong repo.`,
+            existing_course_id: existingByFolder.id,
           },
           { status: 409 }
         );
       }
     }
 
-    // 2. Check if an ACTIVE course already exists by Title
+    // 2. Check if a course already exists by Title
     const trimmedTitle = title.trim();
-    const activeByTitle = await db
+    const existingByTitle = await db
       .select()
       .from(courses)
-      .where(and(eq(courses.title, trimmedTitle), isNull(courses.deletedAt)))
+      .where(eq(courses.title, trimmedTitle))
       .get();
 
-    if (activeByTitle) {
+    if (existingByTitle) {
       return NextResponse.json(
         {
           detail: `Khóa học với tiêu đề "${trimmedTitle}" đã tồn tại trong thư viện. Không được thêm khóa học đã có trong repo.`,
-          existing_course_id: activeByTitle.id,
+          existing_course_id: existingByTitle.id,
         },
         { status: 409 }
       );
     }
 
-    // 3. Check if this course was previously added and deleted -> RESTORE IT with all previous quizzes ("có sẵn bài cũ")
-    let existingDeleted: any = null;
-    if (folderId) {
-      existingDeleted = await db
-        .select()
-        .from(courses)
-        .where(and(eq(courses.driveFolderId, folderId), isNotNull(courses.deletedAt)))
-        .get();
-    }
-    if (!existingDeleted) {
-      existingDeleted = await db
-        .select()
-        .from(courses)
-        .where(and(eq(courses.title, trimmedTitle), isNotNull(courses.deletedAt)))
-        .get();
-    }
-
-    if (existingDeleted) {
-      const nowIso = new Date().toISOString();
-      await db
-        .update(courses)
-        .set({
-          deletedAt: null,
-          title: trimmedTitle || existingDeleted.title,
-          description: description || existingDeleted.description,
-          bannerUrl: banner,
-          updatedAt: nowIso,
-        })
-        .where(eq(courses.id, existingDeleted.id));
-
-      await syncCourseDriveQuizzes(existingDeleted.id, db);
-      const stats = await calculateCourseStats(existingDeleted.id, db);
-
-      return NextResponse.json({
-        id: existingDeleted.id,
-        title: trimmedTitle || existingDeleted.title,
-        description: description || existingDeleted.description,
-        drive_folder_id: existingDeleted.driveFolderId,
-        drive_folder_url: existingDeleted.driveFolderUrl,
-        banner_url: banner,
-        total_quizzes: stats.total_quizzes,
-        ready_quizzes: stats.ready_quizzes,
-        pending_quizzes: stats.pending_quizzes,
-        completed_quizzes: stats.completed_quizzes,
-        created_at: existingDeleted.createdAt,
-        updated_at: nowIso,
-        restored: true,
-      });
-    }
-
+    // 3. Create a clean fresh course (never resurrect old modified/pasted quizzes)
     const courseId = crypto.randomUUID();
     const nowIso = new Date().toISOString();
 
     await db.insert(courses).values({
       id: courseId,
-      title,
+      title: trimmedTitle,
       description: description || null,
       driveFolderId: folderId,
       driveFolderUrl: folderUrl,
@@ -185,7 +135,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         id: courseId,
-        title,
+        title: trimmedTitle,
         description: description || null,
         drive_folder_id: folderId,
         drive_folder_url: folderUrl,

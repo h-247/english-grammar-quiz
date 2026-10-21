@@ -1,10 +1,18 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/db';
-import { courses, quizzes } from '@/db/schema';
+import {
+  courses,
+  quizzes,
+  questions,
+  blanks,
+  quizAttempts,
+  userResponses,
+  attemptResults,
+} from '@/db/schema';
 import { ensureDatabaseInitialized } from '@/lib/db-init';
 import { calculateCourseStats } from '@/lib/course-service';
 import { DEFAULT_COURSE_BANNER } from '@/lib/course-manifest';
-import { eq, asc, and, isNull } from 'drizzle-orm';
+import { eq, asc, inArray } from 'drizzle-orm';
 
 export async function GET(
   request: Request,
@@ -18,7 +26,7 @@ export async function GET(
     const course = await db
       .select()
       .from(courses)
-      .where(and(eq(courses.id, courseId), isNull(courses.deletedAt)))
+      .where(eq(courses.id, courseId))
       .get();
 
     if (!course) {
@@ -89,7 +97,7 @@ export async function DELETE(
     const course = await db
       .select()
       .from(courses)
-      .where(and(eq(courses.id, courseId), isNull(courses.deletedAt)))
+      .where(eq(courses.id, courseId))
       .get();
 
     if (!course) {
@@ -99,15 +107,52 @@ export async function DELETE(
       );
     }
 
-    // Soft-delete the course so that re-adding it later preserves all quizzes and questions
-    const nowIso = new Date().toISOString();
-    await db
-      .update(courses)
-      .set({ deletedAt: nowIso, updatedAt: nowIso })
-      .where(eq(courses.id, courseId));
+    // 1. Fetch all quiz IDs belonging to this course
+    const courseQuizzes = await db
+      .select({ id: quizzes.id })
+      .from(quizzes)
+      .where(eq(quizzes.courseId, courseId))
+      .all();
+
+    const quizIds = courseQuizzes.map((q) => q.id);
+
+    if (quizIds.length > 0) {
+      // Delete attempts, responses, and results
+      const attempts = await db
+        .select({ id: quizAttempts.id })
+        .from(quizAttempts)
+        .where(inArray(quizAttempts.quizId, quizIds))
+        .all();
+
+      if (attempts.length > 0) {
+        const attemptIds = attempts.map((a) => a.id);
+        await db.delete(attemptResults).where(inArray(attemptResults.attemptId, attemptIds));
+        await db.delete(userResponses).where(inArray(userResponses.attemptId, attemptIds));
+        await db.delete(quizAttempts).where(inArray(quizAttempts.id, attemptIds));
+      }
+
+      // Delete blanks and questions
+      const quizQuestions = await db
+        .select({ id: questions.id })
+        .from(questions)
+        .where(inArray(questions.quizId, quizIds))
+        .all();
+
+      if (quizQuestions.length > 0) {
+        const qIds = quizQuestions.map((q) => q.id);
+        await db.delete(blanks).where(inArray(blanks.questionId, qIds));
+        await db.delete(questions).where(inArray(questions.id, qIds));
+      }
+
+      // Delete quizzes
+      await db.delete(quizzes).where(inArray(quizzes.id, quizIds));
+    }
+
+    // 2. Delete the course itself
+    await db.delete(courses).where(eq(courses.id, courseId));
 
     return NextResponse.json({
-      message: `Course '${course.title}' deleted successfully.`,
+      message: `Course '${course.title}' and all its quizzes were permanently deleted.`,
       course_id: courseId,
     });
   } catch (err: any) {

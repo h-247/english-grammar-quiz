@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   Code2,
   X,
@@ -32,6 +33,7 @@ export function ImportModal({
   targetQuizTitle,
 }: ImportModalProps) {
   const { showToast } = useToast();
+  const [mounted, setMounted] = useState(false);
   const [jsonText, setJsonText] = useState<string>("");
   const [overwrite, setOverwrite] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -42,6 +44,24 @@ export function ImportModal({
     title?: string;
     questionsCount?: number;
   } | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen && !isSubmitting) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, isSubmitting, onClose]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -157,13 +177,23 @@ export function ImportModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+  if (!isOpen || !mounted) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isSubmitting) {
+          onClose();
+        }
+      }}
+    >
       <div
-        className="w-full max-w-2xl bg-[#1e1e1e] border border-[#333333] rounded-2xl shadow-2xl overflow-hidden flex flex-col text-[#ececec] max-h-[90vh]"
+        className="w-full max-w-2xl bg-[#1e1e1e] border border-[#333333] rounded-2xl shadow-2xl overflow-hidden flex flex-col text-[#ececec] max-h-[90vh] my-auto"
         role="dialog"
         aria-modal="true"
         aria-labelledby="paste-json-title"
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#2e2e2e] bg-[#242424]">
@@ -360,6 +390,7 @@ Example:
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

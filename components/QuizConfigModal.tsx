@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Clock, BookOpen, X, Play, Loader2, Sparkles, CheckCircle2 } from "lucide-react";
 import { QuizSummary } from "@/types/quiz";
 import { cn } from "@/lib/utils";
@@ -22,12 +23,31 @@ export function QuizConfigModal({
   onClose,
   onStart,
 }: QuizConfigModalProps) {
+  const [mounted, setMounted] = useState(false);
   const [mode, setMode] = useState<"timed" | "practice">("timed");
   const [selectedDuration, setSelectedDuration] = useState<number>(15);
   const [isCustom, setIsCustom] = useState<boolean>(false);
   const [customMinutes, setCustomMinutes] = useState<string>("20");
 
-  if (!isOpen || !quiz) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen && !isStarting) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, isStarting, onClose]);
+
+  if (!isOpen || !mounted || !quiz) return null;
 
   const handleStart = () => {
     let finalDuration = selectedDuration;
@@ -41,13 +61,21 @@ export function QuizConfigModal({
     onStart(mode === "practice" ? 0 : finalDuration, mode);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isStarting) {
+          onClose();
+        }
+      }}
+    >
       <div
-        className="w-full max-w-lg bg-[#262626] border border-[#383838] rounded-xl p-6 shadow-2xl space-y-6"
+        className="w-full max-w-lg bg-[#262626] border border-[#383838] rounded-xl p-6 shadow-2xl space-y-6 my-auto"
         role="dialog"
         aria-modal="true"
         aria-labelledby="quiz-config-title"
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-start justify-between">
@@ -235,6 +263,7 @@ export function QuizConfigModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

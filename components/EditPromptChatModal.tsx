@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, Sparkles, ExternalLink, RotateCcw, Check, Loader2 } from "lucide-react";
 import { DEFAULT_PROMPT_CHAT_URL } from "@/lib/course-manifest";
 import { updatePromptChatUrl } from "@/lib/api";
@@ -20,9 +21,14 @@ export function EditPromptChatModal({
   onSave,
 }: EditPromptChatModalProps) {
   const { showToast } = useToast();
+  const [mounted, setMounted] = useState(false);
   const [url, setUrl] = useState(currentUrl || DEFAULT_PROMPT_CHAT_URL);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -31,7 +37,22 @@ export function EditPromptChatModal({
     }
   }, [isOpen, currentUrl]);
 
-  if (!isOpen) return null;
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen && !isSaving) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, isSaving, onClose]);
+
+  if (!isOpen || !mounted) return null;
 
   const handleReset = () => {
     setUrl(DEFAULT_PROMPT_CHAT_URL);
@@ -68,9 +89,19 @@ export function EditPromptChatModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="relative w-full max-w-lg bg-[#1e1e1e] border border-[#333333] rounded-2xl shadow-2xl overflow-hidden text-[#ececec]">
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isSaving) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        className="relative w-full max-w-lg bg-[#1e1e1e] border border-[#333333] rounded-2xl shadow-2xl overflow-hidden text-[#ececec] my-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#2e2e2e] bg-[#242424]">
           <div className="flex items-center gap-2.5">
@@ -180,4 +211,6 @@ export function EditPromptChatModal({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

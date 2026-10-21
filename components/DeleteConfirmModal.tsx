@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { AlertTriangle, Loader2 } from "lucide-react";
 
 interface DeleteConfirmModalProps {
@@ -22,11 +23,41 @@ export function DeleteConfirmModal({
   itemType,
   isDeleting,
 }: DeleteConfirmModalProps) {
-  if (!isOpen) return null;
+  const [mounted, setMounted] = useState(false);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="relative w-full max-w-md bg-[#1e1e1e] border border-red-900/40 rounded-2xl shadow-2xl p-6 text-[#ececec]">
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen && !isDeleting) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, isDeleting, onClose]);
+
+  if (!isOpen || !mounted) return null;
+
+  const content = (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isDeleting) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        className="relative w-full max-w-md bg-[#1e1e1e] border border-red-900/40 rounded-2xl shadow-2xl p-6 text-[#ececec] my-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-start gap-3.5 mb-4">
           <div className="p-2.5 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 shrink-0">
             <AlertTriangle className="w-5 h-5" />
@@ -42,7 +73,7 @@ export function DeleteConfirmModal({
 
         <p className="text-xs text-[#a3a3a3] bg-[#141414] p-3 rounded-xl border border-[#2c2c2c] mb-6">
           {itemType === "Course"
-            ? "⚠️ This will delete the course along with all associated units, questions, blanks, and past attempt history."
+            ? "⚠️ This will permanently delete this course and all associated units and past attempt history."
             : "⚠️ This will delete this quiz, its questions, blanks, and associated attempt results."}
         </p>
 
@@ -74,4 +105,6 @@ export function DeleteConfirmModal({
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }

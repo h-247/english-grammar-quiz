@@ -36,6 +36,14 @@ export async function ensureDatabaseInitialized() {
     );
   } catch {}
 
+  try {
+    // Purge any legacy soft-deleted courses and their orphaned quizzes
+    await db.run(sql`DELETE FROM courses WHERE deleted_at IS NOT NULL;`);
+    await db.run(
+      sql`DELETE FROM quizzes WHERE course_id IS NOT NULL AND course_id NOT IN (SELECT id FROM courses);`
+    );
+  } catch {}
+
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS quizzes (
       id TEXT PRIMARY KEY,
