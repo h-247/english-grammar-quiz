@@ -1,0 +1,1293 @@
+{
+  "schemaVersion": "2.0.0",
+  "quizType": "multi_blank_fill_in_the_blank",
+  "language": "en",
+  "unit": {
+    "number": 1,
+    "title": "Present simple, present continuous, stative verbs",
+    "sourceFilename": "grammar_unit-01_present-simple-present-continuous-stative-verbs_p005.pdf",
+    "sourcePdfPage": 1,
+    "printedPage": 6,
+    "scope": "All grammar points, listed items, hints, warnings and examples visible on this single PDF page. The referenced page 182 is not included."
+  },
+  "instructions": "Fill in every numbered blank. Each blank is graded independently. Answers are tied to their numbered placeholders.",
+  "placeholderSyntax": "{{n}}",
+  "grading": {
+    "mode": "per_blank",
+    "questionCompleteWhen": "all_blanks_correct",
+    "answerMatching": {
+      "caseSensitive": false,
+      "trimWhitespace": true,
+      "collapseInternalWhitespace": true,
+      "unicodeNormalization": "NFKC",
+      "preservePunctuation": true,
+      "rule": "The submitted answer is correct if its normalized value equals any normalized value in answers."
+    }
+  },
+  "topics": [
+    {
+      "id": "present_simple",
+      "title": "Present simple"
+    },
+    {
+      "id": "present_continuous",
+      "title": "Present continuous"
+    },
+    {
+      "id": "stative_verbs",
+      "title": "Stative verbs"
+    }
+  ],
+  "learningObjectives": [
+    {
+      "id": "ps.form.statement",
+      "description": "Present simple: affirmative forms"
+    },
+    {
+      "id": "ps.form.negative",
+      "description": "Present simple: negative forms and contractions"
+    },
+    {
+      "id": "ps.form.question",
+      "description": "Present simple: question forms"
+    },
+    {
+      "id": "ps.use.present_habits",
+      "description": "Present simple: present habits"
+    },
+    {
+      "id": "ps.use.permanent_situations",
+      "description": "Present simple: permanent situations"
+    },
+    {
+      "id": "ps.use.states",
+      "description": "Present simple: states"
+    },
+    {
+      "id": "ps.use.general_truths",
+      "description": "Present simple: general truths"
+    },
+    {
+      "id": "ps.hint.adverbs",
+      "description": "Present simple: six frequency adverbs"
+    },
+    {
+      "id": "ps.hint.phrases",
+      "description": "Present simple: four types of time phrases"
+    },
+    {
+      "id": "ps.hint.adverb_position",
+      "description": "Present simple: adverb placement and examples"
+    },
+    {
+      "id": "ps.watch_out.irregular",
+      "description": "Present simple: irregular present forms of be and have"
+    },
+    {
+      "id": "pc.form.statement",
+      "description": "Present continuous: affirmative forms and contractions"
+    },
+    {
+      "id": "pc.form.negative",
+      "description": "Present continuous: negative forms and contractions"
+    },
+    {
+      "id": "pc.form.question",
+      "description": "Present continuous: question forms"
+    },
+    {
+      "id": "pc.use.actions_now",
+      "description": "Present continuous: actions happening now"
+    },
+    {
+      "id": "pc.use.temporary_situations",
+      "description": "Present continuous: temporary situations"
+    },
+    {
+      "id": "pc.use.annoying_habits",
+      "description": "Present continuous: annoying habits (usually with always)"
+    },
+    {
+      "id": "pc.hint.time_expressions",
+      "description": "Present continuous: listed time expressions"
+    },
+    {
+      "id": "sv.definition",
+      "description": "Stative verbs: describe states rather than actions"
+    },
+    {
+      "id": "sv.continuous_usage",
+      "description": "Stative verbs: not normally used in continuous tenses"
+    },
+    {
+      "id": "sv.common_verbs",
+      "description": "Stative verbs: every item of the common stative verbs list"
+    },
+    {
+      "id": "sv.watch_out.action_meanings",
+      "description": "Stative verbs: use in continuous tenses for actions"
+    },
+    {
+      "id": "sv.examples",
+      "description": "Stative verbs: affirmative, incorrect, and action-meaning examples"
+    }
+  ],
+  "questions": [
+    {
+      "id": "u01-ps-01",
+      "topic": "present_simple",
+      "section": "forms",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Present simple: affirmative forms",
+      "prompt": "Complete the present simple affirmative forms:\n• I/you/we/they {{1}} ...\n• He/she/it {{2}} ...",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "play"
+          ],
+          "sourceQuestionId": "u01-ps-001",
+          "objectiveId": "ps.form.statement"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "plays"
+          ],
+          "sourceQuestionId": "u01-ps-002",
+          "objectiveId": "ps.form.statement"
+        }
+      ],
+      "blankCount": 2,
+      "objectiveIds": [
+        "ps.form.statement"
+      ],
+      "explanation": "I/you/we/they play ...; he/she/it plays ...",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-ps-02",
+      "topic": "present_simple",
+      "section": "forms",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Present simple: negative forms and contractions",
+      "prompt": "Complete the present simple negative forms and their short forms:\n• I/you/we/they {{1}} play ... (short form: {{3}}).\n• He/she/it {{2}} play ... (short form: {{4}}).",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "do not",
+            "don't"
+          ],
+          "sourceQuestionId": "u01-ps-003",
+          "objectiveId": "ps.form.negative"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "does not",
+            "doesn't"
+          ],
+          "sourceQuestionId": "u01-ps-004",
+          "objectiveId": "ps.form.negative"
+        },
+        {
+          "id": "3",
+          "answers": [
+            "don't"
+          ],
+          "sourceQuestionId": "u01-ps-007",
+          "objectiveId": "ps.form.negative"
+        },
+        {
+          "id": "4",
+          "answers": [
+            "doesn't"
+          ],
+          "sourceQuestionId": "u01-ps-008",
+          "objectiveId": "ps.form.negative"
+        }
+      ],
+      "blankCount": 4,
+      "objectiveIds": [
+        "ps.form.negative"
+      ],
+      "explanation": "I/you/we/they do not (don't) play ...; he/she/it does not (doesn't) play ...",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-ps-03",
+      "topic": "present_simple",
+      "section": "forms",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Present simple: questions",
+      "prompt": "Complete the present simple question forms:\n• {{1}} I/you/we/they play ...?\n• {{2}} he/she/it play ...?",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "Do"
+          ],
+          "sourceQuestionId": "u01-ps-005",
+          "objectiveId": "ps.form.question"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "Does"
+          ],
+          "sourceQuestionId": "u01-ps-006",
+          "objectiveId": "ps.form.question"
+        }
+      ],
+      "blankCount": 2,
+      "objectiveIds": [
+        "ps.form.question"
+      ],
+      "explanation": "Do I/you/we/they play ...?; Does he/she/it play ...?",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-ps-04",
+      "topic": "present_simple",
+      "section": "uses_and_examples",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Present simple: uses and textbook examples",
+      "prompt": "Complete all four uses of the present simple and their examples:\n• Present {{1}} — Marsha {{2}} to dance lessons every Saturday.\n• {{3}} situations — {{4}} Dan work at the cinema?\n• {{5}} — I {{6}} the new James Bond film.\n• General {{7}} — You {{8}} chess with 32 pieces.",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "habits"
+          ],
+          "sourceQuestionId": "u01-ps-009",
+          "objectiveId": "ps.use.present_habits"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "goes"
+          ],
+          "sourceQuestionId": "u01-ps-010",
+          "objectiveId": "ps.use.present_habits"
+        },
+        {
+          "id": "3",
+          "answers": [
+            "permanent"
+          ],
+          "sourceQuestionId": "u01-ps-011",
+          "objectiveId": "ps.use.permanent_situations"
+        },
+        {
+          "id": "4",
+          "answers": [
+            "Does"
+          ],
+          "sourceQuestionId": "u01-ps-012",
+          "objectiveId": "ps.use.permanent_situations"
+        },
+        {
+          "id": "5",
+          "answers": [
+            "states"
+          ],
+          "sourceQuestionId": "u01-ps-013",
+          "objectiveId": "ps.use.states"
+        },
+        {
+          "id": "6",
+          "answers": [
+            "like"
+          ],
+          "sourceQuestionId": "u01-ps-014",
+          "objectiveId": "ps.use.states"
+        },
+        {
+          "id": "7",
+          "answers": [
+            "truths"
+          ],
+          "sourceQuestionId": "u01-ps-015",
+          "objectiveId": "ps.use.general_truths"
+        },
+        {
+          "id": "8",
+          "answers": [
+            "play"
+          ],
+          "sourceQuestionId": "u01-ps-016",
+          "objectiveId": "ps.use.general_truths"
+        }
+      ],
+      "blankCount": 8,
+      "objectiveIds": [
+        "ps.use.present_habits",
+        "ps.use.permanent_situations",
+        "ps.use.states",
+        "ps.use.general_truths"
+      ],
+      "explanation": "The four uses shown in the source are present habits, permanent situations, states, and general truths; each line includes its original example.",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-ps-05",
+      "topic": "present_simple",
+      "section": "helpful_hints",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Present simple: frequency adverbs",
+      "prompt": "The present simple is often used with frequency {{1}}. Complete the six adverbs in the order shown in the source:\n• {{2}} • {{3}} • {{4}} • {{5}} • {{6}} • {{7}}",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "adverbs"
+          ],
+          "sourceQuestionId": "u01-ps-017",
+          "objectiveId": "ps.hint.adverbs"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "always"
+          ],
+          "sourceQuestionId": "u01-ps-018",
+          "objectiveId": "ps.hint.adverbs"
+        },
+        {
+          "id": "3",
+          "answers": [
+            "usually"
+          ],
+          "sourceQuestionId": "u01-ps-019",
+          "objectiveId": "ps.hint.adverbs"
+        },
+        {
+          "id": "4",
+          "answers": [
+            "often"
+          ],
+          "sourceQuestionId": "u01-ps-020",
+          "objectiveId": "ps.hint.adverbs"
+        },
+        {
+          "id": "5",
+          "answers": [
+            "sometimes"
+          ],
+          "sourceQuestionId": "u01-ps-021",
+          "objectiveId": "ps.hint.adverbs"
+        },
+        {
+          "id": "6",
+          "answers": [
+            "rarely"
+          ],
+          "sourceQuestionId": "u01-ps-022",
+          "objectiveId": "ps.hint.adverbs"
+        },
+        {
+          "id": "7",
+          "answers": [
+            "never"
+          ],
+          "sourceQuestionId": "u01-ps-023",
+          "objectiveId": "ps.hint.adverbs"
+        }
+      ],
+      "blankCount": 7,
+      "objectiveIds": [
+        "ps.hint.adverbs"
+      ],
+      "explanation": "The six listed frequency adverbs are always, usually, often, sometimes, rarely, and never.",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-ps-06",
+      "topic": "present_simple",
+      "section": "helpful_hints",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Present simple: frequency phrases",
+      "prompt": "Complete the frequency phrases used with the present simple:\n• {{1}} Monday/week/etc\n• {{2}} Monday/week/etc\n• {{3}}/{{4}} a week/month/etc\n• {{5}} times a week/month/etc",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "every"
+          ],
+          "sourceQuestionId": "u01-ps-024",
+          "objectiveId": "ps.hint.phrases"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "each"
+          ],
+          "sourceQuestionId": "u01-ps-025",
+          "objectiveId": "ps.hint.phrases"
+        },
+        {
+          "id": "3",
+          "answers": [
+            "once"
+          ],
+          "sourceQuestionId": "u01-ps-026",
+          "objectiveId": "ps.hint.phrases"
+        },
+        {
+          "id": "4",
+          "answers": [
+            "twice"
+          ],
+          "sourceQuestionId": "u01-ps-027",
+          "objectiveId": "ps.hint.phrases"
+        },
+        {
+          "id": "5",
+          "answers": [
+            "three"
+          ],
+          "sourceQuestionId": "u01-ps-028",
+          "objectiveId": "ps.hint.phrases"
+        }
+      ],
+      "blankCount": 5,
+      "objectiveIds": [
+        "ps.hint.phrases"
+      ],
+      "explanation": "The phrases in the source are every Monday/week/etc, each Monday/week/etc, once/twice a week/month/etc, and three times a week/month/etc.",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-ps-07",
+      "topic": "present_simple",
+      "section": "helpful_hints_and_examples",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Present simple: adverb positions and examples",
+      "prompt": "Complete the rules and examples for frequency adverbs:\n• They usually go {{1}} the verb, but {{2}} the verb be.\n• I {{3}} play football with my friends.\n• I am {{4}} late for my piano lessons.",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "before"
+          ],
+          "sourceQuestionId": "u01-ps-029",
+          "objectiveId": "ps.hint.adverb_position"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "after"
+          ],
+          "sourceQuestionId": "u01-ps-030",
+          "objectiveId": "ps.hint.adverb_position"
+        },
+        {
+          "id": "3",
+          "answers": [
+            "often"
+          ],
+          "sourceQuestionId": "u01-ps-031",
+          "objectiveId": "ps.hint.adverb_position"
+        },
+        {
+          "id": "4",
+          "answers": [
+            "often"
+          ],
+          "sourceQuestionId": "u01-ps-032",
+          "objectiveId": "ps.hint.adverb_position"
+        }
+      ],
+      "blankCount": 4,
+      "objectiveIds": [
+        "ps.hint.adverb_position"
+      ],
+      "explanation": "Frequency adverbs usually go before main verbs and after be. Both examples use often.",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-ps-08",
+      "topic": "present_simple",
+      "section": "watch_out",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Present simple: irregular present forms",
+      "prompt": "Complete the Watch Out note: The verbs {{1}} and {{2}} have irregular present forms.",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "be"
+          ],
+          "sourceQuestionId": "u01-ps-033",
+          "objectiveId": "ps.watch_out.irregular"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "have"
+          ],
+          "sourceQuestionId": "u01-ps-034",
+          "objectiveId": "ps.watch_out.irregular"
+        }
+      ],
+      "blankCount": 2,
+      "objectiveIds": [
+        "ps.watch_out.irregular"
+      ],
+      "explanation": "The source identifies be and have as verbs with irregular present forms and refers to page 182, which was not included in the uploaded PDF.",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-pc-01",
+      "topic": "present_continuous",
+      "section": "forms",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Present continuous: affirmative forms",
+      "prompt": "Complete the full and contracted present continuous affirmative forms:\n• I {{1}} playing ... / I{{4}} playing ...\n• He/she/it {{2}} playing ... / He{{5}} playing ...\n• You/we/they {{3}} playing ... / You{{6}} playing ...",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "am"
+          ],
+          "sourceQuestionId": "u01-pc-001",
+          "objectiveId": "pc.form.statement"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "is"
+          ],
+          "sourceQuestionId": "u01-pc-002",
+          "objectiveId": "pc.form.statement"
+        },
+        {
+          "id": "3",
+          "answers": [
+            "are"
+          ],
+          "sourceQuestionId": "u01-pc-003",
+          "objectiveId": "pc.form.statement"
+        },
+        {
+          "id": "4",
+          "answers": [
+            "'m"
+          ],
+          "sourceQuestionId": "u01-pc-004",
+          "objectiveId": "pc.form.statement"
+        },
+        {
+          "id": "5",
+          "answers": [
+            "'s"
+          ],
+          "sourceQuestionId": "u01-pc-005",
+          "objectiveId": "pc.form.statement"
+        },
+        {
+          "id": "6",
+          "answers": [
+            "'re"
+          ],
+          "sourceQuestionId": "u01-pc-006",
+          "objectiveId": "pc.form.statement"
+        }
+      ],
+      "blankCount": 6,
+      "objectiveIds": [
+        "pc.form.statement"
+      ],
+      "explanation": "I am (I'm), he/she/it is (he's/she's/it's), and you/we/they are (you're/we're/they're) playing ...",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-pc-02",
+      "topic": "present_continuous",
+      "section": "forms",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Present continuous: negative forms",
+      "prompt": "Complete the negative present continuous forms and their contractions:\n• I {{1}} playing ...\n• He/she/it {{2}} playing ...\n• You/we/they {{3}} playing ...\n• With he/she/it: he/she/it {{4}} playing ... OR he{{5}} playing ...\n• With you/we/they: you/we/they {{6}} playing ... OR you{{7}} playing ...\n• With I: I{{8}} playing ...",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "am not"
+          ],
+          "sourceQuestionId": "u01-pc-007",
+          "objectiveId": "pc.form.negative"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "is not",
+            "isn't"
+          ],
+          "sourceQuestionId": "u01-pc-008",
+          "objectiveId": "pc.form.negative"
+        },
+        {
+          "id": "3",
+          "answers": [
+            "are not",
+            "aren't"
+          ],
+          "sourceQuestionId": "u01-pc-009",
+          "objectiveId": "pc.form.negative"
+        },
+        {
+          "id": "4",
+          "answers": [
+            "isn't"
+          ],
+          "sourceQuestionId": "u01-pc-010",
+          "objectiveId": "pc.form.negative"
+        },
+        {
+          "id": "5",
+          "answers": [
+            "'s not"
+          ],
+          "sourceQuestionId": "u01-pc-011",
+          "objectiveId": "pc.form.negative"
+        },
+        {
+          "id": "6",
+          "answers": [
+            "aren't"
+          ],
+          "sourceQuestionId": "u01-pc-012",
+          "objectiveId": "pc.form.negative"
+        },
+        {
+          "id": "7",
+          "answers": [
+            "'re not"
+          ],
+          "sourceQuestionId": "u01-pc-013",
+          "objectiveId": "pc.form.negative"
+        },
+        {
+          "id": "8",
+          "answers": [
+            "'m not"
+          ],
+          "sourceQuestionId": "u01-pc-014",
+          "objectiveId": "pc.form.negative"
+        }
+      ],
+      "blankCount": 8,
+      "objectiveIds": [
+        "pc.form.negative"
+      ],
+      "explanation": "Full forms: am not, is not, are not. The source also shows isn't, 's not, aren't, 're not, and 'm not as contractions within the relevant subject patterns.",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-pc-03",
+      "topic": "present_continuous",
+      "section": "forms",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Present continuous: question forms",
+      "prompt": "Complete the present continuous question forms:\n• {{1}} I playing ...?\n• {{2}} he/she/it playing ...?\n• {{3}} you/we/they playing ...?",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "Am"
+          ],
+          "sourceQuestionId": "u01-pc-015",
+          "objectiveId": "pc.form.question"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "Is"
+          ],
+          "sourceQuestionId": "u01-pc-016",
+          "objectiveId": "pc.form.question"
+        },
+        {
+          "id": "3",
+          "answers": [
+            "Are"
+          ],
+          "sourceQuestionId": "u01-pc-017",
+          "objectiveId": "pc.form.question"
+        }
+      ],
+      "blankCount": 3,
+      "objectiveIds": [
+        "pc.form.question"
+      ],
+      "explanation": "Am I playing ...?; Is he/she/it playing ...?; Are you/we/they playing ...?",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-pc-04",
+      "topic": "present_continuous",
+      "section": "uses_and_examples",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Present continuous: actions happening now",
+      "prompt": "Complete the first use of the present continuous and its example:\n• Actions happening {{1}} — Jan is {{2}} a DVD upstairs.",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "now"
+          ],
+          "sourceQuestionId": "u01-pc-018",
+          "objectiveId": "pc.use.actions_now"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "watching"
+          ],
+          "sourceQuestionId": "u01-pc-019",
+          "objectiveId": "pc.use.actions_now"
+        }
+      ],
+      "blankCount": 2,
+      "objectiveIds": [
+        "pc.use.actions_now"
+      ],
+      "explanation": "The source uses the present continuous for actions happening now: Jan is watching a DVD upstairs.",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-pc-05",
+      "topic": "present_continuous",
+      "section": "uses_and_examples",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Present continuous: temporary situations",
+      "prompt": "Complete the second use of the present continuous and its example:\n• {{1}} situations — She is {{2}} at the museum until the end of the month.",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "temporary"
+          ],
+          "sourceQuestionId": "u01-pc-020",
+          "objectiveId": "pc.use.temporary_situations"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "working"
+          ],
+          "sourceQuestionId": "u01-pc-021",
+          "objectiveId": "pc.use.temporary_situations"
+        }
+      ],
+      "blankCount": 2,
+      "objectiveIds": [
+        "pc.use.temporary_situations"
+      ],
+      "explanation": "The source uses the present continuous for temporary situations: She is working at the museum until the end of the month.",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-pc-06",
+      "topic": "present_continuous",
+      "section": "uses_and_examples",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Present continuous: annoying habits",
+      "prompt": "Complete the third use of the present continuous and the example:\n• {{1}} habits (usually with {{3}}).\n• My brother is {{4}} {{2}} my CDs without asking!",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "annoying"
+          ],
+          "sourceQuestionId": "u01-pc-022",
+          "objectiveId": "pc.use.annoying_habits"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "borrowing"
+          ],
+          "sourceQuestionId": "u01-pc-023",
+          "objectiveId": "pc.use.annoying_habits"
+        },
+        {
+          "id": "3",
+          "answers": [
+            "always"
+          ],
+          "sourceQuestionId": "u01-pc-024",
+          "objectiveId": "pc.use.annoying_habits"
+        },
+        {
+          "id": "4",
+          "answers": [
+            "always"
+          ],
+          "sourceQuestionId": "u01-pc-025",
+          "objectiveId": "pc.use.annoying_habits"
+        }
+      ],
+      "blankCount": 4,
+      "objectiveIds": [
+        "pc.use.annoying_habits"
+      ],
+      "explanation": "The source uses the present continuous for annoying habits, usually with always: My brother is always borrowing my CDs without asking!",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-pc-07",
+      "topic": "present_continuous",
+      "section": "helpful_hints",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Present continuous: time expressions",
+      "prompt": "Complete the five time expressions listed for the present continuous:\n• {{1}} • {{2}} • {{3}} • {{4}} • {{5}}",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "now"
+          ],
+          "sourceQuestionId": "u01-pc-026",
+          "objectiveId": "pc.hint.time_expressions"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "right now"
+          ],
+          "sourceQuestionId": "u01-pc-027",
+          "objectiveId": "pc.hint.time_expressions"
+        },
+        {
+          "id": "3",
+          "answers": [
+            "at the moment"
+          ],
+          "sourceQuestionId": "u01-pc-028",
+          "objectiveId": "pc.hint.time_expressions"
+        },
+        {
+          "id": "4",
+          "answers": [
+            "today"
+          ],
+          "sourceQuestionId": "u01-pc-029",
+          "objectiveId": "pc.hint.time_expressions"
+        },
+        {
+          "id": "5",
+          "answers": [
+            "this week/month/etc"
+          ],
+          "sourceQuestionId": "u01-pc-030",
+          "objectiveId": "pc.hint.time_expressions"
+        }
+      ],
+      "blankCount": 5,
+      "objectiveIds": [
+        "pc.hint.time_expressions"
+      ],
+      "explanation": "The source lists now, right now, at the moment, today, and this week/month/etc.",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-sv-01",
+      "topic": "stative_verbs",
+      "section": "definition",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Stative verbs: definition and usage",
+      "prompt": "Complete the description of stative verbs:\n• Stative verbs do not usually describe {{1}}.\n• They describe {{2}}, such as feelings and {{3}}.\n• They are not normally used in {{4}} tenses.",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "actions"
+          ],
+          "sourceQuestionId": "u01-sv-001",
+          "objectiveId": "sv.definition"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "states"
+          ],
+          "sourceQuestionId": "u01-sv-002",
+          "objectiveId": "sv.definition"
+        },
+        {
+          "id": "3",
+          "answers": [
+            "thoughts"
+          ],
+          "sourceQuestionId": "u01-sv-003",
+          "objectiveId": "sv.definition"
+        },
+        {
+          "id": "4",
+          "answers": [
+            "continuous"
+          ],
+          "sourceQuestionId": "u01-sv-004",
+          "objectiveId": "sv.continuous_usage"
+        }
+      ],
+      "blankCount": 4,
+      "objectiveIds": [
+        "sv.definition",
+        "sv.continuous_usage"
+      ],
+      "explanation": "Stative verbs do not usually describe actions; they describe states (feelings, thoughts, etc.) and are not normally used in continuous tenses.",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-sv-02",
+      "topic": "stative_verbs",
+      "section": "common_stative_verbs",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Common stative verbs: first column",
+      "prompt": "Recall all six common stative verbs in the first source column, in order:\n• {{1}} • {{2}} • {{3}} • {{4}} • {{5}} • {{6}}",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "appear"
+          ],
+          "sourceQuestionId": "u01-sv-005",
+          "objectiveId": "sv.common_verbs"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "be"
+          ],
+          "sourceQuestionId": "u01-sv-006",
+          "objectiveId": "sv.common_verbs"
+        },
+        {
+          "id": "3",
+          "answers": [
+            "believe"
+          ],
+          "sourceQuestionId": "u01-sv-007",
+          "objectiveId": "sv.common_verbs"
+        },
+        {
+          "id": "4",
+          "answers": [
+            "belong to"
+          ],
+          "sourceQuestionId": "u01-sv-008",
+          "objectiveId": "sv.common_verbs"
+        },
+        {
+          "id": "5",
+          "answers": [
+            "hate"
+          ],
+          "sourceQuestionId": "u01-sv-009",
+          "objectiveId": "sv.common_verbs"
+        },
+        {
+          "id": "6",
+          "answers": [
+            "have"
+          ],
+          "sourceQuestionId": "u01-sv-010",
+          "objectiveId": "sv.common_verbs"
+        }
+      ],
+      "blankCount": 6,
+      "objectiveIds": [
+        "sv.common_verbs"
+      ],
+      "explanation": "The first column lists appear, be, believe, belong to, hate, and have.",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-sv-03",
+      "topic": "stative_verbs",
+      "section": "common_stative_verbs",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Common stative verbs: second column",
+      "prompt": "Recall all six common stative verbs in the second source column, in order:\n• {{1}} • {{2}} • {{3}} • {{4}} • {{5}} • {{6}}",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "include"
+          ],
+          "sourceQuestionId": "u01-sv-011",
+          "objectiveId": "sv.common_verbs"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "know"
+          ],
+          "sourceQuestionId": "u01-sv-012",
+          "objectiveId": "sv.common_verbs"
+        },
+        {
+          "id": "3",
+          "answers": [
+            "like"
+          ],
+          "sourceQuestionId": "u01-sv-013",
+          "objectiveId": "sv.common_verbs"
+        },
+        {
+          "id": "4",
+          "answers": [
+            "love"
+          ],
+          "sourceQuestionId": "u01-sv-014",
+          "objectiveId": "sv.common_verbs"
+        },
+        {
+          "id": "5",
+          "answers": [
+            "need"
+          ],
+          "sourceQuestionId": "u01-sv-015",
+          "objectiveId": "sv.common_verbs"
+        },
+        {
+          "id": "6",
+          "answers": [
+            "prefer"
+          ],
+          "sourceQuestionId": "u01-sv-016",
+          "objectiveId": "sv.common_verbs"
+        }
+      ],
+      "blankCount": 6,
+      "objectiveIds": [
+        "sv.common_verbs"
+      ],
+      "explanation": "The second column lists include, know, like, love, need, and prefer.",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-sv-04",
+      "topic": "stative_verbs",
+      "section": "common_stative_verbs",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Common stative verbs: third column",
+      "prompt": "Recall all six common stative verbs in the third source column, in order:\n• {{1}} • {{2}} • {{3}} • {{4}} • {{5}} • {{6}}",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "see"
+          ],
+          "sourceQuestionId": "u01-sv-017",
+          "objectiveId": "sv.common_verbs"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "seem"
+          ],
+          "sourceQuestionId": "u01-sv-018",
+          "objectiveId": "sv.common_verbs"
+        },
+        {
+          "id": "3",
+          "answers": [
+            "taste"
+          ],
+          "sourceQuestionId": "u01-sv-019",
+          "objectiveId": "sv.common_verbs"
+        },
+        {
+          "id": "4",
+          "answers": [
+            "think"
+          ],
+          "sourceQuestionId": "u01-sv-020",
+          "objectiveId": "sv.common_verbs"
+        },
+        {
+          "id": "5",
+          "answers": [
+            "understand"
+          ],
+          "sourceQuestionId": "u01-sv-021",
+          "objectiveId": "sv.common_verbs"
+        },
+        {
+          "id": "6",
+          "answers": [
+            "want"
+          ],
+          "sourceQuestionId": "u01-sv-022",
+          "objectiveId": "sv.common_verbs"
+        }
+      ],
+      "blankCount": 6,
+      "objectiveIds": [
+        "sv.common_verbs"
+      ],
+      "explanation": "The third column lists see, seem, taste, think, understand, and want.",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-sv-05",
+      "topic": "stative_verbs",
+      "section": "examples",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Stative verbs: correct and incorrect examples",
+      "prompt": "Complete the examples illustrating the usual stative-verb rule:\n• Correct: I {{1}} reading books in my free time.\n• In this use, “I am liking reading books in my free time” is {{2}}.",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "like"
+          ],
+          "sourceQuestionId": "u01-sv-023",
+          "objectiveId": "sv.examples"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "incorrect",
+            "wrong"
+          ],
+          "sourceQuestionId": "u01-sv-024",
+          "objectiveId": "sv.examples"
+        }
+      ],
+      "blankCount": 2,
+      "objectiveIds": [
+        "sv.examples"
+      ],
+      "explanation": "The source marks “I like reading books in my free time” as correct and crosses out “I am liking reading books in my free time.”",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-sv-06",
+      "topic": "stative_verbs",
+      "section": "watch_out",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Stative verbs: continuous-form exceptions",
+      "prompt": "Complete the Watch Out note about stative verbs:\n• Some stative verbs can be used in continuous tenses when they describe {{1}}.\n• The three example verbs given are {{2}}, {{3}}, and {{4}}.",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "actions"
+          ],
+          "sourceQuestionId": "u01-sv-025",
+          "objectiveId": "sv.watch_out.action_meanings"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "be"
+          ],
+          "sourceQuestionId": "u01-sv-026",
+          "objectiveId": "sv.watch_out.action_meanings"
+        },
+        {
+          "id": "3",
+          "answers": [
+            "have"
+          ],
+          "sourceQuestionId": "u01-sv-027",
+          "objectiveId": "sv.watch_out.action_meanings"
+        },
+        {
+          "id": "4",
+          "answers": [
+            "think"
+          ],
+          "sourceQuestionId": "u01-sv-028",
+          "objectiveId": "sv.watch_out.action_meanings"
+        }
+      ],
+      "blankCount": 4,
+      "objectiveIds": [
+        "sv.watch_out.action_meanings"
+      ],
+      "explanation": "Some stative verbs, such as be, have, and think, can be used in continuous tenses when they describe actions.",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    },
+    {
+      "id": "u01-sv-07",
+      "topic": "stative_verbs",
+      "section": "examples",
+      "type": "multi_blank_fill_in_the_blank",
+      "title": "Stative verbs: think examples",
+      "prompt": "Complete both source examples showing think in different uses:\n• What do you {{1}} about his new song?\n• I'm {{2}} about last night's match.",
+      "blanks": [
+        {
+          "id": "1",
+          "answers": [
+            "think"
+          ],
+          "sourceQuestionId": "u01-sv-029",
+          "objectiveId": "sv.examples"
+        },
+        {
+          "id": "2",
+          "answers": [
+            "thinking"
+          ],
+          "sourceQuestionId": "u01-sv-030",
+          "objectiveId": "sv.examples"
+        }
+      ],
+      "blankCount": 2,
+      "objectiveIds": [
+        "sv.examples"
+      ],
+      "explanation": "The source gives “What do you think about his new song?” and “I'm thinking about last night's match.”",
+      "sourcePdfPage": 1,
+      "difficulty": "recall"
+    }
+  ],
+  "coverageAudit": {
+    "learningObjectivesTotal": 23,
+    "learningObjectivesCovered": 23,
+    "groupedQuestionsTotal": 22,
+    "answerBlanksTotal": 94,
+    "sourceQuestionsRetained": 94,
+    "groupedQuestionsByTopic": {
+      "present_simple": 8,
+      "present_continuous": 7,
+      "stative_verbs": 7
+    },
+    "answerBlanksByTopic": {
+      "present_simple": 34,
+      "present_continuous": 30,
+      "stative_verbs": 30
+    },
+    "commonStativeVerbsCovered": 18,
+    "sourceContentLimit": "Only the single uploaded PDF page (printed page 6); referenced page 182 was not supplied.",
+    "notes": "Every one of the previous 94 source-question answer targets is retained, grouped by related concepts. Structural coverage does not guarantee memorization."
+  }
+}
+

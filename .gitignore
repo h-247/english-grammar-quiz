@@ -1,0 +1,28 @@
+# Node & Framework
+node_modules/
+.next/
+dist/
+.vite/
+.vinext/
+.wrangler/
+.vitest-cache/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env*.local
+.env.development
+.env.production
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Legacy artifacts
+.pytest_cache/
+*.db
+*.sqlite
+*.sqlite3
+pgdata/
