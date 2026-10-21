@@ -7,6 +7,7 @@ import {
   calculateCourseStats,
   syncCourseDriveQuizzes,
 } from '@/lib/course-service';
+import { extractDriveFolderId, DEFAULT_COURSE_BANNER } from '@/lib/course-manifest';
 import { CourseCreateSchema } from '@/lib/validation';
 import { asc } from 'drizzle-orm';
 
@@ -31,6 +32,10 @@ export async function GET() {
         description: c.description,
         drive_folder_id: c.driveFolderId,
         drive_folder_url: c.driveFolderUrl,
+        banner_url:
+          c.bannerUrl && c.bannerUrl.startsWith('http')
+            ? c.bannerUrl
+            : DEFAULT_COURSE_BANNER,
         total_quizzes: stats.total_quizzes,
         ready_quizzes: stats.ready_quizzes,
         pending_quizzes: stats.pending_quizzes,
@@ -60,12 +65,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const { title, description, drive_folder_id, drive_folder_url } = parsed.data;
+    const { title, description, drive_folder_id, drive_folder_url, banner_url } = parsed.data;
+    
+    // Automatically extract folder ID from URL or raw ID
+    const rawDrive = drive_folder_url || drive_folder_id || '';
+    const folderId = rawDrive ? extractDriveFolderId(rawDrive) : null;
     const folderUrl =
       drive_folder_url ||
-      (drive_folder_id
-        ? `https://drive.google.com/drive/folders/${drive_folder_id}`
-        : null);
+      (folderId ? `https://drive.google.com/drive/folders/${folderId}` : null);
+    const banner = banner_url || DEFAULT_COURSE_BANNER;
 
     const courseId = crypto.randomUUID();
     const nowIso = new Date().toISOString();
@@ -74,13 +82,14 @@ export async function POST(request: Request) {
       id: courseId,
       title,
       description: description || null,
-      driveFolderId: drive_folder_id || null,
+      driveFolderId: folderId,
       driveFolderUrl: folderUrl,
+      bannerUrl: banner,
       createdAt: nowIso,
       updatedAt: nowIso,
     });
 
-    if (drive_folder_id) {
+    if (folderId) {
       await syncCourseDriveQuizzes(courseId, db);
     }
 
@@ -90,8 +99,9 @@ export async function POST(request: Request) {
         id: courseId,
         title,
         description: description || null,
-        drive_folder_id: drive_folder_id || null,
+        drive_folder_id: folderId,
         drive_folder_url: folderUrl,
+        banner_url: banner,
         total_quizzes: stats.total_quizzes,
         ready_quizzes: stats.ready_quizzes,
         pending_quizzes: stats.pending_quizzes,

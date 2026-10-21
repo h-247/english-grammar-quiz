@@ -16,10 +16,21 @@ export async function ensureDatabaseInitialized() {
       description TEXT,
       drive_folder_id TEXT,
       drive_folder_url TEXT,
+      banner_url TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
   `);
+
+  try {
+    await db.run(sql`ALTER TABLE courses ADD COLUMN banner_url TEXT;`);
+  } catch {}
+
+  try {
+    await db.run(
+      sql`UPDATE courses SET banner_url = 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=800&auto=format&fit=crop' WHERE banner_url IS NULL OR banner_url = 'banner_url' OR banner_url = '';`
+    );
+  } catch {}
 
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS quizzes (

@@ -8,6 +8,7 @@ export const courses = sqliteTable(
     description: text('description'),
     driveFolderId: text('drive_folder_id'),
     driveFolderUrl: text('drive_folder_url'),
+    bannerUrl: text('banner_url'),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
   },

@@ -28,6 +28,7 @@ export interface CourseSummary {
   description?: string | null;
   drive_folder_id?: string | null;
   drive_folder_url?: string | null;
+  banner_url?: string | null;
   total_quizzes: number;
   ready_quizzes: number;
   pending_quizzes: number;
@@ -45,6 +46,7 @@ export interface CourseCreatePayload {
   description?: string;
   drive_folder_id?: string;
   drive_folder_url?: string;
+  banner_url?: string;
 }
 
 export interface QuizSummary {

@@ -5,6 +5,7 @@ import {
   DEFAULT_COURSE_DESC,
   DEFAULT_DRIVE_FOLDER_ID,
   DEFAULT_DRIVE_URL,
+  DEFAULT_COURSE_BANNER,
   GRAMMAR_UNITS_MANIFEST,
 } from './course-manifest';
 import { importQuizData } from './importer';
@@ -36,6 +37,7 @@ export async function ensureDefaultCourseExists(db: DbInstance) {
       description: DEFAULT_COURSE_DESC,
       driveFolderId: DEFAULT_DRIVE_FOLDER_ID,
       driveFolderUrl: DEFAULT_DRIVE_URL,
+      bannerUrl: DEFAULT_COURSE_BANNER,
       createdAt: nowIso,
       updatedAt: nowIso,
     });

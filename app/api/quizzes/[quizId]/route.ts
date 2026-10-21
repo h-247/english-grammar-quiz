@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/db';
-import { quizzes, courses, questions, blanks } from '@/db/schema';
+import {
+  quizzes,
+  courses,
+  questions,
+  blanks,
+  quizAttempts,
+  userResponses,
+  attemptResults,
+} from '@/db/schema';
 import { ensureDatabaseInitialized } from '@/lib/db-init';
 import { eq, asc, inArray } from 'drizzle-orm';
 
@@ -117,6 +125,32 @@ export async function DELETE(
         { detail: `Quiz with ID ${quizId} not found.` },
         { status: 404 }
       );
+    }
+
+    // Explicitly delete attempts, results, responses, questions, blanks for clean cascade in SQLite
+    const attempts = await db
+      .select({ id: quizAttempts.id })
+      .from(quizAttempts)
+      .where(eq(quizAttempts.quizId, quizId))
+      .all();
+
+    if (attempts.length > 0) {
+      const attemptIds = attempts.map((a) => a.id);
+      await db.delete(attemptResults).where(inArray(attemptResults.attemptId, attemptIds));
+      await db.delete(userResponses).where(inArray(userResponses.attemptId, attemptIds));
+      await db.delete(quizAttempts).where(inArray(quizAttempts.id, attemptIds));
+    }
+
+    const quizQuestions = await db
+      .select({ id: questions.id })
+      .from(questions)
+      .where(eq(questions.quizId, quizId))
+      .all();
+
+    if (quizQuestions.length > 0) {
+      const qIds = quizQuestions.map((q) => q.id);
+      await db.delete(blanks).where(inArray(blanks.questionId, qIds));
+      await db.delete(questions).where(inArray(questions.id, qIds));
     }
 
     await db.delete(quizzes).where(eq(quizzes.id, quizId));

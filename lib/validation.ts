@@ -84,5 +84,6 @@ export const CourseCreateSchema = z.object({
   title: z.string().min(1, 'Course title is required'),
   description: z.string().optional(),
   drive_folder_id: z.string().optional(),
-  drive_folder_url: z.string().url().optional(),
+  drive_folder_url: z.string().optional(),
+  banner_url: z.string().optional(),
 });

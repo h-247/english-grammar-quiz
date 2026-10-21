@@ -10,6 +10,43 @@ export const DEFAULT_DRIVE_URL = `https://drive.google.com/drive/folders/${DEFAU
 export const DEFAULT_COURSE_TITLE = 'Destination B1: English Grammar';
 export const DEFAULT_COURSE_DESC =
   'Comprehensive English Grammar curriculum based on Destination B1 units (28 grammar quizzes).';
+export const DEFAULT_COURSE_BANNER =
+  'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=800&auto=format&fit=crop';
+
+export const PRESET_COURSE_BANNERS = [
+  {
+    id: 'grammar-books',
+    title: 'Grammar & Books',
+    url: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=800&auto=format&fit=crop',
+  },
+  {
+    id: 'digital-ai',
+    title: 'Digital Learning & AI',
+    url: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=800&auto=format&fit=crop',
+  },
+  {
+    id: 'pronunciation-comm',
+    title: 'Classroom & Pronunciation',
+    url: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=800&auto=format&fit=crop',
+  },
+  {
+    id: 'writing-vocab',
+    title: 'Writing & Vocabulary',
+    url: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=800&auto=format&fit=crop',
+  },
+];
+
+export function extractDriveFolderId(input: string): string {
+  if (!input) return '';
+  const trimmed = input.trim();
+  const folderMatch = trimmed.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+  if (folderMatch) return folderMatch[1];
+  const idMatch = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (idMatch) return idMatch[1];
+  const fileMatch = trimmed.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (fileMatch) return fileMatch[1];
+  return trimmed;
+}
 
 export const GRAMMAR_UNITS_MANIFEST: ManifestGrammarUnit[] = [
   { unit: 1, title: 'Present simple, present continuous, stative verbs', filename: 'grammar_unit-01_present-simple-present-continuous-stative-verbs_p005.pdf', drive_file_id: '1-zrdo1m1kvU9ql1bKGFKc7yN3k7PIZAj' },

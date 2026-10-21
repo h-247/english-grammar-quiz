@@ -2,61 +2,78 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Upload, Layers, Loader2, AlertCircle, Search, X, Tag, CheckCircle2, Clock } from "lucide-react";
+import {
+  Plus,
+  Search,
+  X,
+  Layers,
+  BookOpen,
+  CheckCircle2,
+  Clock,
+  RefreshCw,
+  Loader2,
+  AlertCircle,
+  HardDrive,
+} from "lucide-react";
 import { Navbar } from "@/components/Navbar";
-import { CourseHeader } from "@/components/CourseHeader";
-import { QuizCard } from "@/components/QuizCard";
-import { ImportModal } from "@/components/ImportModal";
+import { CourseCard } from "@/components/CourseCard";
+import { ImportCourseModal } from "@/components/ImportCourseModal";
+import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { QuizConfigModal } from "@/components/QuizConfigModal";
-import { getCourses, getQuizzes, startAttempt, deleteQuiz, syncCourseDrive } from "@/lib/api";
+import {
+  getCourses,
+  getQuizzes,
+  createCourse,
+  deleteCourse,
+  syncCourseDrive,
+  startAttempt,
+} from "@/lib/api";
 import { CourseSummary, QuizSummary } from "@/types/quiz";
 import { useToast } from "@/components/Toast";
 
-export default function QuizLibraryPage() {
+export default function CoursesDashboardPage() {
   const router = useRouter();
   const { showToast } = useToast();
 
-  // Course State
+  // Courses & Quizzes Data
   const [courses, setCourses] = useState<CourseSummary[]>([]);
-  const [selectedCourse, setSelectedCourse] = useState<CourseSummary | null>(null);
-
-  // Quizzes State
   const [quizzes, setQuizzes] = useState<QuizSummary[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Search and Filtering State
+  // Search
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [selectedStatus, setSelectedStatus] = useState<"all" | "ready" | "pending_import">("all");
-  const [selectedTopic, setSelectedTopic] = useState<string>("all");
-  const [selectedUnit, setSelectedUnit] = useState<string>("all");
 
-  // Modals State
-  const [isImportOpen, setIsImportOpen] = useState<boolean>(false);
-  const [targetQuizForImport, setTargetQuizForImport] = useState<QuizSummary | null>(null);
-  const [selectedQuiz, setSelectedQuiz] = useState<QuizSummary | null>(null);
-  const [isConfigOpen, setIsConfigOpen] = useState<boolean>(false);
-  const [isStarting, setIsStarting] = useState<boolean>(false);
+  // Modals state
+  const [isImportCourseOpen, setIsImportCourseOpen] = useState<boolean>(false);
+  const [courseToDelete, setCourseToDelete] = useState<CourseSummary | null>(null);
+  const [isDeletingCourse, setIsDeletingCourse] = useState<boolean>(false);
 
-  const loadData = useCallback(async (courseId?: string) => {
-    setIsLoading(true);
+  // Quiz Start modal state
+  const [selectedQuizForStart, setSelectedQuizForStart] = useState<QuizSummary | null>(null);
+  const [isQuizConfigOpen, setIsQuizConfigOpen] = useState<boolean>(false);
+  const [isStartingQuiz, setIsStartingQuiz] = useState<boolean>(false);
+
+  // Load all courses and quizzes
+  const loadData = useCallback(async (isSilent = false) => {
+    if (!isSilent) setIsLoading(true);
+    else setIsRefreshing(true);
     setError(null);
+
     try {
-      const courseList = await getCourses();
-      setCourses(courseList);
-
-      const activeCourse = courseId
-        ? courseList.find((c) => c.id === courseId) || courseList[0] || null
-        : courseList[0] || null;
-      setSelectedCourse(activeCourse);
-
-      const quizList = await getQuizzes(activeCourse ? { course_id: activeCourse.id } : undefined);
-      setQuizzes(quizList);
+      const [coursesData, quizzesData] = await Promise.all([
+        getCourses(),
+        getQuizzes(),
+      ]);
+      setCourses(coursesData);
+      setQuizzes(quizzesData);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to load course quizzes.";
+      const msg = err instanceof Error ? err.message : "Failed to load courses data.";
       setError(msg);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
@@ -64,432 +81,317 @@ export default function QuizLibraryPage() {
     loadData();
   }, [loadData]);
 
-  const handleSelectCourse = async (course: CourseSummary) => {
-    setSelectedCourse(course);
-    setIsLoading(true);
-    try {
-      const quizList = await getQuizzes({ course_id: course.id });
-      setQuizzes(quizList);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to load quizzes for course.";
-      showToast(msg, "error", 5000);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Group quizzes by courseId
+  const quizzesByCourse = useMemo(() => {
+    const map = new Map<string, QuizSummary[]>();
+    quizzes.forEach((q) => {
+      if (q.course_id) {
+        if (!map.has(q.course_id)) {
+          map.set(q.course_id, []);
+        }
+        map.get(q.course_id)!.push(q);
+      }
+    });
+    // Sort quizzes by unit number ascending
+    map.forEach((list) => {
+      list.sort((a, b) => (a.unit_number ?? 999) - (b.unit_number ?? 999));
+    });
+    return map;
+  }, [quizzes]);
 
-  const handleSyncDrive = async () => {
-    if (!selectedCourse) return;
+  // Overall statistics
+  const totalUnits = useMemo(() => {
+    return courses.reduce((acc, c) => acc + (c.total_quizzes || 0), 0);
+  }, [courses]);
+
+  const totalReady = useMemo(() => {
+    return courses.reduce((acc, c) => acc + (c.ready_quizzes || 0), 0);
+  }, [courses]);
+
+  // Filtered courses by search query
+  const filteredCourses = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return courses;
+    return courses.filter((c) => {
+      const titleMatch = c.title.toLowerCase().includes(q);
+      const descMatch = c.description?.toLowerCase().includes(q) ?? false;
+      return titleMatch || descMatch;
+    });
+  }, [courses, searchQuery]);
+
+  // Handle Sync Course with Drive
+  const handleSyncDrive = async (courseId: string) => {
     try {
-      const updatedCourseDetail = await syncCourseDrive(selectedCourse.id);
+      const updated = await syncCourseDrive(courseId);
       showToast(
-        `Synchronized "${updatedCourseDetail.title}" with Google Drive! (${updatedCourseDetail.total_quizzes} units mapped)`,
+        `Synchronized "${updated.title}" with Google Drive! (${updated.total_quizzes} units mapped)`,
         "success",
         5000
       );
-      await loadData(selectedCourse.id);
+      await loadData(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to sync course with Google Drive.";
+      const msg = err instanceof Error ? err.message : "Failed to sync course with Drive.";
       showToast(msg, "error", 6000);
+      throw err;
     }
   };
 
-  // Extract unique topics and units for filtering
-  const allTopics = useMemo(() => {
-    const topicMap = new Map<string, string>();
-    quizzes.forEach((quiz) => {
-      quiz.topics?.forEach((t) => {
-        if (!topicMap.has(t.id)) {
-          topicMap.set(t.id, t.title);
-        }
-      });
-    });
-    return Array.from(topicMap.entries()).map(([id, title]) => ({ id, title }));
-  }, [quizzes]);
-
-  const allUnits = useMemo(() => {
-    const units = new Set<number>();
-    quizzes.forEach((quiz) => {
-      if (quiz.unit_number !== null && quiz.unit_number !== undefined) {
-        units.add(quiz.unit_number);
-      }
-    });
-    return Array.from(units).sort((a, b) => a - b);
-  }, [quizzes]);
-
-  // Counts for status tabs
-  const readyCount = useMemo(() => {
-    return quizzes.filter((q) => q.status === "ready" && q.question_count > 0).length;
-  }, [quizzes]);
-
-  const pendingCount = useMemo(() => {
-    return quizzes.filter((q) => q.status === "pending_import" || q.question_count === 0).length;
-  }, [quizzes]);
-
-  // Filtered Quizzes
-  const filteredQuizzes = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-
-    return quizzes.filter((quiz) => {
-      // 1. Status Filter
-      if (selectedStatus === "ready") {
-        if (quiz.status !== "ready" || quiz.question_count === 0) return false;
-      } else if (selectedStatus === "pending_import") {
-        if (quiz.status === "ready" && quiz.question_count > 0) return false;
-      }
-
-      // 2. Search Query filter
-      if (query) {
-        const titleMatch = quiz.title?.toLowerCase().includes(query);
-        const unitTitleMatch = quiz.unit_title?.toLowerCase().includes(query);
-        const instructionsMatch = quiz.instructions?.toLowerCase().includes(query);
-        const topicMatch = quiz.topics?.some((t) => t.title.toLowerCase().includes(query));
-
-        if (!titleMatch && !unitTitleMatch && !instructionsMatch && !topicMatch) {
-          return false;
-        }
-      }
-
-      // 3. Topic filter
-      if (selectedTopic !== "all") {
-        const hasTopic = quiz.topics?.some((t) => t.id === selectedTopic);
-        if (!hasTopic) return false;
-      }
-
-      // 4. Unit filter
-      if (selectedUnit !== "all") {
-        if (quiz.unit_number?.toString() !== selectedUnit) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [quizzes, selectedStatus, searchQuery, selectedTopic, selectedUnit]);
-
-  const hasActiveFilters =
-    searchQuery.trim() !== "" ||
-    selectedStatus !== "all" ||
-    selectedTopic !== "all" ||
-    selectedUnit !== "all";
-
-  const clearFilters = () => {
-    setSearchQuery("");
-    setSelectedStatus("all");
-    setSelectedTopic("all");
-    setSelectedUnit("all");
+  // Handle Delete Course Modal
+  const handleDeleteCourseClick = (course: CourseSummary) => {
+    setCourseToDelete(course);
   };
 
-  const handleStartClick = (quiz: QuizSummary) => {
-    setSelectedQuiz(quiz);
-    setIsConfigOpen(true);
-  };
-
-  const handleUploadJsonForQuiz = (quiz: QuizSummary) => {
-    setTargetQuizForImport(quiz);
-    setIsImportOpen(true);
-  };
-
-  const handleDeleteQuiz = async (quiz: QuizSummary) => {
+  const handleConfirmDeleteCourse = async () => {
+    if (!courseToDelete) return;
+    setIsDeletingCourse(true);
     try {
-      await deleteQuiz(quiz.id);
-      showToast(`Quiz "${quiz.title}" deleted successfully.`, "info", 4000);
-      await loadData(selectedCourse?.id);
+      await deleteCourse(courseToDelete.id);
+      showToast(`Course "${courseToDelete.title}" and its quizzes were deleted.`, "info", 5000);
+      setCourseToDelete(null);
+      await loadData(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to delete quiz.";
-      showToast(msg, "error", 5000);
+      const msg = err instanceof Error ? err.message : "Failed to delete course.";
+      showToast(msg, "error", 6000);
+    } finally {
+      setIsDeletingCourse(false);
     }
   };
 
-  const handleConfirmStart = async (durationMinutes: number, mode: "timed" | "practice") => {
-    if (!selectedQuiz) return;
-    setIsStarting(true);
+  // Handle Start Quiz from Next Unit highlight
+  const handleStartQuiz = (quiz: QuizSummary, mode: "timed" | "practice") => {
+    setSelectedQuizForStart(quiz);
+    if (mode === "practice") {
+      // Direct start practice mode
+      executeStartQuiz(quiz, 30, "practice");
+    } else {
+      // Open config modal for timed exam
+      setIsQuizConfigOpen(true);
+    }
+  };
+
+  const executeStartQuiz = async (
+    quiz: QuizSummary,
+    durationMinutes: number,
+    mode: "timed" | "practice"
+  ) => {
+    setIsStartingQuiz(true);
     try {
-      const attempt = await startAttempt(selectedQuiz.id, durationMinutes, mode);
+      const attempt = await startAttempt(quiz.id, durationMinutes, mode);
       if (mode === "timed") {
         showToast(`Timed quiz started! You have ${durationMinutes} minutes.`, "info", 4000);
       } else {
         showToast("Self-paced practice started! Immediate feedback active.", "success", 4000);
       }
-      setIsConfigOpen(false);
-      router.push(`/quiz/${selectedQuiz.id}/attempt/${attempt.id}`);
+      setIsQuizConfigOpen(false);
+      router.push(`/quiz/${quiz.id}/attempt/${attempt.id}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to start quiz attempt.";
       showToast(msg, "error", 5000);
-      setIsStarting(false);
+      setIsStartingQuiz(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#212121]">
+    <div className="min-h-screen flex flex-col bg-[#212121] text-[#ececec]">
+      {/* Top Navigation */}
       <Navbar
-        onOpenImport={() => {
-          setTargetQuizForImport(null);
-          setIsImportOpen(true);
-        }}
+        onOpenImportCourse={() => setIsImportCourseOpen(true)}
+        driveConnected={true}
+        userEmail="toan.vuduc247@gmail.com"
       />
 
+      {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8">
-        {/* Course Header Banner */}
-        {selectedCourse && (
-          <CourseHeader
-            courses={courses}
-            selectedCourse={selectedCourse}
-            onSelectCourse={handleSelectCourse}
-            onSyncDrive={handleSyncDrive}
-            onOpenImport={() => {
-              setTargetQuizForImport(null);
-              setIsImportOpen(true);
-            }}
-          />
-        )}
+        {/* Header Bar with Title & Search (Matching Image 1) */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold tracking-tight text-white">
+                Courses Library
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#2a2a2a] text-gray-300 border border-[#3d3d3d]">
+                {courses.length} {courses.length === 1 ? "Course" : "Courses"}
+              </span>
+            </div>
+            <p className="text-sm text-[#9CA3AF] mt-1">
+              Select a course to view grammar units, take quizzes, or import new curricula from Google Drive.
+            </p>
+          </div>
 
-        {/* Search, Status Tabs, and Filter Bar */}
-        {quizzes.length > 0 && (
-          <div className="mb-6 space-y-4">
-            {/* Status Filter Tabs */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#383838] pb-3">
-              <div className="flex items-center gap-2">
+          {/* Search Box & Controls */}
+          <div className="flex items-center gap-2.5">
+            <div className="relative w-full md:w-72">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search courses..."
+                className="w-full bg-[#1b1b1b] border border-[#333333] rounded-xl pl-9 pr-8 py-2 text-sm text-[#ececec] placeholder-gray-500 focus:outline-none focus:border-white transition-colors"
+              />
+              {searchQuery && (
                 <button
-                  type="button"
-                  onClick={() => setSelectedStatus("all")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    selectedStatus === "all"
-                      ? "bg-white text-black shadow-sm"
-                      : "bg-[#262626] text-gray-400 hover:text-white hover:bg-[#333333]"
-                  }`}
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white cursor-pointer"
                 >
-                  All Units ({quizzes.length})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedStatus("ready")}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    selectedStatus === "ready"
-                      ? "bg-emerald-500 text-white shadow-sm"
-                      : "bg-[#262626] text-emerald-400/90 hover:text-emerald-300 hover:bg-[#333333]"
-                  }`}
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Ready to Play ({readyCount})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedStatus("pending_import")}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    selectedStatus === "pending_import"
-                      ? "bg-amber-500 text-black shadow-sm"
-                      : "bg-[#262626] text-amber-400/90 hover:text-amber-300 hover:bg-[#333333]"
-                  }`}
-                >
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>Awaiting JSON ({pendingCount})</span>
-                </button>
-              </div>
-
-              {hasActiveFilters && (
-                <button
-                  onClick={clearFilters}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-gray-400 hover:text-white transition-colors cursor-pointer"
-                >
-                  <X className="w-3 h-3" />
-                  <span>Reset Filters</span>
+                  <X className="w-4 h-4" />
                 </button>
               )}
             </div>
 
-            {/* Search Box and Unit Selector */}
-            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-              {/* Search Box */}
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-[#9CA3AF] absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search quizzes by unit, title, topics, or instructions..."
-                  className="w-full bg-[#262626] border border-[#383838] rounded-xl pl-9 pr-9 py-2 text-sm text-[#ECECEC] placeholder-[#6B7280] focus:outline-none focus:border-white transition-colors"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#ECECEC] cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
+            {/* Refresh Button */}
+            <button
+              onClick={() => loadData(true)}
+              disabled={isRefreshing}
+              title="Refresh courses"
+              className="p-2.5 rounded-xl bg-[#1b1b1b] border border-[#333333] hover:border-gray-500 text-gray-300 hover:text-white transition-all cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-blue-400" : ""}`} />
+            </button>
 
-              {/* Unit Dropdown */}
-              {allUnits.length > 1 && (
-                <div className="flex items-center gap-2">
-                  <select
-                    value={selectedUnit}
-                    onChange={(e) => setSelectedUnit(e.target.value)}
-                    className="bg-[#262626] border border-[#383838] rounded-xl px-3 py-2 text-sm text-[#ECECEC] focus:outline-none focus:border-white cursor-pointer"
-                  >
-                    <option value="all">All Units ({allUnits.length})</option>
-                    {allUnits.map((u) => (
-                      <option key={u} value={u.toString()}>
-                        Unit {u}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+            {/* + Import Course Button (prominent white) */}
+            <button
+              onClick={() => setIsImportCourseOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold bg-white text-black hover:bg-neutral-200 transition-all shadow-md cursor-pointer shrink-0"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span className="hidden sm:inline">Import Course</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Quick KPI summary bar */}
+        {courses.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+            <div className="p-4 rounded-xl bg-[#1c1c1c] border border-[#2e2e2e]">
+              <span className="text-xs text-gray-400 font-medium">Total Courses</span>
+              <p className="text-2xl font-bold text-white mt-1">{courses.length}</p>
             </div>
-
-            {/* Topic Filter Pills */}
-            {allTopics.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-                <span className="text-[#9CA3AF] font-medium flex items-center gap-1 mr-1">
-                  <Tag className="w-3.5 h-3.5" />
-                  <span>Topic:</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedTopic("all")}
-                  className={`px-2.5 py-1 rounded-lg border transition-all cursor-pointer font-medium ${
-                    selectedTopic === "all"
-                      ? "bg-white text-black border-white shadow-sm"
-                      : "bg-[#1E1E1E] border-[#383838] text-[#9CA3AF] hover:text-[#ECECEC] hover:border-[#555555]"
-                  }`}
-                >
-                  All ({quizzes.length})
-                </button>
-                {allTopics.map((topic) => {
-                  const isSelected = selectedTopic === topic.id;
-                  return (
-                    <button
-                      key={topic.id}
-                      type="button"
-                      onClick={() => setSelectedTopic(isSelected ? "all" : topic.id)}
-                      className={`px-2.5 py-1 rounded-lg border transition-all cursor-pointer font-medium ${
-                        isSelected
-                          ? "bg-white text-black border-white shadow-sm"
-                          : "bg-[#1E1E1E] border-[#383838] text-[#9CA3AF] hover:text-[#ECECEC] hover:border-[#555555]"
-                      }`}
-                    >
-                      {topic.title}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Filter Stats */}
-            {hasActiveFilters && (
-              <div className="text-xs text-[#9CA3AF] pt-1">
-                Showing {filteredQuizzes.length} of {quizzes.length} quizzes in this course
-              </div>
-            )}
+            <div className="p-4 rounded-xl bg-[#1c1c1c] border border-[#2e2e2e]">
+              <span className="text-xs text-gray-400 font-medium">Total Units</span>
+              <p className="text-2xl font-bold text-white mt-1">{totalUnits}</p>
+            </div>
+            <div className="p-4 rounded-xl bg-[#1c1c1c] border border-[#2e2e2e]">
+              <span className="text-xs text-gray-400 font-medium">Ready Quizzes</span>
+              <p className="text-2xl font-bold text-emerald-400 mt-1">{totalReady}</p>
+            </div>
+            <div className="p-4 rounded-xl bg-[#1c1c1c] border border-[#2e2e2e]">
+              <span className="text-xs text-gray-400 font-medium">Google Drive</span>
+              <p className="text-sm font-semibold text-blue-400 mt-2 flex items-center gap-1.5">
+                <HardDrive className="w-4 h-4" />
+                <span>Synchronized</span>
+              </p>
+            </div>
           </div>
         )}
 
-        {/* Content Area */}
+        {/* Content Loading / Error / Grid */}
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 text-[#9CA3AF]">
+          <div className="flex flex-col items-center justify-center py-24 text-gray-400">
             <Loader2 className="w-8 h-8 animate-spin text-white mb-3" />
-            <span className="text-sm">Loading course quizzes...</span>
+            <span className="text-sm">Loading course catalog...</span>
           </div>
         ) : error ? (
-          <div className="max-w-lg mx-auto p-6 bg-rose-950/30 border border-rose-500/40 rounded-xl text-center space-y-3">
+          <div className="max-w-lg mx-auto p-6 bg-rose-950/30 border border-rose-500/40 rounded-2xl text-center space-y-3">
             <AlertCircle className="w-8 h-8 text-rose-400 mx-auto" />
-            <h3 className="text-base font-semibold text-[#ECECEC]">Failed to load quizzes</h3>
+            <h3 className="text-base font-semibold text-white">Failed to load courses</h3>
             <p className="text-xs text-rose-300">{error}</p>
             <button
-              onClick={() => loadData(selectedCourse?.id)}
-              className="px-4 py-2 rounded-lg text-xs font-semibold bg-[#333333] hover:bg-[#404040] text-[#ECECEC] transition-colors cursor-pointer"
+              onClick={() => loadData()}
+              className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#2c2c2c] hover:bg-[#383838] text-white transition-colors cursor-pointer"
             >
               Try Again
             </button>
           </div>
-        ) : quizzes.length === 0 ? (
-          /* Empty State */
-          <div className="max-w-md mx-auto py-16 px-6 text-center bg-[#262626] border border-[#383838] rounded-xl shadow-sm space-y-4">
-            <div className="w-14 h-14 rounded-full bg-[#1A1A1A] border border-[#383838] flex items-center justify-center text-white mx-auto">
-              <Layers className="w-7 h-7 text-[#9CA3AF]" />
+        ) : courses.length === 0 ? (
+          /* Empty State - No Courses */
+          <div className="max-w-md mx-auto py-20 px-6 text-center bg-[#1c1c1c] border border-[#2e2e2e] rounded-2xl shadow-xl space-y-5">
+            <div className="w-16 h-16 rounded-2xl bg-[#262626] border border-[#383838] flex items-center justify-center text-white mx-auto shadow-inner">
+              <Layers className="w-8 h-8 text-blue-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-[#ECECEC]">No quizzes found in this course</h3>
+              <h3 className="text-xl font-bold text-white">No courses yet</h3>
               <p className="text-xs text-[#9CA3AF] mt-1.5 leading-relaxed">
-                Sync with Google Drive to auto-populate quizzes from your drive folder, or import a JSON quiz file.
+                Import your first English Grammar course directly from Google Drive to get started with units and quizzes.
               </p>
             </div>
-            <div className="flex items-center justify-center gap-3">
-              <button
-                onClick={handleSyncDrive}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-colors cursor-pointer"
-              >
-                <span>Sync with Google Drive</span>
-              </button>
-              <button
-                onClick={() => {
-                  setTargetQuizForImport(null);
-                  setIsImportOpen(true);
-                }}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-white text-black hover:bg-neutral-200 transition-colors shadow-sm cursor-pointer"
-              >
-                <Upload className="w-4 h-4" />
-                <span>Import JSON</span>
-              </button>
-            </div>
+            <button
+              onClick={() => setIsImportCourseOpen(true)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-white text-black hover:bg-neutral-200 transition-all shadow-md cursor-pointer"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Import Course from Google Drive</span>
+            </button>
           </div>
-        ) : filteredQuizzes.length === 0 ? (
-          /* Empty Search / Filter State */
-          <div className="max-w-md mx-auto py-12 px-6 text-center bg-[#262626] border border-[#383838] rounded-xl space-y-3">
-            <Search className="w-8 h-8 text-[#9CA3AF] mx-auto" />
-            <h3 className="text-base font-semibold text-[#ECECEC]">No matching quizzes found</h3>
-            <p className="text-xs text-[#9CA3AF]">
-              No quizzes match your current search and filter criteria.
+        ) : filteredCourses.length === 0 ? (
+          /* Empty Search State */
+          <div className="max-w-md mx-auto py-16 px-6 text-center bg-[#1c1c1c] border border-[#2e2e2e] rounded-2xl space-y-3">
+            <Search className="w-8 h-8 text-gray-400 mx-auto" />
+            <h3 className="text-base font-semibold text-white">No matching courses</h3>
+            <p className="text-xs text-gray-400">
+              No courses found matching "{searchQuery}".
             </p>
             <button
-              onClick={clearFilters}
-              className="px-4 py-2 rounded-lg text-xs font-semibold bg-[#333333] hover:bg-[#404040] text-[#ECECEC] transition-colors cursor-pointer"
+              onClick={() => setSearchQuery("")}
+              className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#2a2a2a] hover:bg-[#333333] text-white transition-colors cursor-pointer"
             >
-              Clear All Filters
+              Clear Search
             </button>
           </div>
         ) : (
-          /* Quizzes Grid */
+          /* Courses Cards Grid (Matching Image 1) */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredQuizzes.map((quiz) => (
-              <QuizCard
-                key={quiz.id}
-                quiz={quiz}
-                onStart={handleStartClick}
-                onDelete={handleDeleteQuiz}
-                onUploadJson={handleUploadJsonForQuiz}
+            {filteredCourses.map((course) => (
+              <CourseCard
+                key={course.id}
+                course={course}
+                quizzes={quizzesByCourse.get(course.id) || []}
+                onSyncDrive={handleSyncDrive}
+                onDeleteCourse={handleDeleteCourseClick}
+                onStartQuiz={handleStartQuiz}
               />
             ))}
           </div>
         )}
       </main>
 
-      {/* Import Modal */}
-      <ImportModal
-        isOpen={isImportOpen}
-        targetCourseId={selectedCourse?.id}
-        targetQuizTitle={targetQuizForImport?.title}
-        onClose={() => {
-          setIsImportOpen(false);
-          setTargetQuizForImport(null);
+      {/* Import Course Modal */}
+      <ImportCourseModal
+        isOpen={isImportCourseOpen}
+        onClose={() => setIsImportCourseOpen(false)}
+        onCreateCourse={createCourse}
+        onImportSuccess={async (newCourseId) => {
+          showToast("Course imported and synchronized successfully!", "success", 5000);
+          await loadData(true);
+          router.push(`/courses/${newCourseId}`);
         }}
-        onSuccess={() => loadData(selectedCourse?.id)}
       />
 
-      {/* Quiz Config Modal */}
+      {/* Delete Course Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={!!courseToDelete}
+        onClose={() => setCourseToDelete(null)}
+        onConfirm={handleConfirmDeleteCourse}
+        title="Delete Course"
+        itemName={courseToDelete?.title || ""}
+        itemType="Course"
+        isDeleting={isDeletingCourse}
+      />
+
+      {/* Quiz Config Modal for Starting Timed Quiz */}
       <QuizConfigModal
-        quiz={selectedQuiz}
-        isOpen={isConfigOpen}
-        isStarting={isStarting}
+        quiz={selectedQuizForStart}
+        isOpen={isQuizConfigOpen}
+        isStarting={isStartingQuiz}
         onClose={() => {
-          setIsConfigOpen(false);
-          setIsStarting(false);
+          setIsQuizConfigOpen(false);
+          setIsStartingQuiz(false);
         }}
-        onStart={handleConfirmStart}
+        onStart={(durationMinutes, mode) => {
+          if (selectedQuizForStart) {
+            executeStartQuiz(selectedQuizForStart, durationMinutes, mode);
+          }
+        }}
       />
     </div>
   );

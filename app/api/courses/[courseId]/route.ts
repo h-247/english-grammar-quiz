@@ -3,6 +3,7 @@ import { getDb } from '@/db';
 import { courses, quizzes } from '@/db/schema';
 import { ensureDatabaseInitialized } from '@/lib/db-init';
 import { calculateCourseStats } from '@/lib/course-service';
+import { DEFAULT_COURSE_BANNER } from '@/lib/course-manifest';
 import { eq, asc } from 'drizzle-orm';
 
 export async function GET(
@@ -59,6 +60,10 @@ export async function GET(
       description: course.description,
       drive_folder_id: course.driveFolderId,
       drive_folder_url: course.driveFolderUrl,
+      banner_url:
+        course.bannerUrl && course.bannerUrl.startsWith('http')
+          ? course.bannerUrl
+          : DEFAULT_COURSE_BANNER,
       total_quizzes: stats.total_quizzes,
       ready_quizzes: stats.ready_quizzes,
       pending_quizzes: stats.pending_quizzes,
@@ -94,10 +99,21 @@ export async function DELETE(
       );
     }
 
+    // Delete all child quizzes to cleanly trigger cascading deletion
+    const courseQuizzes = await db
+      .select({ id: quizzes.id })
+      .from(quizzes)
+      .where(eq(quizzes.courseId, courseId))
+      .all();
+
+    for (const q of courseQuizzes) {
+      await db.delete(quizzes).where(eq(quizzes.id, q.id));
+    }
+
     await db.delete(courses).where(eq(courses.id, courseId));
 
     return NextResponse.json({
-      message: `Course '${course.title}' deleted successfully.`,
+      message: `Course '${course.title}' and all its quizzes deleted successfully.`,
       course_id: courseId,
     });
   } catch (err: any) {
