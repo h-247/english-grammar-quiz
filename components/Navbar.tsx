@@ -11,14 +11,18 @@ import {
   LogOut,
   User,
   Upload,
+  Sparkles,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DEFAULT_PROMPT_CHAT_URL } from "@/lib/course-manifest";
 
 interface NavbarProps {
   onOpenImportCourse?: () => void;
   onOpenImportQuiz?: () => void;
   userEmail?: string;
   driveConnected?: boolean;
+  promptChatUrl?: string;
 }
 
 function NavLinks({
@@ -26,11 +30,25 @@ function NavLinks({
   onOpenImportQuiz,
   userEmail = "toan.vuduc247@gmail.com",
   driveConnected = true,
+  promptChatUrl = DEFAULT_PROMPT_CHAT_URL,
 }: NavbarProps) {
   const pathname = usePathname();
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2.5 sm:gap-3">
+      {/* Prompt Chat Link (for all courses) */}
+      <a
+        href={promptChatUrl}
+        target="_blank"
+        rel="noreferrer"
+        title="Open ChatGPT Prompt Chat (for all courses)"
+        className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#1a291e] text-emerald-400 hover:text-emerald-300 hover:bg-[#223627] border border-emerald-900/40 transition-all cursor-pointer"
+      >
+        <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+        <span className="inline">Prompt Chat</span>
+        <ExternalLink className="w-3 h-3 text-emerald-500/70" />
+      </a>
+
       {/* Drive Status Indicator (as in screenshot) */}
       <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#1e1e1e] text-[#a3a3a3] border border-[#333333]">
         <HardDrive className="w-3.5 h-3.5 text-blue-400" />
@@ -94,6 +112,7 @@ export function Navbar({
   onOpenImportQuiz,
   userEmail,
   driveConnected = true,
+  promptChatUrl = DEFAULT_PROMPT_CHAT_URL,
 }: NavbarProps) {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-[#2e2e2e] bg-[#1a1a1a]/95 backdrop-blur-md">
@@ -120,6 +139,7 @@ export function Navbar({
             onOpenImportQuiz={onOpenImportQuiz}
             userEmail={userEmail}
             driveConnected={driveConnected}
+            promptChatUrl={promptChatUrl}
           />
         </Suspense>
       </div>

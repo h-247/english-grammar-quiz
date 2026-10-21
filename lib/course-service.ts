@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { courses, quizzes, quizAttempts } from '@/db/schema';
 import {
   DEFAULT_COURSE_TITLE,
@@ -16,6 +16,18 @@ import type { drizzle } from 'drizzle-orm/d1';
 type DbInstance = ReturnType<typeof drizzle>;
 
 export async function ensureDefaultCourseExists(db: DbInstance) {
+  // Check if initial course seeding has already occurred
+  try {
+    const settingRows: any = await db.all(
+      sql`SELECT value FROM app_settings WHERE key = 'has_seeded_initial_course'`
+    );
+    if (settingRows && settingRows.length > 0) {
+      // Already seeded at least once. If courses table is empty, it means the user deleted courses; do not resurrect!
+      const anyExisting = await db.select().from(courses).limit(1).get();
+      return anyExisting || null;
+    }
+  } catch {}
+
   let defaultCourse = await db
     .select()
     .from(courses)
@@ -50,6 +62,12 @@ export async function ensureDefaultCourseExists(db: DbInstance) {
 
     await syncCourseDriveQuizzes(defaultCourse.id, db);
   }
+
+  try {
+    await db.run(
+      sql`INSERT OR REPLACE INTO app_settings (key, value) VALUES ('has_seeded_initial_course', 'true')`
+    );
+  } catch {}
 
   return defaultCourse;
 }

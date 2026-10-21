@@ -9,7 +9,7 @@ import {
 } from '@/lib/course-service';
 import { extractDriveFolderId, DEFAULT_COURSE_BANNER } from '@/lib/course-manifest';
 import { CourseCreateSchema } from '@/lib/validation';
-import { asc } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 
 export async function GET() {
   try {
@@ -74,6 +74,43 @@ export async function POST(request: Request) {
       drive_folder_url ||
       (folderId ? `https://drive.google.com/drive/folders/${folderId}` : null);
     const banner = banner_url || DEFAULT_COURSE_BANNER;
+
+    // Check if course already exists by Google Drive Folder ID
+    if (folderId) {
+      const existingByFolder = await db
+        .select()
+        .from(courses)
+        .where(eq(courses.driveFolderId, folderId))
+        .get();
+
+      if (existingByFolder) {
+        return NextResponse.json(
+          {
+            detail: `Khóa học từ thư mục Google Drive này đã tồn tại trong thư viện: "${existingByFolder.title}". Không được thêm khóa học đã có trong repo.`,
+            existing_course_id: existingByFolder.id,
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    // Check if course already exists by Title
+    const trimmedTitle = title.trim();
+    const existingByTitle = await db
+      .select()
+      .from(courses)
+      .where(eq(courses.title, trimmedTitle))
+      .get();
+
+    if (existingByTitle) {
+      return NextResponse.json(
+        {
+          detail: `Khóa học với tiêu đề "${trimmedTitle}" đã tồn tại trong thư viện. Không được thêm khóa học đã có trong repo.`,
+          existing_course_id: existingByTitle.id,
+        },
+        { status: 409 }
+      );
+    }
 
     const courseId = crypto.randomUUID();
     const nowIso = new Date().toISOString();

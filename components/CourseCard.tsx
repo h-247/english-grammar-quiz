@@ -13,9 +13,10 @@ import {
   CheckCircle2,
   Clock,
   Layers,
+  Sparkles,
 } from "lucide-react";
 import { CourseSummary, QuizSummary } from "@/types/quiz";
-import { DEFAULT_COURSE_BANNER } from "@/lib/course-manifest";
+import { DEFAULT_COURSE_BANNER, DEFAULT_PROMPT_CHAT_URL } from "@/lib/course-manifest";
 
 interface CourseCardProps {
   course: CourseSummary;
@@ -222,6 +223,18 @@ export function CourseCard({
                     <span>Drive</span>
                   </a>
                 )}
+
+                {/* Link Prompt Chat - immediately to the right of Google Drive link */}
+                <a
+                  href={DEFAULT_PROMPT_CHAT_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="Open Prompt Chat"
+                  className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-[#1a291e] hover:bg-[#223627] text-emerald-400 border border-emerald-900/40 transition-colors"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>Prompt</span>
+                </a>
               </div>
             </div>
           )}

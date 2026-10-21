@@ -12,6 +12,8 @@ export const DEFAULT_COURSE_DESC =
   'Comprehensive English Grammar curriculum based on Destination B1 units (28 grammar quizzes).';
 export const DEFAULT_COURSE_BANNER =
   'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=800&auto=format&fit=crop';
+export const DEFAULT_PROMPT_CHAT_URL =
+  process.env.NEXT_PUBLIC_PROMPT_CHAT_URL || 'https://chatgpt.com';
 
 export const PRESET_COURSE_BANNERS = [
   {

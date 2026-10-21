@@ -135,5 +135,12 @@ export async function ensureDatabaseInitialized() {
     );
   `);
 
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+  `);
+
   tablesChecked = true;
 }
