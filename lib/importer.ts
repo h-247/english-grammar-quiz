@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { QuizImportSchema, QuizImportData } from './validation';
 import { calculateContentHash } from './hash';
 import { quizzes, questions, blanks } from '@/db/schema';
@@ -45,8 +45,9 @@ export async function importQuizData(
 
   const validatedQuiz: QuizImportData = parseResult.data;
 
-  // 3. Calculate content hash
-  const contentHash = await calculateContentHash(data);
+  // 3. Calculate content hash (scoped to courseId so different courses never collide on UNIQUE content_hash)
+  const rawHash = await calculateContentHash(data);
+  const contentHash = courseId ? `${courseId}_${rawHash}` : rawHash;
 
   // 4. Check for existing quiz
   const unitNumber = validatedQuiz.unit?.number ?? null;
@@ -54,22 +55,31 @@ export async function importQuizData(
   const quizTitle =
     unitTitle || (unitNumber ? `Unit ${unitNumber}` : 'English Grammar Quiz');
 
-  const existingByHash = await db
-    .select()
-    .from(quizzes)
-    .where(eq(quizzes.contentHash, contentHash))
-    .get();
+  let targetQuiz: any = null;
 
-  let targetQuiz = existingByHash;
+  if (courseId) {
+    // Only look within the designated course
+    const existingInCourse = await db
+      .select()
+      .from(quizzes)
+      .where(eq(quizzes.courseId, courseId))
+      .all();
 
-  if (!targetQuiz && unitNumber !== null) {
-    if (courseId) {
-      targetQuiz = await db
-        .select()
-        .from(quizzes)
-        .where(and(eq(quizzes.unitNumber, unitNumber), eq(quizzes.courseId, courseId)))
-        .get();
-    } else {
+    targetQuiz =
+      existingInCourse.find(
+        (q) =>
+          q.contentHash === contentHash ||
+          q.contentHash === rawHash ||
+          (unitNumber !== null && q.unitNumber === unitNumber)
+      ) || null;
+  } else {
+    targetQuiz = await db
+      .select()
+      .from(quizzes)
+      .where(eq(quizzes.contentHash, contentHash))
+      .get();
+
+    if (!targetQuiz && unitNumber !== null) {
       targetQuiz = await db
         .select()
         .from(quizzes)
@@ -103,11 +113,24 @@ export async function importQuizData(
         is_duplicate: true,
       };
     } else {
-      // Overwrite existing quiz: delete previous
+      // Overwrite existing quiz: delete previous questions, blanks, and quiz record
       targetQuizId = targetQuiz.id;
       preservedCourseId = targetQuiz.courseId || courseId;
       preservedDriveFileId = targetQuiz.driveFileId;
       preservedSourceFilename = targetQuiz.sourceFilename;
+
+      const prevQuestions = await db
+        .select({ id: questions.id })
+        .from(questions)
+        .where(eq(questions.quizId, targetQuiz.id))
+        .all();
+
+      if (prevQuestions.length > 0) {
+        const prevQIds = prevQuestions.map((q) => q.id);
+        await db.delete(blanks).where(inArray(blanks.questionId, prevQIds));
+        await db.delete(questions).where(inArray(questions.id, prevQIds));
+      }
+
       await db.delete(quizzes).where(eq(quizzes.id, targetQuiz.id));
     }
   }

@@ -101,23 +101,25 @@ export async function syncCourseDriveQuizzes(courseId: string, db: DbInstance): 
     if (unitNum === 1 && SAMPLE_UNIT_01_JSON) {
       try {
         const importRes = await importQuizData(SAMPLE_UNIT_01_JSON, db, {
-          overwrite: false,
+          overwrite: true,
           courseId,
         });
 
-        await db
-          .update(quizzes)
-          .set({
-            driveFileId,
-            sourceFilename: filename,
-            status: 'ready',
-          })
-          .where(eq(quizzes.id, importRes.quiz_id));
+        if (importRes && importRes.quiz_id) {
+          await db
+            .update(quizzes)
+            .set({
+              driveFileId,
+              sourceFilename: filename,
+              status: 'ready',
+            })
+            .where(eq(quizzes.id, importRes.quiz_id));
 
-        registeredCount++;
-        continue;
-      } catch {
-        // Fall back to placeholder if import fails
+          registeredCount++;
+          continue;
+        }
+      } catch (err) {
+        console.error('Error auto-seeding Unit 1, creating placeholder instead:', err);
       }
     }
 
