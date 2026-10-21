@@ -48,17 +48,25 @@ function Get-AvailablePort([int]$startPort) {
     }
 }
 
-$AppPort = Get-AvailablePort 3000
+$AppPort = if ($env:PORT) { [int]$env:PORT } else { Get-AvailablePort 3100 }
 Write-Host "[3/3] Launching unified full-stack server on port $AppPort..." -ForegroundColor Yellow
 Write-Host "  -> Persistent local D1 database: .wrangler/state/v3/d1" -ForegroundColor Cyan
 Write-Host "  -> Full-stack URL: http://localhost:$AppPort" -ForegroundColor Green
 
-# Launch browser after a brief delay
-Start-Job -ScriptBlock {
-    param($url)
-    Start-Sleep -Seconds 3
-    Start-Process $url
-} -ArgumentList "http://localhost:$AppPort" | Out-Null
+# Launch browser once the port is active
+$browserWatcher = @"
+for (`$i = 0; `$i -lt 40; `$i++) {
+    Start-Sleep -Milliseconds 500
+    try {
+        `$tcp = [System.Net.Sockets.TcpClient]::new()
+        `$tcp.Connect('127.0.0.1', $AppPort)
+        `$tcp.Close()
+        Start-Process "http://localhost:$AppPort"
+        break
+    } catch {}
+}
+"@
+Start-Process powershell -ArgumentList "-NoProfile -Command `"$browserWatcher`"" -WindowStyle Hidden
 
 # Run Vinext Dev
 $env:PORT = $AppPort

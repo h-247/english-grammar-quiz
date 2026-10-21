@@ -111,7 +111,7 @@ Double-click `start-local.bat` or run in PowerShell:
 This script:
 1. Verifies Node.js and dependencies.
 2. Checks D1 schema and database status.
-3. Automatically scans for a free port (starting at 3000).
+3. Automatically scans for a free port (starting at 3100).
 4. Boots the unified full-stack server (`vinext dev`) with persistent Miniflare D1 emulation.
 5. Automatically opens your default web browser to the application URL.
 
@@ -125,7 +125,7 @@ This script:
    ```bash
    npm run dev
    ```
-   Open [http://localhost:3000](http://localhost:3000) in your browser.
+   Open [http://localhost:3100](http://localhost:3100) in your browser.
 
 3. **Persistent Local Database:**
    Miniflare automatically persists your local D1 SQLite database in `.wrangler/state/v3/d1`. Local data remains isolated on your machine and is never uploaded to production.
