@@ -95,6 +95,59 @@ export async function deleteQuiz(quizId: string): Promise<{ message: string; qui
   });
 }
 
+export async function importQuizJson(
+  jsonText: string,
+  overwrite: boolean = false,
+  courseId?: string
+): Promise<{
+  message: string;
+  quiz_id: string;
+  title: string;
+  question_count: number;
+  blank_count: number;
+  is_duplicate: boolean;
+}> {
+  const query = new URLSearchParams();
+  if (overwrite) query.append("overwrite", "true");
+  if (courseId) query.append("course_id", courseId);
+  const qStr = query.toString();
+
+  const url = `${getApiBase()}/quizzes/import${qStr ? `?${qStr}` : ""}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: jsonText,
+  });
+
+  if (!response.ok) {
+    let errorDetail = "Failed to import quiz.";
+    try {
+      const errJson = (await response.json()) as any;
+      if (errJson && errJson.detail) {
+        errorDetail = typeof errJson.detail === "string" ? errJson.detail : JSON.stringify(errJson.detail);
+      }
+    } catch {
+      errorDetail = `Import failed: ${response.statusText}`;
+    }
+    throw new Error(errorDetail);
+  }
+
+  return response.json();
+}
+
+export async function getSettings(): Promise<{ prompt_chat_url: string }> {
+  return fetchApi<{ prompt_chat_url: string }>("/settings");
+}
+
+export async function updatePromptChatUrl(url: string): Promise<{ prompt_chat_url: string }> {
+  return fetchApi<{ prompt_chat_url: string }>("/settings", {
+    method: "POST",
+    body: JSON.stringify({ prompt_chat_url: url }),
+  });
+}
+
 export async function importQuizFile(
   file: File,
   overwrite: boolean = false,

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   ExternalLink,
@@ -34,6 +34,12 @@ export function CourseCard({
   onStartQuiz,
 }: CourseCardProps) {
   const [isSyncing, setIsSyncing] = useState(false);
+  const [promptChatUrl, setPromptChatUrl] = useState<string>(DEFAULT_PROMPT_CHAT_URL);
+
+  useEffect(() => {
+    const cached = localStorage.getItem("prompt_chat_url");
+    if (cached) setPromptChatUrl(cached);
+  }, []);
 
   // Compute learning progress
   const progressPercent =
@@ -226,7 +232,7 @@ export function CourseCard({
 
                 {/* Link Prompt Chat - immediately to the right of Google Drive link */}
                 <a
-                  href={DEFAULT_PROMPT_CHAT_URL}
+                  href={promptChatUrl}
                   target="_blank"
                   rel="noreferrer"
                   title="Open Prompt Chat"

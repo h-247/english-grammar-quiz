@@ -9,7 +9,7 @@ import {
 } from '@/lib/course-service';
 import { extractDriveFolderId, DEFAULT_COURSE_BANNER } from '@/lib/course-manifest';
 import { CourseCreateSchema } from '@/lib/validation';
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, and, isNull, isNotNull } from 'drizzle-orm';
 
 export async function GET() {
   try {
@@ -20,6 +20,7 @@ export async function GET() {
     const allCourses = await db
       .select()
       .from(courses)
+      .where(isNull(courses.deletedAt))
       .orderBy(asc(courses.createdAt))
       .all();
 
@@ -75,41 +76,91 @@ export async function POST(request: Request) {
       (folderId ? `https://drive.google.com/drive/folders/${folderId}` : null);
     const banner = banner_url || DEFAULT_COURSE_BANNER;
 
-    // Check if course already exists by Google Drive Folder ID
+    // 1. Check if an ACTIVE course already exists by Google Drive Folder ID
     if (folderId) {
-      const existingByFolder = await db
+      const activeByFolder = await db
         .select()
         .from(courses)
-        .where(eq(courses.driveFolderId, folderId))
+        .where(and(eq(courses.driveFolderId, folderId), isNull(courses.deletedAt)))
         .get();
 
-      if (existingByFolder) {
+      if (activeByFolder) {
         return NextResponse.json(
           {
-            detail: `Khóa học từ thư mục Google Drive này đã tồn tại trong thư viện: "${existingByFolder.title}". Không được thêm khóa học đã có trong repo.`,
-            existing_course_id: existingByFolder.id,
+            detail: `Khóa học từ thư mục Google Drive này đã tồn tại trong thư viện: "${activeByFolder.title}". Không được thêm khóa học đã có trong repo.`,
+            existing_course_id: activeByFolder.id,
           },
           { status: 409 }
         );
       }
     }
 
-    // Check if course already exists by Title
+    // 2. Check if an ACTIVE course already exists by Title
     const trimmedTitle = title.trim();
-    const existingByTitle = await db
+    const activeByTitle = await db
       .select()
       .from(courses)
-      .where(eq(courses.title, trimmedTitle))
+      .where(and(eq(courses.title, trimmedTitle), isNull(courses.deletedAt)))
       .get();
 
-    if (existingByTitle) {
+    if (activeByTitle) {
       return NextResponse.json(
         {
           detail: `Khóa học với tiêu đề "${trimmedTitle}" đã tồn tại trong thư viện. Không được thêm khóa học đã có trong repo.`,
-          existing_course_id: existingByTitle.id,
+          existing_course_id: activeByTitle.id,
         },
         { status: 409 }
       );
+    }
+
+    // 3. Check if this course was previously added and deleted -> RESTORE IT with all previous quizzes ("có sẵn bài cũ")
+    let existingDeleted: any = null;
+    if (folderId) {
+      existingDeleted = await db
+        .select()
+        .from(courses)
+        .where(and(eq(courses.driveFolderId, folderId), isNotNull(courses.deletedAt)))
+        .get();
+    }
+    if (!existingDeleted) {
+      existingDeleted = await db
+        .select()
+        .from(courses)
+        .where(and(eq(courses.title, trimmedTitle), isNotNull(courses.deletedAt)))
+        .get();
+    }
+
+    if (existingDeleted) {
+      const nowIso = new Date().toISOString();
+      await db
+        .update(courses)
+        .set({
+          deletedAt: null,
+          title: trimmedTitle || existingDeleted.title,
+          description: description || existingDeleted.description,
+          bannerUrl: banner,
+          updatedAt: nowIso,
+        })
+        .where(eq(courses.id, existingDeleted.id));
+
+      await syncCourseDriveQuizzes(existingDeleted.id, db);
+      const stats = await calculateCourseStats(existingDeleted.id, db);
+
+      return NextResponse.json({
+        id: existingDeleted.id,
+        title: trimmedTitle || existingDeleted.title,
+        description: description || existingDeleted.description,
+        drive_folder_id: existingDeleted.driveFolderId,
+        drive_folder_url: existingDeleted.driveFolderUrl,
+        banner_url: banner,
+        total_quizzes: stats.total_quizzes,
+        ready_quizzes: stats.ready_quizzes,
+        pending_quizzes: stats.pending_quizzes,
+        completed_quizzes: stats.completed_quizzes,
+        created_at: existingDeleted.createdAt,
+        updated_at: nowIso,
+        restored: true,
+      });
     }
 
     const courseId = crypto.randomUUID();

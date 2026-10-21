@@ -4,7 +4,7 @@ import { courses, quizzes } from '@/db/schema';
 import { ensureDatabaseInitialized } from '@/lib/db-init';
 import { calculateCourseStats } from '@/lib/course-service';
 import { DEFAULT_COURSE_BANNER } from '@/lib/course-manifest';
-import { eq, asc } from 'drizzle-orm';
+import { eq, asc, and, isNull } from 'drizzle-orm';
 
 export async function GET(
   request: Request,
@@ -18,7 +18,7 @@ export async function GET(
     const course = await db
       .select()
       .from(courses)
-      .where(eq(courses.id, courseId))
+      .where(and(eq(courses.id, courseId), isNull(courses.deletedAt)))
       .get();
 
     if (!course) {
@@ -89,7 +89,7 @@ export async function DELETE(
     const course = await db
       .select()
       .from(courses)
-      .where(eq(courses.id, courseId))
+      .where(and(eq(courses.id, courseId), isNull(courses.deletedAt)))
       .get();
 
     if (!course) {
@@ -99,21 +99,15 @@ export async function DELETE(
       );
     }
 
-    // Delete all child quizzes to cleanly trigger cascading deletion
-    const courseQuizzes = await db
-      .select({ id: quizzes.id })
-      .from(quizzes)
-      .where(eq(quizzes.courseId, courseId))
-      .all();
-
-    for (const q of courseQuizzes) {
-      await db.delete(quizzes).where(eq(quizzes.id, q.id));
-    }
-
-    await db.delete(courses).where(eq(courses.id, courseId));
+    // Soft-delete the course so that re-adding it later preserves all quizzes and questions
+    const nowIso = new Date().toISOString();
+    await db
+      .update(courses)
+      .set({ deletedAt: nowIso, updatedAt: nowIso })
+      .where(eq(courses.id, courseId));
 
     return NextResponse.json({
-      message: `Course '${course.title}' and all its quizzes deleted successfully.`,
+      message: `Course '${course.title}' deleted successfully.`,
       course_id: courseId,
     });
   } catch (err: any) {

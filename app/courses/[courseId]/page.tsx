@@ -22,6 +22,7 @@ import {
   TrendingUp,
   FileText,
   Sparkles,
+  ClipboardPaste,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { ImportModal } from "@/components/ImportModal";
@@ -55,7 +56,13 @@ export default function CourseDetailPage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<"all" | "ready" | "pending_import">("all");
 
-  // Quiz Import Modal
+  // Prompt Chat URL state
+  const [promptChatUrl, setPromptChatUrl] = useState<string>(DEFAULT_PROMPT_CHAT_URL);
+
+  useEffect(() => {
+    const cached = localStorage.getItem("prompt_chat_url");
+    if (cached) setPromptChatUrl(cached);
+  }, []);
   const [isImportOpen, setIsImportOpen] = useState<boolean>(false);
   const [targetQuizForImport, setTargetQuizForImport] = useState<QuizSummary | null>(null);
 
@@ -232,6 +239,8 @@ export default function CourseDetailPage() {
         onOpenImportCourse={() => router.push("/")}
         driveConnected={true}
         userEmail="toan.vuduc247@gmail.com"
+        promptChatUrl={promptChatUrl}
+        onPromptChatUrlChange={setPromptChatUrl}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
@@ -332,7 +341,7 @@ export default function CourseDetailPage() {
                     <span>{isSyncing ? "Syncing..." : "Re-sync Drive"}</span>
                   </button>
 
-                  {/* + Upload Quiz JSON */}
+                  {/* + Paste Quiz JSON */}
                   <button
                     onClick={() => {
                       setTargetQuizForImport(null);
@@ -340,8 +349,8 @@ export default function CourseDetailPage() {
                     }}
                     className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-black hover:bg-neutral-200 transition-all shadow-sm cursor-pointer"
                   >
-                    <Upload className="w-3.5 h-3.5 stroke-[2.5]" />
-                    <span>Upload Quiz JSON</span>
+                    <ClipboardPaste className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Paste Quiz JSON</span>
                   </button>
 
                   {/* Delete Course (with confirmation) */}
@@ -478,8 +487,8 @@ export default function CourseDetailPage() {
                         }}
                         className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold bg-white text-black hover:bg-neutral-200 transition-colors shadow-md cursor-pointer"
                       >
-                        <Upload className="w-3.5 h-3.5 stroke-[2.5]" />
-                        <span>Upload JSON Quiz</span>
+                        <ClipboardPaste className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>Paste JSON Quiz</span>
                       </button>
                     )}
 
@@ -497,7 +506,7 @@ export default function CourseDetailPage() {
 
                     {/* Link Prompt Chat - immediately to the right of Google Drive link */}
                     <a
-                      href={DEFAULT_PROMPT_CHAT_URL}
+                      href={promptChatUrl}
                       target="_blank"
                       rel="noreferrer"
                       className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-medium bg-[#1a291e] hover:bg-[#223627] text-emerald-400 border border-emerald-900/40 transition-colors cursor-pointer"
@@ -673,10 +682,10 @@ export default function CourseDetailPage() {
                                   setTargetQuizForImport(quiz);
                                   setIsImportOpen(true);
                                 }}
-                                title="Update or replace JSON"
+                                title="Paste revised JSON"
                                 className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-[#2c2c2c] transition-colors cursor-pointer"
                               >
-                                <Upload className="w-3.5 h-3.5" />
+                                <ClipboardPaste className="w-3.5 h-3.5" />
                               </button>
                             </>
                           ) : (
@@ -687,8 +696,8 @@ export default function CourseDetailPage() {
                               }}
                               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-black hover:bg-neutral-200 transition-colors shadow-sm cursor-pointer"
                             >
-                              <Upload className="w-3 h-3 stroke-[2.5]" />
-                              <span>Upload JSON</span>
+                              <ClipboardPaste className="w-3 h-3 stroke-[2.5]" />
+                              <span>Paste JSON</span>
                             </button>
                           )}
 
@@ -706,7 +715,7 @@ export default function CourseDetailPage() {
 
                           {/* Link Prompt Chat (display to the right of Google Drive link) */}
                           <a
-                            href={DEFAULT_PROMPT_CHAT_URL}
+                            href={promptChatUrl}
                             target="_blank"
                             rel="noreferrer"
                             title={`Open Prompt Chat for Unit ${quiz.unit_number ?? ''}`}

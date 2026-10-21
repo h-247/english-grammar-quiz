@@ -9,11 +9,13 @@ export const courses = sqliteTable(
     driveFolderId: text('drive_folder_id'),
     driveFolderUrl: text('drive_folder_url'),
     bannerUrl: text('banner_url'),
+    deletedAt: text('deleted_at'),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
   },
   (table) => [
     index('courses_drive_folder_id_idx').on(table.driveFolderId),
+    index('courses_deleted_at_idx').on(table.deletedAt),
   ]
 );
 
