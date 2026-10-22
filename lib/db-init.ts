@@ -65,10 +65,15 @@ export async function ensureDatabaseInitialized() {
       course_id TEXT REFERENCES courses(id) ON DELETE SET NULL,
       drive_file_id TEXT,
       source_filename TEXT,
+      chatgpt_url TEXT,
       status TEXT NOT NULL DEFAULT 'ready',
       created_at TEXT NOT NULL
     );
   `);
+
+  try {
+    await db.run(sql`ALTER TABLE quizzes ADD COLUMN chatgpt_url TEXT;`);
+  } catch {}
 
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS questions (

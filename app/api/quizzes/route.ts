@@ -53,6 +53,7 @@ export async function GET(request: Request) {
       course_title: courseTitle,
       drive_file_id: q.driveFileId,
       source_filename: q.sourceFilename,
+      chatgpt_url: q.chatgptUrl || null,
       status: q.status,
       created_at: q.createdAt,
     }));

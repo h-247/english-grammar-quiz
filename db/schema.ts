@@ -41,6 +41,7 @@ export const quizzes = sqliteTable(
     courseId: text('course_id').references(() => courses.id, { onDelete: 'set null' }),
     driveFileId: text('drive_file_id'),
     sourceFilename: text('source_filename'),
+    chatgptUrl: text('chatgpt_url'),
     status: text('status').notNull().default('ready'),
     createdAt: text('created_at').notNull(),
   },

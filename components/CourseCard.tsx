@@ -15,6 +15,7 @@ import {
   Layers,
   Sparkles,
   Pencil,
+  Bot,
 } from "lucide-react";
 import { CourseSummary, QuizSummary } from "@/types/quiz";
 import { DEFAULT_COURSE_BANNER, DEFAULT_PROMPT_CHAT_URL } from "@/lib/course-manifest";
@@ -244,6 +245,20 @@ export function CourseCard({
                   <Sparkles className="w-3 h-3" />
                   <span>Prompt</span>
                 </a>
+
+                {/* Dedicated Quiz ChatGPT link if configured */}
+                {nextQuiz.chatgpt_url && (
+                  <a
+                    href={nextQuiz.chatgpt_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={`Open Quiz ChatGPT Link: ${nextQuiz.chatgpt_url}`}
+                    className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-[#142338] hover:bg-[#1a2c47] text-blue-400 border border-blue-900/40 transition-colors"
+                  >
+                    <Bot className="w-3 h-3" />
+                    <span>Chat 2</span>
+                  </a>
+                )}
               </div>
             </div>
           )}

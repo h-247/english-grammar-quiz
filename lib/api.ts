@@ -113,6 +113,19 @@ export async function deleteQuiz(quizId: string): Promise<{ message: string; qui
   });
 }
 
+export async function updateQuiz(
+  quizId: string,
+  data: { chatgpt_url?: string | null }
+): Promise<{ id: string; title: string; chatgpt_url: string | null; message: string }> {
+  return fetchApi<{ id: string; title: string; chatgpt_url: string | null; message: string }>(
+    `/quizzes/${quizId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }
+  );
+}
+
 export async function importQuizJson(
   jsonText: string,
   overwrite: boolean = false,

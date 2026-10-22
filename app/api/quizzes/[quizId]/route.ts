@@ -97,6 +97,7 @@ export async function GET(
       course_title: courseTitle,
       drive_file_id: q.driveFileId,
       source_filename: q.sourceFilename,
+      chatgpt_url: q.chatgptUrl || null,
       status: q.status,
       questions: publicQuestions,
     });
@@ -185,6 +186,60 @@ export async function DELETE(
     return NextResponse.json({
       message: `Quiz '${quiz.title}' deleted successfully.`,
       quiz_id: quizId,
+    });
+  } catch (err: any) {
+    return NextResponse.json({ detail: err.message }, { status: 500 });
+  }
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ quizId: string }> }
+) {
+  try {
+    await ensureDatabaseInitialized();
+    const db = getDb();
+    const { quizId } = await params;
+
+    const quiz = await db
+      .select()
+      .from(quizzes)
+      .where(eq(quizzes.id, quizId))
+      .get();
+
+    if (!quiz) {
+      return NextResponse.json(
+        { detail: `Quiz with ID ${quizId} not found.` },
+        { status: 404 }
+      );
+    }
+
+    const body = (await request.json()) as Record<string, any>;
+    const updateData: Record<string, any> = {};
+
+    if (body.chatgpt_url !== undefined) {
+      const trimmed =
+        typeof body.chatgpt_url === 'string' ? body.chatgpt_url.trim() : null;
+      updateData.chatgptUrl = trimmed || null;
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      await db.update(quizzes).set(updateData).where(eq(quizzes.id, quizId));
+    }
+
+    const updated = await db
+      .select()
+      .from(quizzes)
+      .where(eq(quizzes.id, quizId))
+      .get();
+
+    return NextResponse.json({
+      id: updated!.id,
+      title: updated!.title,
+      unit_number: updated!.unitNumber,
+      unit_title: updated!.unitTitle,
+      chatgpt_url: updated!.chatgptUrl || null,
+      message: 'Quiz ChatGPT link updated successfully.',
     });
   } catch (err: any) {
     return NextResponse.json({ detail: err.message }, { status: 500 });

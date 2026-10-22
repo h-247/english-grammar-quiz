@@ -63,6 +63,7 @@ export interface QuizSummary {
   course_title?: string | null;
   drive_file_id?: string | null;
   source_filename?: string | null;
+  chatgpt_url?: string | null;
   status?: "ready" | "pending_import";
   created_at: string;
 }
@@ -81,6 +82,7 @@ export interface QuizDetail {
   course_title?: string | null;
   drive_file_id?: string | null;
   source_filename?: string | null;
+  chatgpt_url?: string | null;
   status?: "ready" | "pending_import";
   questions: QuestionPublic[];
 }
