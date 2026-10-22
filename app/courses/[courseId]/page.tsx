@@ -23,11 +23,13 @@ import {
   FileText,
   Sparkles,
   ClipboardPaste,
+  Pencil,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { ImportModal } from "@/components/ImportModal";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { QuizConfigModal } from "@/components/QuizConfigModal";
+import { EditCourseModal } from "@/components/EditCourseModal";
 import { DEFAULT_PROMPT_CHAT_URL } from "@/lib/course-manifest";
 import {
   getCourse,
@@ -72,6 +74,7 @@ export default function CourseDetailPage() {
 
   const [isDeleteCourseOpen, setIsDeleteCourseOpen] = useState<boolean>(false);
   const [isDeletingCourse, setIsDeletingCourse] = useState<boolean>(false);
+  const [isEditCourseOpen, setIsEditCourseOpen] = useState<boolean>(false);
 
   // Quiz Start Configuration Modal
   const [selectedQuizForStart, setSelectedQuizForStart] = useState<QuizSummary | null>(null);
@@ -299,6 +302,14 @@ export default function CourseDetailPage() {
                     <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
                       {course.title}
                     </h1>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditCourseOpen(true)}
+                      title="Edit Course Name & Details"
+                      className="p-1.5 text-gray-400 hover:text-white hover:bg-[#2c2c2c] rounded-lg transition-colors border border-[#3a3a3a] cursor-pointer"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
                   </div>
 
                   <p className="text-sm text-[#9CA3AF] max-w-3xl leading-relaxed">
@@ -753,6 +764,16 @@ export default function CourseDetailPage() {
           setTargetQuizForImport(null);
         }}
         onSuccess={() => loadCourse(true)}
+      />
+
+      {/* Edit Course Modal */}
+      <EditCourseModal
+        isOpen={isEditCourseOpen}
+        onClose={() => setIsEditCourseOpen(false)}
+        course={course}
+        onSave={(updated) => {
+          setCourse((prev) => (prev ? { ...prev, ...updated } : prev));
+        }}
       />
 
       {/* Delete Course Confirmation Modal */}

@@ -20,6 +20,7 @@ import { CourseCard } from "@/components/CourseCard";
 import { ImportCourseModal } from "@/components/ImportCourseModal";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { QuizConfigModal } from "@/components/QuizConfigModal";
+import { EditCourseModal } from "@/components/EditCourseModal";
 import {
   getCourses,
   getQuizzes,
@@ -49,6 +50,7 @@ export default function CoursesDashboardPage() {
   const [isImportCourseOpen, setIsImportCourseOpen] = useState<boolean>(false);
   const [courseToDelete, setCourseToDelete] = useState<CourseSummary | null>(null);
   const [isDeletingCourse, setIsDeletingCourse] = useState<boolean>(false);
+  const [courseToEdit, setCourseToEdit] = useState<CourseSummary | null>(null);
 
   // Quiz Start modal state
   const [selectedQuizForStart, setSelectedQuizForStart] = useState<QuizSummary | null>(null);
@@ -313,6 +315,7 @@ export default function CoursesDashboardPage() {
                 quizzes={quizzesByCourse.get(course.id) || []}
                 onSyncDrive={handleSyncDrive}
                 onDeleteCourse={handleDeleteCourseClick}
+                onEditCourse={(c) => setCourseToEdit(c)}
                 onStartQuiz={handleStartQuiz}
               />
             ))}
@@ -329,6 +332,18 @@ export default function CoursesDashboardPage() {
           showToast("Course imported and synchronized successfully!", "success", 5000);
           await loadData(true);
           router.push(`/courses/${newCourseId}`);
+        }}
+      />
+
+      {/* Edit Course Modal */}
+      <EditCourseModal
+        isOpen={!!courseToEdit}
+        onClose={() => setCourseToEdit(null)}
+        course={courseToEdit}
+        onSave={async (updated) => {
+          setCourses((prev) =>
+            prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c))
+          );
         }}
       />
 

@@ -159,3 +159,81 @@ export async function DELETE(
     return NextResponse.json({ detail: err.message }, { status: 500 });
   }
 }
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ courseId: string }> }
+) {
+  try {
+    await ensureDatabaseInitialized();
+    const db = getDb();
+    const { courseId } = await params;
+
+    const course = await db
+      .select()
+      .from(courses)
+      .where(eq(courses.id, courseId))
+      .get();
+
+    if (!course) {
+      return NextResponse.json(
+        { detail: `Course with ID ${courseId} not found.` },
+        { status: 404 }
+      );
+    }
+
+    const body = (await request.json()) as Record<string, any>;
+    const trimmedTitle =
+      typeof body.title === 'string' ? body.title.trim() : undefined;
+
+    if (trimmedTitle !== undefined && trimmedTitle.length === 0) {
+      return NextResponse.json(
+        { detail: 'Course title cannot be empty.' },
+        { status: 422 }
+      );
+    }
+
+    const nowIso = new Date().toISOString();
+    const updateData: Record<string, any> = { updatedAt: nowIso };
+
+    if (trimmedTitle !== undefined) {
+      updateData.title = trimmedTitle;
+    }
+    if (body.description !== undefined) {
+      updateData.description = body.description ? String(body.description).trim() : null;
+    }
+    if (body.banner_url !== undefined && body.banner_url) {
+      updateData.bannerUrl = String(body.banner_url);
+    }
+
+    await db.update(courses).set(updateData).where(eq(courses.id, courseId));
+
+    const updated = await db
+      .select()
+      .from(courses)
+      .where(eq(courses.id, courseId))
+      .get();
+
+    const stats = await calculateCourseStats(courseId, db);
+
+    return NextResponse.json({
+      id: updated!.id,
+      title: updated!.title,
+      description: updated!.description,
+      drive_folder_id: updated!.driveFolderId,
+      drive_folder_url: updated!.driveFolderUrl,
+      banner_url:
+        updated!.bannerUrl && updated!.bannerUrl.startsWith('http')
+          ? updated!.bannerUrl
+          : DEFAULT_COURSE_BANNER,
+      total_quizzes: stats.total_quizzes,
+      ready_quizzes: stats.ready_quizzes,
+      pending_quizzes: stats.pending_quizzes,
+      completed_quizzes: stats.completed_quizzes,
+      created_at: updated!.createdAt,
+      updated_at: updated!.updatedAt,
+    });
+  } catch (err: any) {
+    return NextResponse.json({ detail: err.message }, { status: 500 });
+  }
+}

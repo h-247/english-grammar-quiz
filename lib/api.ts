@@ -77,6 +77,24 @@ export async function deleteCourse(courseId: string): Promise<{ message: string;
   });
 }
 
+export async function updateCourse(
+  courseId: string,
+  data: { title?: string; description?: string; banner_url?: string }
+): Promise<CourseSummary> {
+  return fetchApi<CourseSummary>(`/courses/${courseId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getDriveFolderInfo(
+  urlOrId: string
+): Promise<{ folder_id: string; name: string | null }> {
+  return fetchApi<{ folder_id: string; name: string | null }>(
+    `/drive/folder-info?url=${encodeURIComponent(urlOrId)}`
+  );
+}
+
 export async function getQuizzes(params?: { course_id?: string; status?: string }): Promise<QuizSummary[]> {
   const query = new URLSearchParams();
   if (params?.course_id) query.append("course_id", params.course_id);

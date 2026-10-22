@@ -81,7 +81,7 @@ export const SubmitAttemptSchema = z.object({
 });
 
 export const CourseCreateSchema = z.object({
-  title: z.string().min(1, 'Course title is required'),
+  title: z.string().optional(),
   description: z.string().optional(),
   drive_folder_id: z.string().optional(),
   drive_folder_url: z.string().optional(),

@@ -7,7 +7,12 @@ import {
   calculateCourseStats,
   syncCourseDriveQuizzes,
 } from '@/lib/course-service';
-import { extractDriveFolderId, DEFAULT_COURSE_BANNER } from '@/lib/course-manifest';
+import {
+  extractDriveFolderId,
+  DEFAULT_COURSE_BANNER,
+  DEFAULT_COURSE_TITLE,
+} from '@/lib/course-manifest';
+import { fetchDriveFolderMetadata } from '@/lib/gdrive-service';
 import { CourseCreateSchema } from '@/lib/validation';
 import { asc, eq } from 'drizzle-orm';
 
@@ -75,7 +80,21 @@ export async function POST(request: Request) {
       (folderId ? `https://drive.google.com/drive/folders/${folderId}` : null);
     const banner = banner_url || DEFAULT_COURSE_BANNER;
 
-    // 1. Check if a course already exists by Google Drive Folder ID
+    // 1. Resolve course title: if Google Drive link provided, prioritize actual Drive folder name
+    let finalTitle = title ? title.trim() : '';
+    if (folderId) {
+      const driveMeta = await fetchDriveFolderMetadata(folderId);
+      if (driveMeta?.name) {
+        if (!finalTitle || finalTitle === 'd' || finalTitle === DEFAULT_COURSE_TITLE) {
+          finalTitle = driveMeta.name;
+        }
+      }
+    }
+    if (!finalTitle) {
+      finalTitle = folderId ? `Course (${folderId.slice(0, 8)})` : DEFAULT_COURSE_TITLE;
+    }
+
+    // 2. Check if a course already exists by Google Drive Folder ID
     if (folderId) {
       const existingByFolder = await db
         .select()
@@ -94,31 +113,30 @@ export async function POST(request: Request) {
       }
     }
 
-    // 2. Check if a course already exists by Title
-    const trimmedTitle = title.trim();
+    // 3. Check if a course already exists by Title
     const existingByTitle = await db
       .select()
       .from(courses)
-      .where(eq(courses.title, trimmedTitle))
+      .where(eq(courses.title, finalTitle))
       .get();
 
     if (existingByTitle) {
       return NextResponse.json(
         {
-          detail: `Khóa học với tiêu đề "${trimmedTitle}" đã tồn tại trong thư viện. Không được thêm khóa học đã có trong repo.`,
+          detail: `Khóa học với tiêu đề "${finalTitle}" đã tồn tại trong thư viện. Không được thêm khóa học đã có trong repo.`,
           existing_course_id: existingByTitle.id,
         },
         { status: 409 }
       );
     }
 
-    // 3. Create a clean fresh course (never resurrect old modified/pasted quizzes)
+    // 4. Create a clean fresh course (never resurrect old modified/pasted quizzes)
     const courseId = crypto.randomUUID();
     const nowIso = new Date().toISOString();
 
     await db.insert(courses).values({
       id: courseId,
-      title: trimmedTitle,
+      title: finalTitle,
       description: description || null,
       driveFolderId: folderId,
       driveFolderUrl: folderUrl,
@@ -135,7 +153,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         id: courseId,
-        title: trimmedTitle,
+        title: finalTitle,
         description: description || null,
         drive_folder_id: folderId,
         drive_folder_url: folderUrl,

@@ -14,6 +14,7 @@ import {
   Clock,
   Layers,
   Sparkles,
+  Pencil,
 } from "lucide-react";
 import { CourseSummary, QuizSummary } from "@/types/quiz";
 import { DEFAULT_COURSE_BANNER, DEFAULT_PROMPT_CHAT_URL } from "@/lib/course-manifest";
@@ -23,6 +24,7 @@ interface CourseCardProps {
   quizzes?: QuizSummary[];
   onSyncDrive: (courseId: string) => Promise<void>;
   onDeleteCourse: (course: CourseSummary) => void;
+  onEditCourse?: (course: CourseSummary) => void;
   onStartQuiz: (quiz: QuizSummary, mode: "timed" | "practice") => void;
 }
 
@@ -31,6 +33,7 @@ export function CourseCard({
   quizzes = [],
   onSyncDrive,
   onDeleteCourse,
+  onEditCourse,
   onStartQuiz,
 }: CourseCardProps) {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -261,6 +264,21 @@ export function CourseCard({
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-blue-400" : ""}`} />
           </button>
+
+          {/* Edit Course button */}
+          {onEditCourse && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onEditCourse(course);
+              }}
+              title="Edit Course Name & Info"
+              className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-[#2c2c2c] transition-colors cursor-pointer"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          )}
 
           {/* Delete Course button */}
           <button

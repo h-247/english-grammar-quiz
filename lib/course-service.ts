@@ -8,9 +8,7 @@ import {
   DEFAULT_COURSE_BANNER,
   GRAMMAR_UNITS_MANIFEST,
 } from './course-manifest';
-import { importQuizData } from './importer';
 import { calculateContentHash } from './hash';
-import { SAMPLE_UNIT_01_JSON } from './sample-unit-01';
 import type { drizzle } from 'drizzle-orm/d1';
 
 type DbInstance = ReturnType<typeof drizzle>;
@@ -115,33 +113,7 @@ export async function syncCourseDriveQuizzes(courseId: string, db: DbInstance): 
       continue;
     }
 
-    // Auto-seed Unit 1 with sample JSON so it's playable immediately
-    if (unitNum === 1 && SAMPLE_UNIT_01_JSON) {
-      try {
-        const importRes = await importQuizData(SAMPLE_UNIT_01_JSON, db, {
-          overwrite: true,
-          courseId,
-        });
-
-        if (importRes && importRes.quiz_id) {
-          await db
-            .update(quizzes)
-            .set({
-              driveFileId,
-              sourceFilename: filename,
-              status: 'ready',
-            })
-            .where(eq(quizzes.id, importRes.quiz_id));
-
-          registeredCount++;
-          continue;
-        }
-      } catch (err) {
-        console.error('Error auto-seeding Unit 1, creating placeholder instead:', err);
-      }
-    }
-
-    // Create pending placeholder quiz
+    // Create pending placeholder quiz (all units start fresh, no pre-filled old quizzes)
     const placeholderHash = await calculateContentHash(
       `course_${courseId}_unit_${unitNum}_${filename}`
     );

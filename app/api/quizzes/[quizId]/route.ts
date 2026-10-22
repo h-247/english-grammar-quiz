@@ -153,6 +153,33 @@ export async function DELETE(
       await db.delete(questions).where(inArray(questions.id, qIds));
     }
 
+    // If quiz is part of a course curriculum, reset it to pending_import instead of removing the unit
+    if (quiz.courseId && quiz.unitNumber !== null) {
+      await db
+        .update(quizzes)
+        .set({
+          status: 'pending_import',
+          questionCount: 0,
+          blankCount: 0,
+          instructions:
+            'Fill in every numbered blank. Answers are tied to their numbered placeholders.',
+          gradingConfig: {
+            mode: 'per_blank',
+            questionCompleteWhen: 'all_blanks_correct',
+          },
+          topics: null,
+          learningObjectives: null,
+          coverageAudit: null,
+        })
+        .where(eq(quizzes.id, quizId));
+
+      return NextResponse.json({
+        message: `Quiz '${quiz.title}' questions and attempts were deleted, reset to pending.`,
+        quiz_id: quizId,
+        reset: true,
+      });
+    }
+
     await db.delete(quizzes).where(eq(quizzes.id, quizId));
 
     return NextResponse.json({
