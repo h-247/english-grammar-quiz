@@ -75,9 +75,48 @@ export async function ensureDefaultCourseExists(db: DbInstance) {
   return defaultCourse;
 }
 
-export async function syncCourseDriveQuizzes(courseId: string, db: DbInstance): Promise<number> {
+export interface DriveSyncOptions {
+  batchSize?: number;
+  offset?: number;
+  forceRefresh?: boolean;
+}
+
+export interface DriveFileReport {
+  fileId: string;
+  filename: string;
+  status: 'synced' | 'skipped' | 'failed' | 'updated';
+  error?: string;
+}
+
+export interface DriveSyncResult {
+  totalFiles: number;
+  processedCount: number;
+  syncedCount: number;
+  skippedCount: number;
+  failedCount: number;
+  hasMore: boolean;
+  nextOffset: number | null;
+  fileReports: DriveFileReport[];
+}
+
+export async function syncCourseDriveQuizzes(
+  courseId: string,
+  db: DbInstance,
+  options?: DriveSyncOptions
+): Promise<DriveSyncResult> {
   const course = await db.select().from(courses).where(eq(courses.id, courseId)).get();
-  if (!course) return 0;
+  if (!course) {
+    return {
+      totalFiles: 0,
+      processedCount: 0,
+      syncedCount: 0,
+      skippedCount: 0,
+      failedCount: 0,
+      hasMore: false,
+      nextOffset: null,
+      fileReports: [],
+    };
+  }
 
   const existingCourseQuizzes = await db
     .select()
@@ -95,21 +134,34 @@ export async function syncCourseDriveQuizzes(courseId: string, db: DbInstance): 
     if (q.sourceFilename) quizByFilename.set(q.sourceFilename, q);
   }
 
-  let registeredCount = 0;
+  const fileReports: DriveFileReport[] = [];
+  let syncedCount = 0;
+  let skippedCount = 0;
+  let failedCount = 0;
 
   // 1. If Google Drive folder is configured, attempt dynamic listing via drive.files.list
   let driveFiles: Array<{ id: string; name: string; mimeType?: string }> = [];
   if (course.driveFolderId) {
-    driveFiles = await listDriveFolderFiles(course.driveFolderId);
+    driveFiles = await listDriveFolderFiles(course.driveFolderId, {
+      forceRefresh: options?.forceRefresh,
+    });
   }
 
   if (driveFiles.length > 0) {
-    // Dynamic import & synchronization from Google Drive folder
-    for (const file of driveFiles) {
+    const totalFiles = driveFiles.length;
+    const offset = Math.max(0, options?.offset || 0);
+    const batchSize =
+      options?.batchSize && options.batchSize > 0 ? options.batchSize : totalFiles;
+    const batchSlice = driveFiles.slice(offset, offset + batchSize);
+    const hasMore = offset + batchSize < totalFiles;
+    const nextOffset = hasMore ? offset + batchSize : null;
+
+    // Dynamic import & synchronization per file in the batch
+    for (const file of batchSlice) {
       const filename = file.name;
       const driveFileId = file.id;
 
-      // Parse unit number if present in filename, e.g. "unit_01", "unit-1", "grammar_unit_01"
+      // Parse unit number if present in filename
       const unitMatch = filename.match(/(?:unit|grammar_unit)[_\s-]*0*(\d+)/i);
       const unitNum = unitMatch ? parseInt(unitMatch[1], 10) : null;
 
@@ -146,15 +198,34 @@ export async function syncCourseDriveQuizzes(courseId: string, db: DbInstance): 
                 driveFileId,
                 sourceFilename: filename,
               });
+              syncedCount++;
+              fileReports.push({ fileId: driveFileId, filename, status: 'synced' });
+            } else {
+              skippedCount++;
+              fileReports.push({
+                fileId: driveFileId,
+                filename,
+                status: 'skipped',
+                error: 'Empty file content',
+              });
             }
-          } catch {}
+          } catch (err: any) {
+            failedCount++;
+            fileReports.push({
+              fileId: driveFileId,
+              filename,
+              status: 'failed',
+              error: err?.message || 'Failed to parse or import file',
+            });
+          }
+        } else {
+          skippedCount++;
+          fileReports.push({ fileId: driveFileId, filename, status: 'skipped' });
         }
-
-        registeredCount++;
         continue;
       }
 
-      // Try downloading and importing directly if content is available
+      // Try downloading and importing directly if new quiz
       let importedSuccessfully = false;
       try {
         const content = await fetchDriveFileContent(driveFileId);
@@ -166,56 +237,77 @@ export async function syncCourseDriveQuizzes(courseId: string, db: DbInstance): 
             sourceFilename: filename,
           });
           importedSuccessfully = true;
-          registeredCount++;
+          syncedCount++;
+          fileReports.push({ fileId: driveFileId, filename, status: 'synced' });
         }
-      } catch {}
+      } catch (err: any) {
+        console.warn(`File ${filename} corrupt or failed import:`, err?.message);
+        failedCount++;
+        fileReports.push({
+          fileId: driveFileId,
+          filename,
+          status: 'failed',
+          error: err?.message || 'Import failed',
+        });
+      }
 
       if (!importedSuccessfully) {
         // Fallback: create pending placeholder quiz
-        const cleanName = filename.replace(/\.json$/i, '').replace(/[_-]+/g, ' ');
-        const unitTitle =
-          unitNum !== null
-            ? `Unit ${String(unitNum).padStart(2, '0')}: ${cleanName}`
-            : cleanName;
-        const placeholderHash = await calculateContentHash(
-          `course_${courseId}_file_${driveFileId}_${filename}`
-        );
-        const nowIso = new Date().toISOString();
+        try {
+          const cleanName = filename.replace(/\.json$/i, '').replace(/[_-]+/g, ' ');
+          const unitTitle =
+            unitNum !== null
+              ? `Unit ${String(unitNum).padStart(2, '0')}: ${cleanName}`
+              : cleanName;
+          const placeholderHash = await calculateContentHash(
+            `course_${courseId}_file_${driveFileId}_${filename}`
+          );
+          const nowIso = new Date().toISOString();
 
-        await db.insert(quizzes).values({
-          id: crypto.randomUUID(),
-          courseId,
-          contentHash: placeholderHash,
-          schemaVersion: '2.0.0',
-          quizType: 'multi_blank_fill_in_the_blank',
-          language: 'en',
-          title: unitTitle,
-          unitNumber: unitNum,
-          unitTitle: cleanName,
-          instructions:
-            'Fill in every numbered blank. Answers are tied to their numbered placeholders.',
-          placeholderSyntax: '{{n}}',
-          gradingConfig: {
-            mode: 'per_blank',
-            questionCompleteWhen: 'all_blanks_correct',
-          },
-          topics: unitNum ? [{ id: `unit_${unitNum}`, title: cleanName }] : null,
-          questionCount: 0,
-          blankCount: 0,
-          status: 'pending_import',
-          driveFileId,
-          sourceFilename: filename,
-          createdAt: nowIso,
-        });
-
-        registeredCount++;
+          await db.insert(quizzes).values({
+            id: crypto.randomUUID(),
+            courseId,
+            contentHash: placeholderHash,
+            schemaVersion: '2.0.0',
+            quizType: 'multi_blank_fill_in_the_blank',
+            language: 'en',
+            title: unitTitle,
+            unitNumber: unitNum,
+            unitTitle: cleanName,
+            instructions:
+              'Fill in every numbered blank. Answers are tied to their numbered placeholders.',
+            placeholderSyntax: '{{n}}',
+            gradingConfig: {
+              mode: 'per_blank',
+              questionCompleteWhen: 'all_blanks_correct',
+            },
+            topics: unitNum ? [{ id: `unit_${unitNum}`, title: cleanName }] : null,
+            questionCount: 0,
+            blankCount: 0,
+            status: 'pending_import',
+            driveFileId,
+            sourceFilename: filename,
+            createdAt: nowIso,
+          });
+          syncedCount++;
+          fileReports.push({ fileId: driveFileId, filename, status: 'updated' });
+        } catch {}
       }
     }
 
-    return registeredCount;
+    return {
+      totalFiles,
+      processedCount: batchSlice.length,
+      syncedCount,
+      skippedCount,
+      failedCount,
+      hasMore,
+      nextOffset,
+      fileReports,
+    };
   }
 
-  // 2. Fallback to static manifest for the default grammar course if Drive is unreachable or offline
+  // 2. Fallback to static manifest for default grammar course if Drive is unreachable
   if (course.driveFolderId === DEFAULT_DRIVE_FOLDER_ID) {
     for (const item of GRAMMAR_UNITS_MANIFEST) {
       const unitNum = item.unit;
@@ -240,7 +332,8 @@ export async function syncCourseDriveQuizzes(courseId: string, db: DbInstance): 
         if (needsUpdate) {
           await db.update(quizzes).set(updateData).where(eq(quizzes.id, q.id));
         }
-        registeredCount++;
+        skippedCount++;
+        fileReports.push({ fileId: driveFileId, filename, status: 'skipped' });
         continue;
       }
 
@@ -276,11 +369,21 @@ export async function syncCourseDriveQuizzes(courseId: string, db: DbInstance): 
         createdAt: nowIso,
       });
 
-      registeredCount++;
+      syncedCount++;
+      fileReports.push({ fileId: driveFileId, filename, status: 'synced' });
     }
   }
 
-  return registeredCount;
+  return {
+    totalFiles: fileReports.length,
+    processedCount: fileReports.length,
+    syncedCount,
+    skippedCount,
+    failedCount,
+    hasMore: false,
+    nextOffset: null,
+    fileReports,
+  };
 }
 
 export async function calculateCourseStats(

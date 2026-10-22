@@ -40,7 +40,26 @@ export async function POST(
       );
     }
 
-    await syncCourseDriveQuizzes(courseId, db);
+    // Parse optional batching parameters
+    const url = new URL(request.url);
+    let body: any = {};
+    try {
+      body = await request.json();
+    } catch {}
+
+    const offsetParam = url.searchParams.get('offset') || body.offset;
+    const batchSizeParam = url.searchParams.get('batchSize') || body.batchSize;
+    const forceParam = url.searchParams.get('force') || body.forceRefresh;
+
+    const offset = offsetParam != null ? parseInt(String(offsetParam), 10) : undefined;
+    const batchSize = batchSizeParam != null ? parseInt(String(batchSizeParam), 10) : undefined;
+    const forceRefresh = forceParam === 'true' || forceParam === true;
+
+    const syncResult = await syncCourseDriveQuizzes(courseId, db, {
+      offset,
+      batchSize,
+      forceRefresh,
+    });
 
     const stats = await calculateCourseStats(courseId, db, user.userId);
     const courseQuizzes = await db
@@ -81,6 +100,7 @@ export async function POST(
       created_at: course.createdAt,
       updated_at: course.updatedAt,
       quizzes: quizSummaries,
+      sync_result: syncResult,
     });
   } catch (err: any) {
     return NextResponse.json({ detail: err.message }, { status: 500 });

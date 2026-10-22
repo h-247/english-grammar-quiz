@@ -8,6 +8,7 @@ import {
   attemptResults,
 } from '@/db/schema';
 import { evaluateBlank, AnswerMatchingConfig } from './grading';
+import { calculateContentHash } from './hash';
 import type { drizzle } from 'drizzle-orm/d1';
 
 type DbInstance = ReturnType<typeof drizzle>;
@@ -795,5 +796,384 @@ function buildResultResponse(
     started_at: attempt.startedAt,
     finalized_at: result.finalizedAt,
     questions: detailed.questions || [],
+  };
+}
+
+export interface TopicMasteryItem {
+  topic: string;
+  totalBlanks: number;
+  correctBlanks: number;
+  percentage: number;
+  masteryLevel: 'mastered' | 'proficient' | 'developing' | 'needs_practice';
+}
+
+/**
+ * Calculates topic mastery statistics from a list of detailed questions.
+ */
+export function calculateAttemptTopicMastery(
+  detailedQuestions: Array<{
+    topic: string;
+    blanks: Array<{ is_correct: boolean }>;
+  }>
+): TopicMasteryItem[] {
+  const statsMap = new Map<string, { total: number; correct: number }>();
+
+  for (const q of detailedQuestions) {
+    const rawTopic = (q.topic || 'General Grammar').trim();
+    if (!statsMap.has(rawTopic)) {
+      statsMap.set(rawTopic, { total: 0, correct: 0 });
+    }
+    const stat = statsMap.get(rawTopic)!;
+    for (const b of q.blanks || []) {
+      stat.total++;
+      if (b.is_correct) stat.correct++;
+    }
+  }
+
+  const result: TopicMasteryItem[] = [];
+  for (const [topic, stat] of statsMap.entries()) {
+    const percentage =
+      stat.total > 0 ? Math.round((stat.correct / stat.total) * 100) : 0;
+    let masteryLevel: TopicMasteryItem['masteryLevel'] = 'needs_practice';
+    if (percentage >= 90) masteryLevel = 'mastered';
+    else if (percentage >= 75) masteryLevel = 'proficient';
+    else if (percentage >= 50) masteryLevel = 'developing';
+
+    result.push({
+      topic,
+      totalBlanks: stat.total,
+      correctBlanks: stat.correct,
+      percentage,
+      masteryLevel,
+    });
+  }
+
+  // Sort lowest percentage first to highlight weak areas
+  result.sort((a, b) => a.percentage - b.percentage);
+  return result;
+}
+
+/**
+ * Calculates overall topic mastery for a given user across all past attempts.
+ */
+export async function getUserTopicMastery(
+  db: DbInstance,
+  userId: string = 'local-user'
+): Promise<{
+  topics: TopicMasteryItem[];
+  overallAccuracy: number;
+  totalCompletedAttempts: number;
+}> {
+  const isLocal = userId === 'local-user';
+  const query = db
+    .select({
+      id: quizAttempts.id,
+      detailedResults: attemptResults.detailedResults,
+      accuracyPercentage: attemptResults.accuracyPercentage,
+    })
+    .from(quizAttempts)
+    .innerJoin(attemptResults, eq(quizAttempts.id, attemptResults.attemptId));
+
+  const rows = isLocal
+    ? await query.all()
+    : await query.where(eq(quizAttempts.userId, userId)).all();
+
+  const allQuestions: Array<{
+    topic: string;
+    blanks: Array<{ is_correct: boolean }>;
+  }> = [];
+
+  let sumAccuracy = 0;
+  for (const row of rows) {
+    sumAccuracy += row.accuracyPercentage || 0;
+    const detailed = (row.detailedResults as any) || {};
+    if (Array.isArray(detailed.questions)) {
+      allQuestions.push(...detailed.questions);
+    }
+  }
+
+  const topics = calculateAttemptTopicMastery(allQuestions);
+  const overallAccuracy =
+    rows.length > 0 ? Math.round((sumAccuracy / rows.length) * 10) / 10 : 0;
+
+  return {
+    topics,
+    overallAccuracy,
+    totalCompletedAttempts: rows.length,
+  };
+}
+
+/**
+ * Creates a dynamic "Practice Mistakes Only" attempt from a specific past attempt.
+ */
+export async function createMistakesPracticeAttempt(
+  sourceAttemptId: string,
+  db: DbInstance,
+  userId: string = 'local-user'
+): Promise<{ attemptId: string; quizId: string; mistakeCount: number }> {
+  const result = await getAttemptResult(sourceAttemptId, db, userId);
+  const originalQuiz = await db
+    .select()
+    .from(quizzes)
+    .where(eq(quizzes.id, result.quiz_id))
+    .get();
+
+  if (!originalQuiz) {
+    throw new Error(`Original quiz ${result.quiz_id} not found.`);
+  }
+
+  const missedQuestions = result.questions.filter((q) => !q.is_fully_correct);
+  if (missedQuestions.length === 0) {
+    throw new Error(
+      'Awesome work! All questions in this attempt were answered correctly, so there are no mistakes to review.'
+    );
+  }
+
+  // Create a dynamic practice quiz containing only the missed questions
+  const dynamicQuizId = crypto.randomUUID();
+  const hash = await calculateContentHash(
+    `practice_mistakes_${sourceAttemptId}_${Date.now()}`
+  );
+
+  let totalBlanks = 0;
+  for (const q of missedQuestions) {
+    totalBlanks += q.blanks?.length || 0;
+  }
+
+  const nowIso = new Date().toISOString();
+  await db.insert(quizzes).values({
+    id: dynamicQuizId,
+    courseId: originalQuiz.courseId,
+    contentHash: hash,
+    schemaVersion: '2.0.0',
+    quizType: 'multi_blank_fill_in_the_blank',
+    language: 'en',
+    title: `🎯 Retest Mistakes: ${originalQuiz.title}`,
+    unitNumber: originalQuiz.unitNumber,
+    unitTitle: `Mistakes Retest`,
+    instructions: `Practice Session: Focus exclusively on the ${missedQuestions.length} question(s) answered incorrectly previously. Take your time to understand each blank.`,
+    placeholderSyntax: originalQuiz.placeholderSyntax || '{{n}}',
+    gradingConfig: originalQuiz.gradingConfig,
+    topics: originalQuiz.topics,
+    questionCount: missedQuestions.length,
+    blankCount: totalBlanks,
+    status: 'ready',
+    createdAt: nowIso,
+  });
+
+  // Duplicate the missed questions and their blanks for the new dynamic quiz
+  let orderIdx = 1;
+  for (const mq of missedQuestions) {
+    const origQ = await db
+      .select()
+      .from(questions)
+      .where(eq(questions.id, mq.question_id))
+      .get();
+
+    if (!origQ) continue;
+
+    const newQId = crypto.randomUUID();
+    await db.insert(questions).values({
+      id: newQId,
+      quizId: dynamicQuizId,
+      externalId: `${origQ.externalId}_mistake`,
+      orderIndex: orderIdx++,
+      topic: origQ.topic,
+      section: origQ.section,
+      questionType: origQ.questionType,
+      title: origQ.title,
+      prompt: origQ.prompt,
+      blankCount: origQ.blankCount,
+      objectiveIds: origQ.objectiveIds,
+      explanation: origQ.explanation,
+      difficulty: origQ.difficulty,
+      sourcePdfPage: origQ.sourcePdfPage,
+    });
+
+    const origBlanks = await db
+      .select()
+      .from(blanks)
+      .where(eq(blanks.questionId, origQ.id))
+      .orderBy(asc(blanks.orderIndex))
+      .all();
+
+    for (const ob of origBlanks) {
+      await db.insert(blanks).values({
+        id: crypto.randomUUID(),
+        questionId: newQId,
+        blankIdentifier: ob.blankIdentifier,
+        orderIndex: ob.orderIndex,
+        acceptedAnswers: ob.acceptedAnswers,
+        sourceQuestionId: ob.sourceQuestionId,
+        objectiveId: ob.objectiveId,
+      });
+    }
+  }
+
+  // Create an immediate self-paced practice attempt
+  const attempt = await createAttempt(
+    dynamicQuizId,
+    0,
+    'practice',
+    db,
+    userId
+  );
+
+  return {
+    attemptId: attempt.id,
+    quizId: dynamicQuizId,
+    mistakeCount: missedQuestions.length,
+  };
+}
+
+/**
+ * Creates a dynamic "Practice Mistakes Only" attempt combining mistakes across all units of a course.
+ */
+export async function createCourseMistakesPracticeAttempt(
+  courseId: string,
+  db: DbInstance,
+  userId: string = 'local-user'
+): Promise<{ attemptId: string; quizId: string; mistakeCount: number }> {
+  const isLocal = userId === 'local-user';
+  const course = await db
+    .select()
+    .from(courses)
+    .where(eq(courses.id, courseId))
+    .get();
+
+  if (!course) {
+    throw new Error(`Course ${courseId} not found.`);
+  }
+
+  const courseQuizzes = await db
+    .select()
+    .from(quizzes)
+    .where(eq(quizzes.courseId, courseId))
+    .all();
+
+  const quizIds = courseQuizzes.map((q) => q.id);
+  if (quizIds.length === 0) {
+    throw new Error('This course does not have any quizzes yet.');
+  }
+
+  // Get completed attempts for these quizzes
+  const attQuery = db
+    .select({
+      id: quizAttempts.id,
+      quizId: quizAttempts.quizId,
+      detailedResults: attemptResults.detailedResults,
+    })
+    .from(quizAttempts)
+    .innerJoin(attemptResults, eq(quizAttempts.id, attemptResults.attemptId))
+    .where(inArray(quizAttempts.quizId, quizIds));
+
+  const rows = isLocal
+    ? await attQuery.all()
+    : await attQuery.where(eq(quizAttempts.userId, userId)).all();
+
+  if (rows.length === 0) {
+    throw new Error('No completed quiz attempts found for this course.');
+  }
+
+  // Collect missed question IDs (deduplicated)
+  const missedQuestionIds = new Set<string>();
+  for (const row of rows) {
+    const detailed = (row.detailedResults as any) || {};
+    if (Array.isArray(detailed.questions)) {
+      for (const q of detailed.questions) {
+        if (!q.is_fully_correct && q.question_id) {
+          missedQuestionIds.add(q.question_id);
+        }
+      }
+    }
+  }
+
+  if (missedQuestionIds.size === 0) {
+    throw new Error('Great job! No mistakes found across any quizzes in this course.');
+  }
+
+  const missedQList = await db
+    .select()
+    .from(questions)
+    .where(inArray(questions.id, Array.from(missedQuestionIds)))
+    .all();
+
+  const dynamicQuizId = crypto.randomUUID();
+  const hash = await calculateContentHash(
+    `course_mistakes_${courseId}_${Date.now()}`
+  );
+
+  let totalBlanks = 0;
+  for (const q of missedQList) {
+    totalBlanks += q.blankCount || 0;
+  }
+
+  const nowIso = new Date().toISOString();
+  await db.insert(quizzes).values({
+    id: dynamicQuizId,
+    courseId,
+    contentHash: hash,
+    schemaVersion: '2.0.0',
+    quizType: 'multi_blank_fill_in_the_blank',
+    language: 'en',
+    title: `🎯 Master Your Mistakes: ${course.title}`,
+    unitNumber: null,
+    unitTitle: `Course Mistakes Review`,
+    instructions: `Comprehensive Course Mistake Review: Practice the ${missedQList.length} question(s) answered incorrectly across all units in ${course.title}.`,
+    placeholderSyntax: '{{n}}',
+    gradingConfig: { mode: 'per_blank', questionCompleteWhen: 'all_blanks_correct' },
+    topics: null,
+    questionCount: missedQList.length,
+    blankCount: totalBlanks,
+    status: 'ready',
+    createdAt: nowIso,
+  });
+
+  let orderIdx = 1;
+  for (const origQ of missedQList) {
+    const newQId = crypto.randomUUID();
+    await db.insert(questions).values({
+      id: newQId,
+      quizId: dynamicQuizId,
+      externalId: `${origQ.externalId}_mistake`,
+      orderIndex: orderIdx++,
+      topic: origQ.topic,
+      section: origQ.section,
+      questionType: origQ.questionType,
+      title: origQ.title,
+      prompt: origQ.prompt,
+      blankCount: origQ.blankCount,
+      objectiveIds: origQ.objectiveIds,
+      explanation: origQ.explanation,
+      difficulty: origQ.difficulty,
+      sourcePdfPage: origQ.sourcePdfPage,
+    });
+
+    const origBlanks = await db
+      .select()
+      .from(blanks)
+      .where(eq(blanks.questionId, origQ.id))
+      .orderBy(asc(blanks.orderIndex))
+      .all();
+
+    for (const ob of origBlanks) {
+      await db.insert(blanks).values({
+        id: crypto.randomUUID(),
+        questionId: newQId,
+        blankIdentifier: ob.blankIdentifier,
+        orderIndex: ob.orderIndex,
+        acceptedAnswers: ob.acceptedAnswers,
+        sourceQuestionId: ob.sourceQuestionId,
+        objectiveId: ob.objectiveId,
+      });
+    }
+  }
+
+  const attempt = await createAttempt(dynamicQuizId, 0, 'practice', db, userId);
+
+  return {
+    attemptId: attempt.id,
+    quizId: dynamicQuizId,
+    mistakeCount: missedQList.length,
   };
 }

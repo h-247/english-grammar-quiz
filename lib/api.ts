@@ -9,6 +9,8 @@ import {
   AttemptResultResponse,
   AttemptHistoryResponse,
   QuestionCheckFeedback,
+  TopicMasteryResponse,
+  AppSettingsResponse,
 } from "@/types/quiz";
 
 export function getApiBase(): string {
@@ -58,8 +60,16 @@ export async function getCourse(courseId: string): Promise<CourseDetail> {
   return fetchApi<CourseDetail>(`/courses/${courseId}`);
 }
 
-export async function syncCourseDrive(courseId: string): Promise<CourseDetail> {
-  return fetchApi<CourseDetail>(`/courses/${courseId}/sync-drive`, {
+export async function syncCourseDrive(
+  courseId: string,
+  options?: { offset?: number; batchSize?: number; forceRefresh?: boolean }
+): Promise<CourseDetail> {
+  const query = new URLSearchParams();
+  if (options?.offset != null) query.append("offset", String(options.offset));
+  if (options?.batchSize != null) query.append("batchSize", String(options.batchSize));
+  if (options?.forceRefresh) query.append("force", "true");
+  const qStr = query.toString();
+  return fetchApi<CourseDetail>(`/courses/${courseId}/sync-drive${qStr ? `?${qStr}` : ""}`, {
     method: "POST",
   });
 }
@@ -168,14 +178,91 @@ export async function importQuizJson(
   return response.json();
 }
 
-export async function getSettings(): Promise<{ prompt_chat_url: string }> {
-  return fetchApi<{ prompt_chat_url: string }>("/settings");
+export async function getSettings(): Promise<AppSettingsResponse> {
+  return fetchApi<AppSettingsResponse>("/settings");
+}
+
+export async function updateSettings(data: {
+  prompt_chat_url?: string;
+  gdrive_access_token?: string;
+  gdrive_refresh_token?: string;
+  gdrive_client_id?: string;
+  gdrive_client_secret?: string;
+  clear_gdrive?: boolean;
+}): Promise<{ message: string }> {
+  return fetchApi<{ message: string }>("/settings", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 }
 
 export async function updatePromptChatUrl(url: string): Promise<{ prompt_chat_url: string }> {
   return fetchApi<{ prompt_chat_url: string }>("/settings", {
     method: "POST",
     body: JSON.stringify({ prompt_chat_url: url }),
+  });
+}
+
+export async function testDriveConnection(folderId?: string): Promise<{
+  success: boolean;
+  folder_name?: string;
+  files_found?: number;
+  sample_files?: string[];
+  message?: string;
+  error?: string;
+}> {
+  return fetchApi<{
+    success: boolean;
+    folder_name?: string;
+    files_found?: number;
+    sample_files?: string[];
+    message?: string;
+    error?: string;
+  }>("/settings/test-drive", {
+    method: "POST",
+    body: JSON.stringify({ folder_id: folderId }),
+  });
+}
+
+export async function practiceMistakesForAttempt(attemptId: string): Promise<{
+  success: boolean;
+  attempt_id: string;
+  quiz_id: string;
+  mistake_count: number;
+  message: string;
+}> {
+  return fetchApi<{
+    success: boolean;
+    attempt_id: string;
+    quiz_id: string;
+    mistake_count: number;
+    message: string;
+  }>(`/attempts/${attemptId}/practice-mistakes`, {
+    method: "POST",
+  });
+}
+
+export async function practiceMistakesForCourse(courseId: string): Promise<{
+  success: boolean;
+  attempt_id: string;
+  quiz_id: string;
+  mistake_count: number;
+  message: string;
+}> {
+  return fetchApi<{
+    success: boolean;
+    attempt_id: string;
+    quiz_id: string;
+    mistake_count: number;
+    message: string;
+  }>(`/courses/${courseId}/practice-mistakes`, {
+    method: "POST",
+  });
+}
+
+export async function getTopicMastery(): Promise<TopicMasteryResponse> {
+  return fetchApi<TopicMasteryResponse>("/mastery", {
+    cache: "no-store",
   });
 }
 

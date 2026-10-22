@@ -36,6 +36,7 @@ import {
   deleteCourse,
   deleteQuiz,
   startAttempt,
+  practiceMistakesForCourse,
 } from "@/lib/api";
 import { CourseDetail, QuizSummary } from "@/types/quiz";
 import { useToast } from "@/components/Toast";
@@ -73,6 +74,7 @@ export default function CourseDetailPage() {
 
   const [isDeleteCourseOpen, setIsDeleteCourseOpen] = useState<boolean>(false);
   const [isDeletingCourse, setIsDeletingCourse] = useState<boolean>(false);
+  const [isPracticingMistakes, setIsPracticingMistakes] = useState<boolean>(false);
   const [isEditCourseOpen, setIsEditCourseOpen] = useState<boolean>(false);
   const [quizForChatEdit, setQuizForChatEdit] = useState<QuizSummary | null>(null);
 
@@ -102,23 +104,75 @@ export default function CourseDetailPage() {
     loadCourse();
   }, [loadCourse]);
 
-  // Handle Sync Drive
+  // Handle Incremental / Batch Sync Drive
   const handleSyncDrive = async () => {
     if (!course) return;
     setIsSyncing(true);
     try {
-      const updated = await syncCourseDrive(course.id);
-      showToast(
-        `Synchronized "${updated.title}" with Google Drive! (${updated.total_quizzes} units mapped)`,
-        "success",
-        5000
-      );
+      let offset = 0;
+      const batchSize = 10;
+      let hasMore = true;
+      let totalSynced = 0;
+      let totalFailed = 0;
+
+      showToast(`Starting Google Drive sync for "${course.title}"...`, "info", 3000);
+
+      while (hasMore) {
+        const res = await syncCourseDrive(course.id, {
+          offset,
+          batchSize,
+          forceRefresh: offset === 0,
+        });
+
+        const syncResult = res.sync_result;
+        if (!syncResult) {
+          totalSynced = res.total_quizzes || 0;
+          break;
+        }
+
+        totalSynced += syncResult.syncedCount;
+        totalFailed += syncResult.failedCount;
+        hasMore = syncResult.hasMore;
+        if (syncResult.nextOffset != null) {
+          offset = syncResult.nextOffset;
+          showToast(
+            `Syncing units (${Math.min(offset, syncResult.totalFiles)}/${syncResult.totalFiles})...`,
+            "info",
+            2000
+          );
+        } else {
+          break;
+        }
+      }
+
+      const msg =
+        totalFailed > 0
+          ? `Synced with Google Drive! (${totalSynced} units synced, ${totalFailed} corrupt/skipped)`
+          : `Synchronized "${course.title}" with Google Drive successfully!`;
+      showToast(msg, totalFailed > 0 ? "warning" : "success", 5000);
       await loadCourse(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to sync course with Drive.";
       showToast(msg, "error", 6000);
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  // Handle Practice Course Mistakes Only
+  const handlePracticeCourseMistakes = async () => {
+    if (!course) return;
+    setIsPracticingMistakes(true);
+    try {
+      const res = await practiceMistakesForCourse(course.id);
+      showToast(res.message, "success", 4000);
+      router.push(`/quiz/${res.quiz_id}/attempt/${res.attempt_id}`);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "No mistakes to practice in this course!";
+      showToast(msg, "info", 5000);
+    } finally {
+      setIsPracticingMistakes(false);
     }
   };
 
@@ -341,6 +395,24 @@ export default function CourseDetailPage() {
 
                 {/* Top Action Buttons (Matching Image 2) */}
                 <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+                  {/* Practice Mistakes for Course */}
+                  {course.completed_quizzes > 0 && (
+                    <button
+                      type="button"
+                      onClick={handlePracticeCourseMistakes}
+                      disabled={isPracticingMistakes}
+                      title="Generate dynamic practice session with questions missed across this course"
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {isPracticingMistakes ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                      ) : (
+                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                      )}
+                      <span>Practice Mistakes Only</span>
+                    </button>
+                  )}
+
                   {/* Re-sync Drive */}
                   <button
                     onClick={handleSyncDrive}

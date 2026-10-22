@@ -22,6 +22,24 @@ export interface QuestionPublic {
   blanks: BlankPublic[];
 }
 
+export interface DriveFileReport {
+  fileId: string;
+  filename: string;
+  status: "synced" | "skipped" | "failed" | "updated";
+  error?: string;
+}
+
+export interface DriveSyncResult {
+  totalFiles: number;
+  processedCount: number;
+  syncedCount: number;
+  skippedCount: number;
+  failedCount: number;
+  hasMore: boolean;
+  nextOffset: number | null;
+  fileReports: DriveFileReport[];
+}
+
 export interface CourseSummary {
   id: string;
   title: string;
@@ -39,6 +57,7 @@ export interface CourseSummary {
 
 export interface CourseDetail extends CourseSummary {
   quizzes: QuizSummary[];
+  sync_result?: DriveSyncResult;
 }
 
 export interface CourseCreatePayload {
@@ -189,4 +208,28 @@ export interface AttemptHistoryItem {
 export interface AttemptHistoryResponse {
   total: number;
   items: AttemptHistoryItem[];
+}
+
+export interface TopicMasteryItem {
+  topic: string;
+  totalBlanks: number;
+  correctBlanks: number;
+  percentage: number;
+  masteryLevel: "mastered" | "proficient" | "developing" | "needs_practice";
+}
+
+export interface TopicMasteryResponse {
+  topics: TopicMasteryItem[];
+  overallAccuracy: number;
+  totalCompletedAttempts: number;
+}
+
+export interface AppSettingsResponse {
+  prompt_chat_url: string;
+  gdrive: {
+    configured: boolean;
+    has_access_token: boolean;
+    has_refresh_token: boolean;
+    client_id?: string;
+  };
 }

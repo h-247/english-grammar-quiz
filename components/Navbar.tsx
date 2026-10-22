@@ -14,10 +14,12 @@ import {
   Sparkles,
   ExternalLink,
   Pencil,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DEFAULT_PROMPT_CHAT_URL } from "@/lib/course-manifest";
 import { EditPromptChatModal } from "@/components/EditPromptChatModal";
+import { SettingsModal } from "@/components/SettingsModal";
 import { getSettings } from "@/lib/api";
 
 interface NavbarProps {
@@ -45,6 +47,7 @@ function NavLinks({
     propPromptChatUrl || DEFAULT_PROMPT_CHAT_URL
   );
   const [isEditPromptOpen, setIsEditPromptOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Sync user email or fetch from /api/auth/me
   useEffect(() => {
@@ -123,15 +126,20 @@ function NavLinks({
         </button>
       </div>
 
-      {/* Drive Status Indicator */}
-      <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#1e1e1e] text-[#a3a3a3] border border-[#333333]">
+      {/* Drive Status Indicator (Clickable to configure) */}
+      <button
+        type="button"
+        onClick={() => setIsSettingsOpen(true)}
+        title="Google Drive sync settings"
+        className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#1e1e1e] hover:bg-[#282828] text-[#a3a3a3] hover:text-white border border-[#333333] transition-colors cursor-pointer"
+      >
         <HardDrive className="w-3.5 h-3.5 text-blue-400" />
         <span>Drive:</span>
         <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           {driveConnected ? "Connected" : "Offline"}
         </span>
-      </div>
+      </button>
 
       {/* History Link */}
       <Link
@@ -169,6 +177,16 @@ function NavLinks({
         </button>
       )}
 
+      {/* Settings Button */}
+      <button
+        type="button"
+        onClick={() => setIsSettingsOpen(true)}
+        title="Application Settings & Drive Config"
+        className="p-2 text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer border border-transparent hover:border-[#383838]"
+      >
+        <Settings className="w-4 h-4" />
+      </button>
+
       {/* User email pill */}
       <div className="flex items-center gap-2 pl-2 border-l border-[#333333]">
         <div className="flex items-center gap-1.5 text-xs text-[#9CA3AF] hover:text-[#ECECEC] transition-colors py-1 px-1.5 rounded-md">
@@ -190,6 +208,17 @@ function NavLinks({
         onClose={() => setIsEditPromptOpen(false)}
         currentUrl={activePromptChatUrl}
         onSave={handleSavePromptChatUrl}
+      />
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onSettingsSaved={() => {
+          getSettings().then((s) => {
+            if (s.prompt_chat_url) handleSavePromptChatUrl(s.prompt_chat_url);
+          }).catch(() => {});
+        }}
       />
     </div>
   );

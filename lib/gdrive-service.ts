@@ -12,11 +12,28 @@ interface TokenResponse {
 
 let cachedAccessToken: string | null = null;
 
+// In-memory caches to prevent redundant Google Drive API calls
+const metadataCache = new Map<
+  string,
+  { data: { id: string; name: string } | null; timestamp: number }
+>();
+const filesCache = new Map<
+  string,
+  { data: DriveFileItem[]; timestamp: number }
+>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+export function clearDriveCache(): void {
+  metadataCache.clear();
+  filesCache.clear();
+}
+
 /**
  * Resolves Google OAuth credentials with priority:
  * 1. Environment variables (Cloudflare Secrets / .env)
- * 2. Cached in-memory token
- * 3. Local filesystem token file fallback (development only in Node.js)
+ * 2. appSettings table in D1 database (Edge-ready)
+ * 3. In-memory cached token
+ * 4. Local filesystem token file fallback (development only in Node.js)
  */
 async function getGoogleCredentials(): Promise<{
   accessToken: string | null;
@@ -43,6 +60,46 @@ async function getGoogleCredentials(): Promise<{
     process.env.GDRIVE_CLIENT_SECRET ||
     null;
   let tokenFilePath: string | null = null;
+
+  // Edge & D1 fallback: check appSettings table in database
+  if (!accessToken || !refreshToken || !clientId || !clientSecret) {
+    try {
+      const { getDb } = await import('@/db');
+      const { appSettings } = await import('@/db/schema');
+      const { inArray } = await import('drizzle-orm');
+      const db = getDb();
+      const rows = await db
+        .select()
+        .from(appSettings)
+        .where(
+          inArray(appSettings.key, [
+            'gdrive_access_token',
+            'gdrive_refresh_token',
+            'gdrive_client_id',
+            'gdrive_client_secret',
+          ])
+        )
+        .all();
+
+      const map = new Map<string, string>();
+      for (const r of rows) map.set(r.key, r.value);
+
+      if (!accessToken && map.has('gdrive_access_token')) {
+        accessToken = map.get('gdrive_access_token') || null;
+      }
+      if (!refreshToken && map.has('gdrive_refresh_token')) {
+        refreshToken = map.get('gdrive_refresh_token') || null;
+      }
+      if (!clientId && map.has('gdrive_client_id')) {
+        clientId = map.get('gdrive_client_id') || null;
+      }
+      if (!clientSecret && map.has('gdrive_client_secret')) {
+        clientSecret = map.get('gdrive_client_secret') || null;
+      }
+    } catch {
+      // Safe to ignore if DB is offline during tests or build
+    }
+  }
 
   // Development fallback: only check local token file when running in Node.js
   if (
@@ -87,6 +144,7 @@ async function getGoogleCredentials(): Promise<{
 
 /**
  * Refreshes an expired Google OAuth access token using a refresh token.
+ * Persists the refreshed token to DB and disk where possible.
  */
 async function refreshAccessToken(
   refreshToken: string,
@@ -112,6 +170,17 @@ async function refreshAccessToken(
     if (newTokens.access_token) {
       cachedAccessToken = newTokens.access_token;
 
+      // 1. Persist to appSettings in DB
+      try {
+        const { getDb } = await import('@/db');
+        const { sql } = await import('drizzle-orm');
+        const db = getDb();
+        await db.run(
+          sql`INSERT OR REPLACE INTO app_settings (key, value) VALUES ('gdrive_access_token', ${newTokens.access_token})`
+        );
+      } catch {}
+
+      // 2. Persist to file if local Node
       if (tokenFilePath && typeof process !== 'undefined' && process.versions?.node) {
         try {
           const fs = await import('fs');
@@ -183,11 +252,20 @@ export async function fetchWithDriveAuth(
 }
 
 /**
- * Fetches Google Drive folder metadata (id, name).
+ * Fetches Google Drive folder metadata (id, name) with in-memory caching.
  */
 export async function fetchDriveFolderMetadata(
-  folderId: string
+  folderId: string,
+  options?: { forceRefresh?: boolean }
 ): Promise<{ id: string; name: string } | null> {
+  const now = Date.now();
+  if (!options?.forceRefresh) {
+    const cached = metadataCache.get(folderId);
+    if (cached && now - cached.timestamp < CACHE_TTL_MS) {
+      return cached.data;
+    }
+  }
+
   try {
     const res = await fetchWithDriveAuth(
       `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folderId)}?fields=id,name,mimeType`
@@ -195,7 +273,9 @@ export async function fetchDriveFolderMetadata(
     if (res && res.ok) {
       const data = (await res.json()) as { id: string; name: string };
       if (data?.name) {
-        return { id: folderId, name: data.name };
+        const result = { id: folderId, name: data.name };
+        metadataCache.set(folderId, { data: result, timestamp: now });
+        return result;
       }
     }
   } catch (err) {
@@ -204,18 +284,30 @@ export async function fetchDriveFolderMetadata(
 
   // Fallback for default repository folder
   if (folderId === '1wqG3TMDqwYCQv5eQ9eDyFKdy8X9lJWTd') {
-    return { id: folderId, name: 'grammar' };
+    const defaultRes = { id: folderId, name: 'grammar' };
+    metadataCache.set(folderId, { data: defaultRes, timestamp: now });
+    return defaultRes;
   }
 
+  metadataCache.set(folderId, { data: null, timestamp: now });
   return null;
 }
 
 /**
- * Lists .json quiz files inside a Google Drive folder via drive.files.list.
+ * Lists .json quiz files inside a Google Drive folder via drive.files.list with caching.
  */
 export async function listDriveFolderFiles(
-  folderId: string
+  folderId: string,
+  options?: { forceRefresh?: boolean }
 ): Promise<DriveFileItem[]> {
+  const now = Date.now();
+  if (!options?.forceRefresh) {
+    const cached = filesCache.get(folderId);
+    if (cached && now - cached.timestamp < CACHE_TTL_MS) {
+      return cached.data;
+    }
+  }
+
   try {
     const query = `'${folderId}' in parents and (mimeType = 'application/json' or name contains '.json') and trashed = false`;
     const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType)&pageSize=1000&orderBy=name`;
@@ -223,7 +315,9 @@ export async function listDriveFolderFiles(
     const res = await fetchWithDriveAuth(url);
     if (res && res.ok) {
       const data = (await res.json()) as { files?: DriveFileItem[] };
-      return data.files || [];
+      const files = data.files || [];
+      filesCache.set(folderId, { data: files, timestamp: now });
+      return files;
     }
   } catch (err) {
     console.error('Error listing drive folder files:', err);

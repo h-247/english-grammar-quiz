@@ -15,10 +15,12 @@ import {
   Check,
   X,
   Loader2,
+  Sparkles,
+  TrendingUp,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
-import { getAttemptResults, startAttempt } from "@/lib/api";
-import { AttemptResultResponse, QuestionResultReview } from "@/types/quiz";
+import { getAttemptResults, startAttempt, practiceMistakesForAttempt } from "@/lib/api";
+import { AttemptResultResponse, QuestionResultReview, TopicMasteryItem } from "@/types/quiz";
 import { formatTime, cn } from "@/lib/utils";
 import { useToast } from "@/components/Toast";
 
@@ -36,6 +38,55 @@ function QuizResultsContent() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [filterMode, setFilterMode] = useState<FilterMode>("incorrect");
   const [isRetrying, setIsRetrying] = useState<boolean>(false);
+  const [isPracticingMistakes, setIsPracticingMistakes] = useState<boolean>(false);
+
+  const topicMastery: TopicMasteryItem[] = React.useMemo(() => {
+    if (!results?.questions) return [];
+    const stats = new Map<string, { total: number; correct: number }>();
+    for (const q of results.questions) {
+      const topic = (q.topic || "General Grammar").trim();
+      if (!stats.has(topic)) stats.set(topic, { total: 0, correct: 0 });
+      const item = stats.get(topic)!;
+      for (const b of q.blanks || []) {
+        item.total++;
+        if (b.is_correct) item.correct++;
+      }
+    }
+    const list: TopicMasteryItem[] = [];
+    for (const [topic, s] of stats.entries()) {
+      const pct = s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0;
+      let level: TopicMasteryItem["masteryLevel"] = "needs_practice";
+      if (pct >= 90) level = "mastered";
+      else if (pct >= 75) level = "proficient";
+      else if (pct >= 50) level = "developing";
+      list.push({
+        topic,
+        totalBlanks: s.total,
+        correctBlanks: s.correct,
+        percentage: pct,
+        masteryLevel: level,
+      });
+    }
+    return list.sort((a, b) => a.percentage - b.percentage);
+  }, [results]);
+
+  const handlePracticeMistakes = async () => {
+    if (!results) return;
+    setIsPracticingMistakes(true);
+    try {
+      const res = await practiceMistakesForAttempt(attemptId);
+      showToast(res.message, "success", 4000);
+      router.push(`/quiz/${res.quiz_id}/attempt/${res.attempt_id}`);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Failed to start mistakes practice session.";
+      showToast(msg, "info", 5000);
+    } finally {
+      setIsPracticingMistakes(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -185,25 +236,99 @@ function QuizResultsContent() {
               </Link>
             </div>
 
-            <button
-              onClick={handleRetry}
-              disabled={isRetrying}
-              className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold bg-white text-black hover:bg-neutral-200 transition-colors shadow-sm cursor-pointer disabled:opacity-50"
-            >
-              {isRetrying ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Starting...</span>
-                </>
-              ) : (
-                <>
-                  <RotateCcw className="w-4 h-4" />
-                  <span>Retry Quiz</span>
-                </>
+            <div className="flex items-center gap-3">
+              {results.incorrect_blanks > 0 && (
+                <button
+                  type="button"
+                  onClick={handlePracticeMistakes}
+                  disabled={isPracticingMistakes}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                >
+                  {isPracticingMistakes ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                  ) : (
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                  )}
+                  <span>Practice Mistakes ({results.questions.filter((q) => !q.is_fully_correct).length})</span>
+                </button>
               )}
-            </button>
+
+              <button
+                onClick={handleRetry}
+                disabled={isRetrying}
+                className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold bg-white text-black hover:bg-neutral-200 transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+              >
+                {isRetrying ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Starting...</span>
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="w-4 h-4" />
+                    <span>Retry Quiz</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Topic Mastery Breakdown */}
+        {topicMastery.length > 0 && (
+          <div className="bg-[#262626] border border-[#383838] rounded-xl p-6 shadow-md space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#333333]">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-sm font-bold uppercase tracking-wider text-[#ECECEC]">
+                  Grammar Topic Competency
+                </h3>
+              </div>
+              <span className="text-xs text-[#9CA3AF]">
+                {topicMastery.length} {topicMastery.length === 1 ? "topic" : "topics"} in this unit
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {topicMastery.map((tm) => (
+                <div
+                  key={tm.topic}
+                  className="p-3.5 rounded-lg bg-[#1f1f1f] border border-[#363636] space-y-2"
+                >
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-neutral-200 truncate max-w-[200px]">
+                      {tm.topic}
+                    </span>
+                    <span
+                      className={cn(
+                        "font-bold",
+                        tm.percentage >= 80
+                          ? "text-emerald-400"
+                          : tm.percentage >= 50
+                          ? "text-amber-400"
+                          : "text-rose-400"
+                      )}
+                    >
+                      {tm.percentage}% ({tm.correctBlanks}/{tm.totalBlanks})
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-[#141414] overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full rounded-full transition-all duration-500",
+                        tm.percentage >= 80
+                          ? "bg-emerald-400"
+                          : tm.percentage >= 50
+                          ? "bg-amber-400"
+                          : "bg-rose-500"
+                      )}
+                      style={{ width: `${tm.percentage}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Review Section */}
         <div>
