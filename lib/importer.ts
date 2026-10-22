@@ -1,4 +1,4 @@
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { QuizImportSchema, QuizImportData } from './validation';
 import { calculateContentHash } from './hash';
 import { quizzes, questions, blanks } from '@/db/schema';
@@ -18,9 +18,19 @@ export interface QuizImportResult {
 export async function importQuizData(
   rawContent: string | Record<string, any>,
   db: DbInstance,
-  options?: { overwrite?: boolean; courseId?: string | null }
+  options?: {
+    overwrite?: boolean;
+    courseId?: string | null;
+    driveFileId?: string | null;
+    sourceFilename?: string | null;
+  }
 ): Promise<QuizImportResult> {
-  const { overwrite = false, courseId = null } = options || {};
+  const {
+    overwrite = false,
+    courseId = null,
+    driveFileId = null,
+    sourceFilename = null,
+  } = options || {};
 
   // 1. Parse JSON
   let data: any;
@@ -89,16 +99,16 @@ export async function importQuizData(
   }
 
   let preservedCourseId = courseId;
-  let preservedDriveFileId: string | null = null;
-  let preservedSourceFilename: string | null = null;
+  let preservedDriveFileId: string | null = driveFileId;
+  let preservedSourceFilename: string | null = sourceFilename;
   let targetQuizId = crypto.randomUUID();
 
   if (targetQuiz) {
     if (targetQuiz.status === 'pending_import') {
       // Replacing a pending placeholder with actual questions
       preservedCourseId = targetQuiz.courseId || courseId;
-      preservedDriveFileId = targetQuiz.driveFileId;
-      preservedSourceFilename = targetQuiz.sourceFilename;
+      preservedDriveFileId = targetQuiz.driveFileId || driveFileId;
+      preservedSourceFilename = targetQuiz.sourceFilename || sourceFilename;
       targetQuizId = targetQuiz.id;
 
       // Clean up previous placeholder
@@ -116,8 +126,8 @@ export async function importQuizData(
       // Overwrite existing quiz: delete previous questions, blanks, and quiz record
       targetQuizId = targetQuiz.id;
       preservedCourseId = targetQuiz.courseId || courseId;
-      preservedDriveFileId = targetQuiz.driveFileId;
-      preservedSourceFilename = targetQuiz.sourceFilename;
+      preservedDriveFileId = targetQuiz.driveFileId || driveFileId;
+      preservedSourceFilename = targetQuiz.sourceFilename || sourceFilename;
 
       const prevQuestions = await db
         .select({ id: questions.id })

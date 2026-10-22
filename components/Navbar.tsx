@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -32,16 +32,37 @@ interface NavbarProps {
 function NavLinks({
   onOpenImportCourse,
   onOpenImportQuiz,
-  userEmail = "toan.vuduc247@gmail.com",
+  userEmail: propUserEmail,
   driveConnected = true,
   promptChatUrl: propPromptChatUrl,
   onPromptChatUrlChange,
 }: NavbarProps) {
   const pathname = usePathname();
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>(
+    propUserEmail || "local-user"
+  );
   const [activePromptChatUrl, setActivePromptChatUrl] = useState<string>(
     propPromptChatUrl || DEFAULT_PROMPT_CHAT_URL
   );
   const [isEditPromptOpen, setIsEditPromptOpen] = useState(false);
+
+  // Sync user email or fetch from /api/auth/me
+  useEffect(() => {
+    if (propUserEmail) {
+      setCurrentUserEmail(propUserEmail);
+    } else {
+      fetch("/api/auth/me")
+        .then((res) => res.json())
+        .then((data: any) => {
+          if (data?.email) {
+            setCurrentUserEmail(data.email);
+          } else if (data?.userId) {
+            setCurrentUserEmail(data.userId);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [propUserEmail]);
 
   // Sync with prop if it changes
   useEffect(() => {
@@ -76,7 +97,7 @@ function NavLinks({
   };
 
   return (
-    <div className="flex items-center gap-2.5 sm:gap-3">
+    <div className="flex items-center gap-2.5 sm:gap-3" suppressHydrationWarning>
       {/* Prompt Chat Link with Edit Button (For all courses) */}
       <div className="flex items-center rounded-xl bg-[#1a291e] border border-emerald-900/40 p-0.5 shadow-sm">
         <a
@@ -152,8 +173,14 @@ function NavLinks({
       <div className="flex items-center gap-2 pl-2 border-l border-[#333333]">
         <div className="flex items-center gap-1.5 text-xs text-[#9CA3AF] hover:text-[#ECECEC] transition-colors py-1 px-1.5 rounded-md">
           <User className="w-3.5 h-3.5 text-gray-400" />
-          <span className="hidden xl:inline font-mono">{userEmail}</span>
-          <LogOut className="w-3.5 h-3.5 ml-0.5 text-gray-500 hover:text-red-400 cursor-pointer" />
+          <span className="hidden xl:inline font-mono">{currentUserEmail}</span>
+          <a
+            href="/signout-with-chatgpt"
+            title="Sign out"
+            className="flex items-center"
+          >
+            <LogOut className="w-3.5 h-3.5 ml-0.5 text-gray-500 hover:text-red-400 cursor-pointer" />
+          </a>
         </div>
       </div>
 
@@ -170,8 +197,14 @@ function NavLinks({
 
 export function Navbar(props: NavbarProps) {
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-[#2e2e2e] bg-[#1a1a1a]/95 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+    <header
+      className="sticky top-0 z-40 w-full border-b border-[#2e2e2e] bg-[#1a1a1a]/95 backdrop-blur-md"
+      suppressHydrationWarning
+    >
+      <div
+        className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between"
+        suppressHydrationWarning
+      >
         {/* Brand */}
         <Link href="/" className="flex items-center gap-3 group">
           <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center text-black shadow-md transition-transform group-hover:scale-105">
@@ -187,10 +220,8 @@ export function Navbar(props: NavbarProps) {
           </div>
         </Link>
 
-        {/* Navigation items wrapped in Suspense for Next.js prerender safety */}
-        <Suspense fallback={<div className="h-8 w-28 bg-[#262626] rounded-md animate-pulse" />}>
-          <NavLinks {...props} />
-        </Suspense>
+        {/* Navigation items */}
+        <NavLinks {...props} />
       </div>
     </header>
   );

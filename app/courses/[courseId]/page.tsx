@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   ExternalLink,
   RefreshCw,
-  Upload,
   Trash2,
   Play,
   BookOpen,
@@ -19,8 +18,6 @@ import {
   X,
   Loader2,
   AlertCircle,
-  TrendingUp,
-  FileText,
   Sparkles,
   ClipboardPaste,
   Pencil,
@@ -239,12 +236,11 @@ export default function CourseDetailPage() {
   }, [quizzes]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#212121] text-[#ececec]">
+    <div className="min-h-screen flex flex-col bg-[#212121] text-[#ececec]" suppressHydrationWarning>
       {/* Top Navigation */}
       <Navbar
         onOpenImportCourse={() => router.push("/")}
         driveConnected={true}
-        userEmail="toan.vuduc247@gmail.com"
         promptChatUrl={promptChatUrl}
         onPromptChatUrlChange={setPromptChatUrl}
       />

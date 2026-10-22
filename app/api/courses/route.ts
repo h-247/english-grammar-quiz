@@ -14,23 +14,29 @@ import {
 } from '@/lib/course-manifest';
 import { fetchDriveFolderMetadata } from '@/lib/gdrive-service';
 import { CourseCreateSchema } from '@/lib/validation';
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, or, isNull, and } from 'drizzle-orm';
+import { getAuthenticatedUserOrLocal } from '@/app/chatgpt-auth';
 
 export async function GET() {
   try {
     await ensureDatabaseInitialized();
     const db = getDb();
+    const user = await getAuthenticatedUserOrLocal();
     await ensureDefaultCourseExists(db);
 
-    const allCourses = await db
-      .select()
-      .from(courses)
+    const isLocal = user.userId === 'local-user';
+    const query = db.select().from(courses);
+    const accessibleCoursesQuery = isLocal
+      ? query
+      : query.where(or(eq(courses.userId, user.userId), isNull(courses.userId)));
+
+    const allCourses = await accessibleCoursesQuery
       .orderBy(asc(courses.createdAt))
       .all();
 
     const response = [];
     for (const c of allCourses) {
-      const stats = await calculateCourseStats(c.id, db);
+      const stats = await calculateCourseStats(c.id, db, user.userId);
       response.push({
         id: c.id,
         title: c.title,
@@ -60,6 +66,7 @@ export async function POST(request: Request) {
   try {
     await ensureDatabaseInitialized();
     const db = getDb();
+    const user = await getAuthenticatedUserOrLocal();
 
     const body = await request.json();
     const parsed = CourseCreateSchema.safeParse(body);
@@ -94,12 +101,21 @@ export async function POST(request: Request) {
       finalTitle = folderId ? `Course (${folderId.slice(0, 8)})` : DEFAULT_COURSE_TITLE;
     }
 
-    // 2. Check if a course already exists by Google Drive Folder ID
+    const userScope =
+      user.userId === 'local-user'
+        ? undefined
+        : or(eq(courses.userId, user.userId), isNull(courses.userId));
+
+    // 2. Check if a course already exists by Google Drive Folder ID for this user
     if (folderId) {
+      const folderFilter = userScope
+        ? and(eq(courses.driveFolderId, folderId), userScope)
+        : eq(courses.driveFolderId, folderId);
+
       const existingByFolder = await db
         .select()
         .from(courses)
-        .where(eq(courses.driveFolderId, folderId))
+        .where(folderFilter)
         .get();
 
       if (existingByFolder) {
@@ -113,11 +129,15 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Check if a course already exists by Title
+    // 3. Check if a course already exists by Title for this user
+    const titleFilter = userScope
+      ? and(eq(courses.title, finalTitle), userScope)
+      : eq(courses.title, finalTitle);
+
     const existingByTitle = await db
       .select()
       .from(courses)
-      .where(eq(courses.title, finalTitle))
+      .where(titleFilter)
       .get();
 
     if (existingByTitle) {
@@ -130,7 +150,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // 4. Create a clean fresh course (never resurrect old modified/pasted quizzes)
+    // 4. Create a clean fresh course scoped to current user
     const courseId = crypto.randomUUID();
     const nowIso = new Date().toISOString();
 
@@ -141,6 +161,7 @@ export async function POST(request: Request) {
       driveFolderId: folderId,
       driveFolderUrl: folderUrl,
       bannerUrl: banner,
+      userId: user.userId,
       createdAt: nowIso,
       updatedAt: nowIso,
     });
@@ -149,7 +170,7 @@ export async function POST(request: Request) {
       await syncCourseDriveQuizzes(courseId, db);
     }
 
-    const stats = await calculateCourseStats(courseId, db);
+    const stats = await calculateCourseStats(courseId, db, user.userId);
     return NextResponse.json(
       {
         id: courseId,

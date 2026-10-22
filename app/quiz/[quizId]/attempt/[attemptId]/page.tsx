@@ -117,7 +117,7 @@ function QuizSessionContent() {
     const updated = {
       ...answers,
       [qId]: {
-        ...(answers[qId] || {}),
+        ...answers[qId],
         [blankId]: value,
       },
     };

@@ -17,32 +17,12 @@ export async function ensureDatabaseInitialized() {
       drive_folder_id TEXT,
       drive_folder_url TEXT,
       banner_url TEXT,
+      deleted_at TEXT,
+      user_id TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
   `);
-
-  try {
-    await db.run(sql`ALTER TABLE courses ADD COLUMN banner_url TEXT;`);
-  } catch {}
-
-  try {
-    await db.run(sql`ALTER TABLE courses ADD COLUMN deleted_at TEXT;`);
-  } catch {}
-
-  try {
-    await db.run(
-      sql`UPDATE courses SET banner_url = 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=800&auto=format&fit=crop' WHERE banner_url IS NULL OR banner_url = 'banner_url' OR banner_url = '';`
-    );
-  } catch {}
-
-  try {
-    // Purge any legacy soft-deleted courses and their orphaned quizzes
-    await db.run(sql`DELETE FROM courses WHERE deleted_at IS NOT NULL;`);
-    await db.run(
-      sql`DELETE FROM quizzes WHERE course_id IS NOT NULL AND course_id NOT IN (SELECT id FROM courses);`
-    );
-  } catch {}
 
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS quizzes (
@@ -70,10 +50,6 @@ export async function ensureDatabaseInitialized() {
       created_at TEXT NOT NULL
     );
   `);
-
-  try {
-    await db.run(sql`ALTER TABLE quizzes ADD COLUMN chatgpt_url TEXT;`);
-  } catch {}
 
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS questions (
@@ -110,6 +86,7 @@ export async function ensureDatabaseInitialized() {
     CREATE TABLE IF NOT EXISTS quiz_attempts (
       id TEXT PRIMARY KEY,
       quiz_id TEXT NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+      user_id TEXT,
       duration_seconds INTEGER NOT NULL,
       started_at TEXT NOT NULL,
       deadline_at TEXT NOT NULL,

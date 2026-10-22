@@ -11,6 +11,7 @@ import {
 } from '@/db/schema';
 import { ensureDatabaseInitialized } from '@/lib/db-init';
 import { eq, asc, inArray } from 'drizzle-orm';
+import { getAuthenticatedUserOrLocal } from '@/app/chatgpt-auth';
 
 export async function GET(
   request: Request,
@@ -19,12 +20,14 @@ export async function GET(
   try {
     await ensureDatabaseInitialized();
     const db = getDb();
+    const user = await getAuthenticatedUserOrLocal();
     const { quizId } = await params;
 
     const row = await db
       .select({
         quiz: quizzes,
         courseTitle: courses.title,
+        courseUserId: courses.userId,
       })
       .from(quizzes)
       .leftJoin(courses, eq(quizzes.courseId, courses.id))
@@ -32,6 +35,17 @@ export async function GET(
       .get();
 
     if (!row) {
+      return NextResponse.json(
+        { detail: `Quiz with ID ${quizId} not found.` },
+        { status: 404 }
+      );
+    }
+
+    if (
+      user.userId !== 'local-user' &&
+      row.courseUserId &&
+      row.courseUserId !== user.userId
+    ) {
       return NextResponse.json(
         { detail: `Quiz with ID ${quizId} not found.` },
         { status: 404 }
@@ -113,6 +127,7 @@ export async function DELETE(
   try {
     await ensureDatabaseInitialized();
     const db = getDb();
+    const user = await getAuthenticatedUserOrLocal();
     const { quizId } = await params;
 
     const quiz = await db
@@ -126,6 +141,16 @@ export async function DELETE(
         { detail: `Quiz with ID ${quizId} not found.` },
         { status: 404 }
       );
+    }
+
+    if (quiz.courseId && user.userId !== 'local-user') {
+      const c = await db.select().from(courses).where(eq(courses.id, quiz.courseId)).get();
+      if (c && c.userId && c.userId !== user.userId) {
+        return NextResponse.json(
+          { detail: 'You do not have permission to delete this quiz.' },
+          { status: 403 }
+        );
+      }
     }
 
     // Explicitly delete attempts, results, responses, questions, blanks for clean cascade in SQLite
@@ -184,8 +209,9 @@ export async function DELETE(
     await db.delete(quizzes).where(eq(quizzes.id, quizId));
 
     return NextResponse.json({
-      message: `Quiz '${quiz.title}' deleted successfully.`,
+      message: `Quiz '${quiz.title}' was deleted successfully.`,
       quiz_id: quizId,
+      reset: false,
     });
   } catch (err: any) {
     return NextResponse.json({ detail: err.message }, { status: 500 });
@@ -199,6 +225,7 @@ export async function PATCH(
   try {
     await ensureDatabaseInitialized();
     const db = getDb();
+    const user = await getAuthenticatedUserOrLocal();
     const { quizId } = await params;
 
     const quiz = await db
@@ -212,6 +239,16 @@ export async function PATCH(
         { detail: `Quiz with ID ${quizId} not found.` },
         { status: 404 }
       );
+    }
+
+    if (quiz.courseId && user.userId !== 'local-user') {
+      const c = await db.select().from(courses).where(eq(courses.id, quiz.courseId)).get();
+      if (c && c.userId && c.userId !== user.userId) {
+        return NextResponse.json(
+          { detail: 'You do not have permission to modify this quiz.' },
+          { status: 403 }
+        );
+      }
     }
 
     const body = (await request.json()) as Record<string, any>;

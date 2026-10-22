@@ -13,6 +13,7 @@ import { ensureDatabaseInitialized } from '@/lib/db-init';
 import { calculateCourseStats } from '@/lib/course-service';
 import { DEFAULT_COURSE_BANNER } from '@/lib/course-manifest';
 import { eq, asc, inArray } from 'drizzle-orm';
+import { getAuthenticatedUserOrLocal } from '@/app/chatgpt-auth';
 
 export async function GET(
   request: Request,
@@ -21,6 +22,7 @@ export async function GET(
   try {
     await ensureDatabaseInitialized();
     const db = getDb();
+    const user = await getAuthenticatedUserOrLocal();
     const { courseId } = await params;
 
     const course = await db
@@ -36,7 +38,18 @@ export async function GET(
       );
     }
 
-    const stats = await calculateCourseStats(courseId, db);
+    if (
+      user.userId !== 'local-user' &&
+      course.userId &&
+      course.userId !== user.userId
+    ) {
+      return NextResponse.json(
+        { detail: `Course with ID ${courseId} not found.` },
+        { status: 404 }
+      );
+    }
+
+    const stats = await calculateCourseStats(courseId, db, user.userId);
     const courseQuizzes = await db
       .select()
       .from(quizzes)
@@ -93,6 +106,7 @@ export async function DELETE(
   try {
     await ensureDatabaseInitialized();
     const db = getDb();
+    const user = await getAuthenticatedUserOrLocal();
     const { courseId } = await params;
 
     const course = await db
@@ -105,6 +119,17 @@ export async function DELETE(
       return NextResponse.json(
         { detail: `Course with ID ${courseId} not found.` },
         { status: 404 }
+      );
+    }
+
+    if (
+      user.userId !== 'local-user' &&
+      course.userId &&
+      course.userId !== user.userId
+    ) {
+      return NextResponse.json(
+        { detail: 'You do not have permission to delete this course.' },
+        { status: 403 }
       );
     }
 
@@ -168,6 +193,7 @@ export async function PATCH(
   try {
     await ensureDatabaseInitialized();
     const db = getDb();
+    const user = await getAuthenticatedUserOrLocal();
     const { courseId } = await params;
 
     const course = await db
@@ -180,6 +206,17 @@ export async function PATCH(
       return NextResponse.json(
         { detail: `Course with ID ${courseId} not found.` },
         { status: 404 }
+      );
+    }
+
+    if (
+      user.userId !== 'local-user' &&
+      course.userId &&
+      course.userId !== user.userId
+    ) {
+      return NextResponse.json(
+        { detail: 'You do not have permission to modify this course.' },
+        { status: 403 }
       );
     }
 
@@ -215,7 +252,7 @@ export async function PATCH(
       .where(eq(courses.id, courseId))
       .get();
 
-    const stats = await calculateCourseStats(courseId, db);
+    const stats = await calculateCourseStats(courseId, db, user.userId);
 
     return NextResponse.json({
       id: updated!.id,

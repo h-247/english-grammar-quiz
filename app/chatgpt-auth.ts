@@ -1,6 +1,3 @@
-import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
-
 export type ChatGPTUser = {
   userId: string;
   displayName: string;
@@ -19,23 +16,39 @@ const SIGN_OUT_PATH = '/signout-with-chatgpt';
 const CALLBACK_PATH = '/callback';
 
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
-  const requestHeaders = await headers();
-  const userId = requestHeaders.get(USER_ID_HEADER);
-  const email = requestHeaders.get(USER_EMAIL_HEADER);
-  if (!userId || !email) return null;
+  try {
+    const { headers } = await import('next/headers');
+    const requestHeaders = await headers();
+    const userId = requestHeaders.get(USER_ID_HEADER);
+    const email = requestHeaders.get(USER_EMAIL_HEADER);
+    if (!userId || !email) return null;
 
-  const encodedFullName = requestHeaders.get(USER_FULL_NAME_HEADER);
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get(USER_FULL_NAME_ENCODING_HEADER) === PERCENT_ENCODED_UTF8
-      ? safeDecodeURIComponent(encodedFullName)
-      : null;
+    const encodedFullName = requestHeaders.get(USER_FULL_NAME_HEADER);
+    const fullName =
+      encodedFullName &&
+      requestHeaders.get(USER_FULL_NAME_ENCODING_HEADER) === PERCENT_ENCODED_UTF8
+        ? safeDecodeURIComponent(encodedFullName)
+        : null;
 
+    return {
+      userId,
+      displayName: fullName ?? email,
+      email,
+      fullName,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function getAuthenticatedUserOrLocal(): Promise<ChatGPTUser> {
+  const user = await getChatGPTUser();
+  if (user) return user;
   return {
-    userId,
-    displayName: fullName ?? email,
-    email,
-    fullName,
+    userId: 'local-user',
+    displayName: 'Local User',
+    email: 'local-user@chatgpt.internal',
+    fullName: 'Local User',
   };
 }
 
@@ -45,7 +58,9 @@ export async function requireChatGPTUser(
   const user = await getChatGPTUser();
   if (user) return user;
 
+  const { redirect } = await import('next/navigation');
   redirect(chatGPTSignInPath(returnTo));
+  throw new Error('Redirecting to sign in');
 }
 
 export function chatGPTSignInPath(returnTo: string): string {

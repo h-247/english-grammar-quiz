@@ -10,12 +10,14 @@ export const courses = sqliteTable(
     driveFolderUrl: text('drive_folder_url'),
     bannerUrl: text('banner_url'),
     deletedAt: text('deleted_at'),
+    userId: text('user_id'),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
   },
   (table) => [
     index('courses_drive_folder_id_idx').on(table.driveFolderId),
     index('courses_deleted_at_idx').on(table.deletedAt),
+    index('courses_user_id_idx').on(table.userId),
   ]
 );
 
@@ -103,6 +105,7 @@ export const quizAttempts = sqliteTable(
     quizId: text('quiz_id')
       .notNull()
       .references(() => quizzes.id, { onDelete: 'cascade' }),
+    userId: text('user_id'),
     durationSeconds: integer('duration_seconds').notNull(),
     startedAt: text('started_at').notNull(),
     deadlineAt: text('deadline_at').notNull(),
@@ -114,6 +117,7 @@ export const quizAttempts = sqliteTable(
   },
   (table) => [
     index('attempts_quiz_id_idx').on(table.quizId),
+    index('attempts_user_id_idx').on(table.userId),
     index('attempts_status_idx').on(table.status),
     index('attempts_deadline_idx').on(table.deadlineAt),
   ]
@@ -168,3 +172,8 @@ export const attemptResults = sqliteTable(
     index('results_attempt_id_idx').on(table.attemptId),
   ]
 );
+
+export const appSettings = sqliteTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+});

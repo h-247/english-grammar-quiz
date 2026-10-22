@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import {
   X,
   HardDrive,
-  FolderGit2,
   Image as ImageIcon,
   Loader2,
   Sparkles,

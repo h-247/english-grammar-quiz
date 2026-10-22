@@ -91,7 +91,7 @@ export function ImportModal({
         });
         setErrorMessage(null);
       }
-    } catch (err: unknown) {
+    } catch {
       // Don't show error until submit, unless it's obviously bad
       setPreviewInfo(null);
     }

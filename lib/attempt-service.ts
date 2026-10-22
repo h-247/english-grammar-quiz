@@ -16,7 +16,8 @@ export async function createAttempt(
   quizId: string,
   durationMinutes: number | undefined,
   mode: 'timed' | 'practice' = 'timed',
-  db: DbInstance
+  db: DbInstance,
+  userId: string = 'local-user'
 ) {
   const quiz = await db.select().from(quizzes).where(eq(quizzes.id, quizId)).get();
   if (!quiz) {
@@ -42,6 +43,7 @@ export async function createAttempt(
   await db.insert(quizAttempts).values({
     id: attemptId,
     quizId: quiz.id,
+    userId: userId || 'local-user',
     durationSeconds,
     startedAt,
     deadlineAt: deadlineDate.toISOString(),
@@ -59,7 +61,11 @@ export async function createAttempt(
   return buildAttemptState(attempt, quiz, db);
 }
 
-export async function getAttemptState(attemptId: string, db: DbInstance) {
+export async function getAttemptState(
+  attemptId: string,
+  db: DbInstance,
+  userId?: string
+) {
   const attempt = await db
     .select()
     .from(quizAttempts)
@@ -67,6 +73,10 @@ export async function getAttemptState(attemptId: string, db: DbInstance) {
     .get();
 
   if (!attempt) {
+    throw new Error(`Attempt with ID ${attemptId} not found.`);
+  }
+
+  if (userId && userId !== 'local-user' && attempt.userId && attempt.userId !== userId) {
     throw new Error(`Attempt with ID ${attemptId} not found.`);
   }
 
@@ -95,7 +105,8 @@ export async function getAttemptState(attemptId: string, db: DbInstance) {
 export async function saveAttemptAnswers(
   attemptId: string,
   answersData: Record<string, Record<string, string>>,
-  db: DbInstance
+  db: DbInstance,
+  userId?: string
 ) {
   const attempt = await db
     .select()
@@ -104,6 +115,10 @@ export async function saveAttemptAnswers(
     .get();
 
   if (!attempt) {
+    throw new Error(`Attempt with ID ${attemptId} not found.`);
+  }
+
+  if (userId && userId !== 'local-user' && attempt.userId && attempt.userId !== userId) {
     throw new Error(`Attempt with ID ${attemptId} not found.`);
   }
 
@@ -220,7 +235,8 @@ export async function checkQuestionAnswers(
   attemptId: string,
   questionId: string,
   answers: Record<string, string>,
-  db: DbInstance
+  db: DbInstance,
+  userId?: string
 ) {
   const attempt = await db
     .select()
@@ -229,6 +245,10 @@ export async function checkQuestionAnswers(
     .get();
 
   if (!attempt) {
+    throw new Error(`Attempt with ID ${attemptId} not found.`);
+  }
+
+  if (userId && userId !== 'local-user' && attempt.userId && attempt.userId !== userId) {
     throw new Error(`Attempt with ID ${attemptId} not found.`);
   }
 
@@ -303,7 +323,8 @@ export async function checkQuestionAnswers(
 export async function submitAttempt(
   attemptId: string,
   answersSnapshot: Record<string, Record<string, string>> | undefined,
-  db: DbInstance
+  db: DbInstance,
+  userId?: string
 ) {
   const attempt = await db
     .select()
@@ -312,6 +333,10 @@ export async function submitAttempt(
     .get();
 
   if (!attempt) {
+    throw new Error(`Attempt with ID ${attemptId} not found.`);
+  }
+
+  if (userId && userId !== 'local-user' && attempt.userId && attempt.userId !== userId) {
     throw new Error(`Attempt with ID ${attemptId} not found.`);
   }
 
@@ -344,7 +369,7 @@ export async function submitAttempt(
   }
 
   if (answersSnapshot && submissionReason === 'manual') {
-    await saveAttemptAnswers(attemptId, answersSnapshot, db);
+    await saveAttemptAnswers(attemptId, answersSnapshot, db, userId);
   }
 
   const gradedResult = await gradeAttempt(attempt, quiz, submissionReason, now, db);
@@ -367,7 +392,11 @@ export async function submitAttempt(
   return buildResultResponse(updatedAttempt, gradedResult, quiz.title);
 }
 
-export async function getAttemptResult(attemptId: string, db: DbInstance) {
+export async function getAttemptResult(
+  attemptId: string,
+  db: DbInstance,
+  userId?: string
+) {
   const attempt = await db
     .select()
     .from(quizAttempts)
@@ -375,6 +404,10 @@ export async function getAttemptResult(attemptId: string, db: DbInstance) {
     .get();
 
   if (!attempt) {
+    throw new Error(`Attempt with ID ${attemptId} not found.`);
+  }
+
+  if (userId && userId !== 'local-user' && attempt.userId && attempt.userId !== userId) {
     throw new Error(`Attempt with ID ${attemptId} not found.`);
   }
 
@@ -406,12 +439,20 @@ export async function getAttemptResult(attemptId: string, db: DbInstance) {
   return buildResultResponse(attempt, resultRecord, quiz.title);
 }
 
-export async function listAttemptHistory(skip = 0, limit = 50, db: DbInstance) {
-  const allAttempts = await db
-    .select()
-    .from(quizAttempts)
-    .orderBy(desc(quizAttempts.startedAt))
-    .all();
+export async function listAttemptHistory(
+  skip = 0,
+  limit = 50,
+  db: DbInstance,
+  userId?: string
+) {
+  const query = db.select().from(quizAttempts);
+  const allAttempts =
+    userId && userId !== 'local-user'
+      ? await query
+          .where(eq(quizAttempts.userId, userId))
+          .orderBy(desc(quizAttempts.startedAt))
+          .all()
+      : await query.orderBy(desc(quizAttempts.startedAt)).all();
 
   const total = allAttempts.length;
   const pagedAttempts = allAttempts.slice(skip, skip + limit);

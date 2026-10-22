@@ -2,12 +2,14 @@ import { NextResponse } from 'next/server';
 import { getDb } from '@/db';
 import { quizzes, courses } from '@/db/schema';
 import { ensureDatabaseInitialized } from '@/lib/db-init';
-import { eq, and, asc, desc } from 'drizzle-orm';
+import { eq, and, asc, desc, or, isNull } from 'drizzle-orm';
+import { getAuthenticatedUserOrLocal } from '@/app/chatgpt-auth';
 
 export async function GET(request: Request) {
   try {
     await ensureDatabaseInitialized();
     const db = getDb();
+    const user = await getAuthenticatedUserOrLocal();
     const url = new URL(request.url);
 
     const courseId = url.searchParams.get('course_id');
@@ -15,8 +17,26 @@ export async function GET(request: Request) {
 
     let conditions = [];
     if (courseId) {
+      if (user.userId !== 'local-user') {
+        const c = await db.select().from(courses).where(eq(courses.id, courseId)).get();
+        if (c && c.userId && c.userId !== user.userId) {
+          return NextResponse.json(
+            { detail: `Course with ID ${courseId} not found.` },
+            { status: 404 }
+          );
+        }
+      }
       conditions.push(eq(quizzes.courseId, courseId));
+    } else if (user.userId !== 'local-user') {
+      conditions.push(
+        or(
+          eq(courses.userId, user.userId),
+          isNull(courses.userId),
+          isNull(quizzes.courseId)
+        )
+      );
     }
+
     if (status) {
       conditions.push(eq(quizzes.status, status));
     }

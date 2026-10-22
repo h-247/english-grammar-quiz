@@ -1,22 +1,25 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/db';
+import { appSettings } from '@/db/schema';
 import { ensureDatabaseInitialized } from '@/lib/db-init';
 import { DEFAULT_PROMPT_CHAT_URL } from '@/lib/course-manifest';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 export async function GET() {
   try {
     await ensureDatabaseInitialized();
     const db = getDb();
 
-    const row: any = await db.get(
-      sql`SELECT value FROM app_settings WHERE key = 'prompt_chat_url'`
-    );
+    const row = await db
+      .select()
+      .from(appSettings)
+      .where(eq(appSettings.key, 'prompt_chat_url'))
+      .get();
 
     return NextResponse.json({
       prompt_chat_url: row?.value || DEFAULT_PROMPT_CHAT_URL,
     });
-  } catch (err: any) {
+  } catch {
     return NextResponse.json(
       { prompt_chat_url: DEFAULT_PROMPT_CHAT_URL },
       { status: 200 }

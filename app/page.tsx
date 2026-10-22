@@ -7,13 +7,9 @@ import {
   Search,
   X,
   Layers,
-  BookOpen,
-  CheckCircle2,
-  Clock,
   RefreshCw,
   Loader2,
   AlertCircle,
-  HardDrive,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { CourseCard } from "@/components/CourseCard";
@@ -101,14 +97,6 @@ export default function CoursesDashboardPage() {
     return map;
   }, [quizzes]);
 
-  // Overall statistics
-  const totalUnits = useMemo(() => {
-    return courses.reduce((acc, c) => acc + (c.total_quizzes || 0), 0);
-  }, [courses]);
-
-  const totalReady = useMemo(() => {
-    return courses.reduce((acc, c) => acc + (c.ready_quizzes || 0), 0);
-  }, [courses]);
 
   // Filtered courses by search query
   const filteredCourses = useMemo(() => {
@@ -194,12 +182,11 @@ export default function CoursesDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#212121] text-[#ececec]">
+    <div className="min-h-screen flex flex-col bg-[#212121] text-[#ececec]" suppressHydrationWarning>
       {/* Top Navigation */}
       <Navbar
         onOpenImportCourse={() => setIsImportCourseOpen(true)}
         driveConnected={true}
-        userEmail="toan.vuduc247@gmail.com"
       />
 
       {/* Main Container */}

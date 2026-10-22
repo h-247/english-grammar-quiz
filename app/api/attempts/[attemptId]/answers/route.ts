@@ -3,6 +3,7 @@ import { getDb } from '@/db';
 import { ensureDatabaseInitialized } from '@/lib/db-init';
 import { saveAttemptAnswers } from '@/lib/attempt-service';
 import { SaveAnswersSchema } from '@/lib/validation';
+import { getAuthenticatedUserOrLocal } from '@/app/chatgpt-auth';
 
 export async function PATCH(
   request: Request,
@@ -11,6 +12,7 @@ export async function PATCH(
   try {
     await ensureDatabaseInitialized();
     const db = getDb();
+    const user = await getAuthenticatedUserOrLocal();
     const { attemptId } = await params;
 
     const body = await request.json();
@@ -22,7 +24,12 @@ export async function PATCH(
       );
     }
 
-    const res = await saveAttemptAnswers(attemptId, parsed.data.answers, db);
+    const res = await saveAttemptAnswers(
+      attemptId,
+      parsed.data.answers,
+      db,
+      user.userId
+    );
     return NextResponse.json(res);
   } catch (err: any) {
     const isNotFound = err.message?.includes('not found');

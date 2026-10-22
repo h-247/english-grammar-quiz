@@ -3,6 +3,7 @@ import { getDb } from '@/db';
 import { ensureDatabaseInitialized } from '@/lib/db-init';
 import { checkQuestionAnswers } from '@/lib/attempt-service';
 import { CheckQuestionSchema } from '@/lib/validation';
+import { getAuthenticatedUserOrLocal } from '@/app/chatgpt-auth';
 
 export async function POST(
   request: Request,
@@ -11,6 +12,7 @@ export async function POST(
   try {
     await ensureDatabaseInitialized();
     const db = getDb();
+    const user = await getAuthenticatedUserOrLocal();
     const { attemptId } = await params;
 
     const body = await request.json();
@@ -27,7 +29,8 @@ export async function POST(
       attemptId,
       question_id,
       answers,
-      db
+      db,
+      user.userId
     );
 
     return NextResponse.json(feedback);

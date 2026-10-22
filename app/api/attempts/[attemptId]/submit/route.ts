@@ -3,6 +3,7 @@ import { getDb } from '@/db';
 import { ensureDatabaseInitialized } from '@/lib/db-init';
 import { submitAttempt } from '@/lib/attempt-service';
 import { SubmitAttemptSchema } from '@/lib/validation';
+import { getAuthenticatedUserOrLocal } from '@/app/chatgpt-auth';
 
 export async function POST(
   request: Request,
@@ -11,6 +12,7 @@ export async function POST(
   try {
     await ensureDatabaseInitialized();
     const db = getDb();
+    const user = await getAuthenticatedUserOrLocal();
     const { attemptId } = await params;
 
     let body = {};
@@ -23,7 +25,7 @@ export async function POST(
     const parsed = SubmitAttemptSchema.safeParse(body);
     const answers = parsed.success ? parsed.data.answers : undefined;
 
-    const result = await submitAttempt(attemptId, answers, db);
+    const result = await submitAttempt(attemptId, answers, db, user.userId);
     return NextResponse.json(result);
   } catch (err: any) {
     const isNotFound = err.message?.includes('not found');

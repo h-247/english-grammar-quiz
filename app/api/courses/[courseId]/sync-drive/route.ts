@@ -4,6 +4,7 @@ import { courses, quizzes } from '@/db/schema';
 import { ensureDatabaseInitialized } from '@/lib/db-init';
 import { syncCourseDriveQuizzes, calculateCourseStats } from '@/lib/course-service';
 import { eq, asc } from 'drizzle-orm';
+import { getAuthenticatedUserOrLocal } from '@/app/chatgpt-auth';
 
 export async function POST(
   request: Request,
@@ -12,6 +13,7 @@ export async function POST(
   try {
     await ensureDatabaseInitialized();
     const db = getDb();
+    const user = await getAuthenticatedUserOrLocal();
     const { courseId } = await params;
 
     const course = await db
@@ -27,9 +29,20 @@ export async function POST(
       );
     }
 
+    if (
+      user.userId !== 'local-user' &&
+      course.userId &&
+      course.userId !== user.userId
+    ) {
+      return NextResponse.json(
+        { detail: 'You do not have permission to sync this course.' },
+        { status: 403 }
+      );
+    }
+
     await syncCourseDriveQuizzes(courseId, db);
 
-    const stats = await calculateCourseStats(courseId, db);
+    const stats = await calculateCourseStats(courseId, db, user.userId);
     const courseQuizzes = await db
       .select()
       .from(quizzes)
