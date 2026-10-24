@@ -14,6 +14,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { QuizSummary } from "@/types/quiz";
+import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
 
 interface QuizCardProps {
   quiz: QuizSummary;
@@ -63,16 +64,23 @@ export function QuizCard({ quiz, onStart, onDelete, onUploadJson }: QuizCardProp
           <div className="flex items-center gap-1.5">
             {/* Google Drive PDF link */}
             {quiz.drive_file_id && (
-              <a
-                href={`https://drive.google.com/file/d/${quiz.drive_file_id}/view`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-1.5 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-950/30 transition-colors"
-                title="View Theory PDF on Google Drive"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <FileText className="w-4 h-4" />
-              </a>
+              <div className="flex items-center rounded-lg bg-blue-950/20 border border-blue-900/30 p-0.5">
+                <a
+                  href={`https://drive.google.com/file/d/${quiz.drive_file_id}/view`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1 rounded text-blue-400 hover:text-blue-300 hover:bg-blue-950/40 transition-colors"
+                  title="View Theory PDF on Google Drive"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                </a>
+                <CopyDriveLinkButton
+                  fileId={quiz.drive_file_id}
+                  title="Copy Drive PDF link"
+                  className="p-1 border-l border-blue-900/40 text-blue-400/80 hover:text-blue-200"
+                />
+              </div>
             )}
 
             {/* Delete Button */}
@@ -195,15 +203,22 @@ export function QuizCard({ quiz, onStart, onDelete, onUploadJson }: QuizCardProp
             </button>
 
             {quiz.drive_file_id && (
-              <a
-                href={`https://drive.google.com/file/d/${quiz.drive_file_id}/view`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="py-2 px-3 rounded-lg text-xs font-medium bg-[#1e1e1e] hover:bg-[#2e2e2e] text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 border border-blue-500/20"
-              >
-                <span>PDF</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
+              <div className="flex items-center rounded-lg bg-[#1e1e1e] border border-blue-500/20 p-0.5">
+                <a
+                  href={`https://drive.google.com/file/d/${quiz.drive_file_id}/view`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="py-1.5 px-2.5 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
+                >
+                  <span>PDF</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+                <CopyDriveLinkButton
+                  fileId={quiz.drive_file_id}
+                  title="Copy Drive PDF link"
+                  className="p-1 border-l border-blue-500/30 text-blue-400/80 hover:text-blue-200"
+                />
+              </div>
             )}
           </div>
         ) : (

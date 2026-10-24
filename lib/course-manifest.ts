@@ -50,6 +50,20 @@ export function extractDriveFolderId(input: string): string {
   return trimmed;
 }
 
+export function getDriveFolderUrl(idOrUrl: string): string {
+  if (!idOrUrl) return '';
+  if (idOrUrl.startsWith('http://') || idOrUrl.startsWith('https://')) return idOrUrl;
+  const folderId = extractDriveFolderId(idOrUrl);
+  return `https://drive.google.com/drive/folders/${folderId}`;
+}
+
+export function getDriveFileUrl(idOrUrl: string): string {
+  if (!idOrUrl) return '';
+  if (idOrUrl.startsWith('http://') || idOrUrl.startsWith('https://')) return idOrUrl;
+  const fileId = extractDriveFolderId(idOrUrl);
+  return `https://drive.google.com/file/d/${fileId}/view`;
+}
+
 export const GRAMMAR_UNITS_MANIFEST: ManifestGrammarUnit[] = [
   { unit: 1, title: 'Present simple, present continuous, stative verbs', filename: 'grammar_unit-01_present-simple-present-continuous-stative-verbs_p005.pdf', drive_file_id: '1-zrdo1m1kvU9ql1bKGFKc7yN3k7PIZAj' },
   { unit: 2, title: 'Past simple, past continuous, used to', filename: 'grammar_unit-02_past-simple-past-continuous-used-to_p008.pdf', drive_file_id: '12K40J2Z87XEvNGHVl3_d2meuf4dADAne' },

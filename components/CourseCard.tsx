@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { CourseSummary, QuizSummary } from "@/types/quiz";
 import { DEFAULT_COURSE_BANNER, DEFAULT_PROMPT_CHAT_URL } from "@/lib/course-manifest";
+import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
 
 interface CourseCardProps {
   course: CourseSummary;
@@ -111,15 +112,22 @@ export function CourseCard({
               {course.title}
             </Link>
             {course.drive_folder_url && (
-              <a
-                href={course.drive_folder_url}
-                target="_blank"
-                rel="noreferrer"
-                title="Open Folder on Google Drive"
-                className="text-gray-400 hover:text-white p-1 rounded-md hover:bg-[#2c2c2c] transition-colors shrink-0"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </a>
+              <div className="flex items-center gap-0.5 shrink-0">
+                <CopyDriveLinkButton
+                  url={course.drive_folder_url}
+                  folderId={course.drive_folder_id}
+                  title="Copy Google Drive folder link"
+                />
+                <a
+                  href={course.drive_folder_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="Open Folder on Google Drive"
+                  className="text-gray-400 hover:text-white p-1 rounded-md hover:bg-[#2c2c2c] transition-colors shrink-0"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              </div>
             )}
           </div>
 
@@ -220,16 +228,23 @@ export function CourseCard({
                 )}
 
                 {nextQuiz.drive_file_id && (
-                  <a
-                    href={`https://drive.google.com/file/d/${nextQuiz.drive_file_id}/view`}
-                    target="_blank"
-                    rel="noreferrer"
-                    title="View Source PDF on Google Drive"
-                    className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-[#222222] hover:bg-[#2d2d2d] text-blue-400 border border-blue-900/30 transition-colors"
-                  >
-                    <HardDrive className="w-3 h-3" />
-                    <span>Drive</span>
-                  </a>
+                  <div className="flex items-center rounded-lg bg-[#222222] border border-blue-900/30 p-0.5">
+                    <a
+                      href={`https://drive.google.com/file/d/${nextQuiz.drive_file_id}/view`}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="View Source PDF on Google Drive"
+                      className="flex items-center justify-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
+                    >
+                      <HardDrive className="w-3 h-3" />
+                      <span>Drive</span>
+                    </a>
+                    <CopyDriveLinkButton
+                      fileId={nextQuiz.drive_file_id}
+                      title="Copy Drive PDF link"
+                      className="p-1 border-l border-blue-900/40 text-blue-400/80 hover:text-blue-200"
+                    />
+                  </div>
                 )}
 
                 {/* Link Prompt Chat - immediately to the right of Google Drive link */}

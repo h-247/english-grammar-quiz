@@ -29,6 +29,7 @@ import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { QuizConfigModal } from "@/components/QuizConfigModal";
 import { EditCourseModal } from "@/components/EditCourseModal";
 import { EditQuizChatModal } from "@/components/EditQuizChatModal";
+import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
 import { DEFAULT_PROMPT_CHAT_URL } from "@/lib/course-manifest";
 import {
   getCourse,
@@ -314,15 +315,22 @@ export default function CourseDetailPage() {
             {course ? course.title : "Course Detail"}
           </span>
           {course?.drive_folder_url && (
-            <a
-              href={course.drive_folder_url}
-              target="_blank"
-              rel="noreferrer"
-              title="Open Google Drive Folder"
-              className="ml-1 text-gray-400 hover:text-blue-400 transition-colors"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
+            <div className="inline-flex items-center gap-0.5 ml-1">
+              <CopyDriveLinkButton
+                url={course.drive_folder_url}
+                folderId={course.drive_folder_id}
+                title="Copy Google Drive folder link"
+              />
+              <a
+                href={course.drive_folder_url}
+                target="_blank"
+                rel="noreferrer"
+                title="Open Google Drive Folder"
+                className="text-gray-400 hover:text-blue-400 p-1 rounded transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
           )}
         </div>
 
@@ -371,16 +379,25 @@ export default function CourseDetailPage() {
 
                   <div className="flex items-center gap-3 flex-wrap pt-1 text-xs text-[#888888]">
                     {course.drive_folder_id && (
-                      <a
-                        href={course.drive_folder_url || `https://drive.google.com/drive/folders/${course.drive_folder_id}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#242424] text-blue-400 hover:text-blue-300 border border-[#333333] transition-colors"
-                      >
-                        <HardDrive className="w-3.5 h-3.5" />
-                        <span>Drive Folder: {course.drive_folder_id}</span>
-                        <ExternalLink className="w-3 h-3 ml-0.5" />
-                      </a>
+                      <div className="inline-flex items-center rounded-lg bg-[#242424] border border-[#333333] p-0.5">
+                        <a
+                          href={course.drive_folder_url || `https://drive.google.com/drive/folders/${course.drive_folder_id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Open Google Drive folder"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-blue-400 hover:text-blue-300 transition-colors"
+                        >
+                          <HardDrive className="w-3.5 h-3.5" />
+                          <span>Drive Folder: {course.drive_folder_id}</span>
+                          <ExternalLink className="w-3 h-3 ml-0.5" />
+                        </a>
+                        <CopyDriveLinkButton
+                          url={course.drive_folder_url}
+                          folderId={course.drive_folder_id}
+                          title="Copy Google Drive folder link"
+                          className="p-1 border-l border-[#333333] text-gray-400 hover:text-white"
+                        />
+                      </div>
                     )}
                     <span>
                       Last Synced:{" "}
@@ -575,15 +592,23 @@ export default function CourseDetailPage() {
                     )}
 
                     {nextQuiz.drive_file_id && (
-                      <a
-                        href={`https://drive.google.com/file/d/${nextQuiz.drive_file_id}/view`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-medium bg-[#242424] hover:bg-[#2d2d2d] text-blue-400 border border-blue-900/30 transition-colors"
-                      >
-                        <HardDrive className="w-3.5 h-3.5" />
-                        <span>Drive PDF</span>
-                      </a>
+                      <div className="flex items-center rounded-xl bg-[#242424] border border-blue-900/30 p-0.5">
+                        <a
+                          href={`https://drive.google.com/file/d/${nextQuiz.drive_file_id}/view`}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Open PDF on Google Drive"
+                          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
+                        >
+                          <HardDrive className="w-3.5 h-3.5" />
+                          <span>Drive PDF</span>
+                        </a>
+                        <CopyDriveLinkButton
+                          fileId={nextQuiz.drive_file_id}
+                          title="Copy Drive PDF link"
+                          className="p-1.5 border-l border-blue-900/40 text-blue-400/80 hover:text-blue-200"
+                        />
+                      </div>
                     )}
 
                     {/* Link Prompt Chat - immediately to the right of Google Drive link */}
@@ -819,15 +844,22 @@ export default function CourseDetailPage() {
                           )}
 
                           {quiz.drive_file_id && (
-                            <a
-                              href={`https://drive.google.com/file/d/${quiz.drive_file_id}/view`}
-                              target="_blank"
-                              rel="noreferrer"
-                              title="Open original Drive PDF"
-                              className="p-1.5 text-blue-400 hover:text-blue-300 rounded-lg hover:bg-blue-950/30 transition-colors"
-                            >
-                              <HardDrive className="w-3.5 h-3.5" />
-                            </a>
+                            <div className="flex items-center rounded-lg bg-blue-950/20 border border-blue-900/30 p-0.5">
+                              <a
+                                href={`https://drive.google.com/file/d/${quiz.drive_file_id}/view`}
+                                target="_blank"
+                                rel="noreferrer"
+                                title="Open original Drive PDF"
+                                className="p-1.5 text-blue-400 hover:text-blue-300 rounded hover:bg-blue-950/40 transition-colors"
+                              >
+                                <HardDrive className="w-3.5 h-3.5" />
+                              </a>
+                              <CopyDriveLinkButton
+                                fileId={quiz.drive_file_id}
+                                title={`Copy Drive PDF link for Unit ${quiz.unit_number ?? ''}`}
+                                className="p-1 border-l border-blue-900/40 text-blue-400/80 hover:text-blue-200"
+                              />
+                            </div>
                           )}
 
                           {/* Link Prompt Chat (display to the right of Google Drive link) */}

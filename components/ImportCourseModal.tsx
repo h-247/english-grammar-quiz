@@ -19,6 +19,7 @@ import {
   extractDriveFolderId,
 } from "@/lib/course-manifest";
 import { getDriveFolderInfo } from "@/lib/api";
+import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
 
 interface ImportCourseModalProps {
   isOpen: boolean;
@@ -192,18 +193,28 @@ export function ImportCourseModal({
 
           {/* Drive URL Field */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
               <label className="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3]">
                 Google Drive Folder Link / ID <span className="text-red-400">*</span>
               </label>
-              <button
-                type="button"
-                onClick={handleQuickFillDestinationB1}
-                className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors font-medium cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Fill Destination B1 Sample</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {driveUrl && (
+                  <CopyDriveLinkButton
+                    url={driveUrl}
+                    variant="badge"
+                    size="sm"
+                    label="Copy"
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={handleQuickFillDestinationB1}
+                  className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors font-medium cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Fill Destination B1 Sample</span>
+                </button>
+              </div>
             </div>
             <input
               type="text"

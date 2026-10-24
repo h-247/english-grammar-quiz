@@ -12,6 +12,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { CourseSummary } from "@/types/quiz";
+import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
 
 interface CourseHeaderProps {
   courses: CourseSummary[];
@@ -61,16 +62,25 @@ export function CourseHeader({
             </span>
 
             {selectedCourse.drive_folder_id && (
-              <a
-                href={selectedCourse.drive_folder_url || `https://drive.google.com/drive/folders/${selectedCourse.drive_folder_id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 hover:border-blue-500/40"
-              >
-                <FolderGit2 className="w-3.5 h-3.5" />
-                <span>Google Drive Folder</span>
-                <ExternalLink className="w-3 h-3 ml-0.5 opacity-70" />
-              </a>
+              <div className="inline-flex items-center rounded-full bg-blue-500/10 border border-blue-500/20 p-0.5">
+                <a
+                  href={selectedCourse.drive_folder_url || `https://drive.google.com/drive/folders/${selectedCourse.drive_folder_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Open Google Drive folder"
+                  className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors px-2 py-0.5"
+                >
+                  <FolderGit2 className="w-3.5 h-3.5" />
+                  <span>Google Drive Folder</span>
+                  <ExternalLink className="w-3 h-3 ml-0.5 opacity-70" />
+                </a>
+                <CopyDriveLinkButton
+                  url={selectedCourse.drive_folder_url}
+                  folderId={selectedCourse.drive_folder_id}
+                  title="Copy Google Drive folder link"
+                  className="p-1 border-l border-blue-500/30 text-blue-400 hover:text-white rounded-full"
+                />
+              </div>
             )}
           </div>
 

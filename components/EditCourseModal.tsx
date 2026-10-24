@@ -9,11 +9,14 @@ import {
   Loader2,
   Check,
   CheckCircle,
+  ExternalLink,
+  HardDrive,
 } from "lucide-react";
 import { CourseSummary } from "@/types/quiz";
 import { PRESET_COURSE_BANNERS, DEFAULT_COURSE_BANNER } from "@/lib/course-manifest";
 import { updateCourse } from "@/lib/api";
 import { useToast } from "@/components/Toast";
+import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
 
 interface EditCourseModalProps {
   isOpen: boolean;
@@ -167,6 +170,39 @@ export function EditCourseModal({
               className="w-full px-3.5 py-2 bg-[#141414] border border-[#383838] focus:border-white focus:ring-1 focus:ring-white rounded-xl text-sm text-[#ececec] placeholder-[#666666] outline-none transition-all resize-none"
             />
           </div>
+
+          {/* Google Drive Folder Link */}
+          {course.drive_folder_id && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] flex items-center gap-1.5">
+                <HardDrive className="w-3.5 h-3.5 text-blue-400" />
+                <span>Google Drive Folder Link</span>
+              </label>
+              <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-[#141414] border border-[#383838] text-xs">
+                <span className="text-neutral-300 font-mono truncate text-[11px]">
+                  {course.drive_folder_url || `https://drive.google.com/drive/folders/${course.drive_folder_id}`}
+                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <CopyDriveLinkButton
+                    url={course.drive_folder_url}
+                    folderId={course.drive_folder_id}
+                    variant="badge"
+                    size="sm"
+                    label="Copy Link"
+                  />
+                  <a
+                    href={course.drive_folder_url || `https://drive.google.com/drive/folders/${course.drive_folder_id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800 transition-colors"
+                    title="Open in Google Drive"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Banner Selector */}
           <div className="space-y-1.5">
