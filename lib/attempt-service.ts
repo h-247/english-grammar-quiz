@@ -14,7 +14,14 @@ import type { drizzle } from 'drizzle-orm/d1';
 
 type DbInstance = ReturnType<typeof drizzle>;
 
-const SQLITE_BATCH_CHUNK_SIZE = 50;
+// Cloudflare D1 has a hard limit of 100 bound parameters per query.
+// Questions table has 14 columns: 5 * 14 = 70 parameters (safely < 100).
+// Blanks table has 7 columns: 10 * 7 = 70 parameters (safely < 100).
+// User responses table has 6 columns: 10 * 6 = 60 parameters (safely < 100).
+const QUESTIONS_CHUNK_SIZE = 5;
+const BLANKS_CHUNK_SIZE = 10;
+const USER_RESPONSES_CHUNK_SIZE = 10;
+const IN_ARRAY_CHUNK_SIZE = 50;
 
 export interface BlankReviewItem {
   blank_identifier: string;
@@ -251,8 +258,8 @@ export async function saveAttemptAnswers(
   }
 
   // Batch insert new responses
-  for (let i = 0; i < rowsToInsert.length; i += SQLITE_BATCH_CHUNK_SIZE) {
-    const chunk = rowsToInsert.slice(i, i + SQLITE_BATCH_CHUNK_SIZE);
+  for (let i = 0; i < rowsToInsert.length; i += USER_RESPONSES_CHUNK_SIZE) {
+    const chunk = rowsToInsert.slice(i, i + USER_RESPONSES_CHUNK_SIZE);
     await db.insert(userResponses).values(chunk);
   }
 
@@ -1024,15 +1031,15 @@ async function replicateQuestionsToQuiz(
     }
   }
 
-  // Batch insert questions
-  for (let i = 0; i < newQuestionRows.length; i += SQLITE_BATCH_CHUNK_SIZE) {
-    const chunk = newQuestionRows.slice(i, i + SQLITE_BATCH_CHUNK_SIZE);
+  // Batch insert questions in chunks to respect Cloudflare D1's 100 bound parameter limit
+  for (let i = 0; i < newQuestionRows.length; i += QUESTIONS_CHUNK_SIZE) {
+    const chunk = newQuestionRows.slice(i, i + QUESTIONS_CHUNK_SIZE);
     await db.insert(questions).values(chunk);
   }
 
-  // Batch insert blanks
-  for (let i = 0; i < newBlankRows.length; i += SQLITE_BATCH_CHUNK_SIZE) {
-    const chunk = newBlankRows.slice(i, i + SQLITE_BATCH_CHUNK_SIZE);
+  // Batch insert blanks in chunks to respect Cloudflare D1's 100 bound parameter limit
+  for (let i = 0; i < newBlankRows.length; i += BLANKS_CHUNK_SIZE) {
+    const chunk = newBlankRows.slice(i, i + BLANKS_CHUNK_SIZE);
     await db.insert(blanks).values(chunk);
   }
 }
@@ -1068,19 +1075,23 @@ export async function createMistakesPracticeAttempt(
 
   const missedQIds = missedQuestions.map((q) => q.question_id);
 
-  // Batch fetch source questions and blanks in 2 queries
-  const origQuestions = await db
-    .select()
-    .from(questions)
-    .where(inArray(questions.id, missedQIds))
-    .all();
+  const origQuestions: (typeof questions.$inferSelect)[] = [];
+  const origBlanks: (typeof blanks.$inferSelect)[] = [];
 
-  const origBlanks = await db
-    .select()
-    .from(blanks)
-    .where(inArray(blanks.questionId, missedQIds))
-    .orderBy(asc(blanks.orderIndex))
-    .all();
+  for (let i = 0; i < missedQIds.length; i += IN_ARRAY_CHUNK_SIZE) {
+    const chunkIds = missedQIds.slice(i, i + IN_ARRAY_CHUNK_SIZE);
+    const [qChunk, bChunk] = await Promise.all([
+      db.select().from(questions).where(inArray(questions.id, chunkIds)).all(),
+      db
+        .select()
+        .from(blanks)
+        .where(inArray(blanks.questionId, chunkIds))
+        .orderBy(asc(blanks.orderIndex))
+        .all(),
+    ]);
+    origQuestions.push(...qChunk);
+    origBlanks.push(...bChunk);
+  }
 
   // Create dynamic practice quiz
   const dynamicQuizId = crypto.randomUUID();
@@ -1204,19 +1215,23 @@ export async function createCourseMistakesPracticeAttempt(
 
   const missedQIdArray = Array.from(missedQuestionIds);
 
-  // Batch fetch questions and blanks in 2 queries
-  const missedQList = await db
-    .select()
-    .from(questions)
-    .where(inArray(questions.id, missedQIdArray))
-    .all();
+  const missedQList: (typeof questions.$inferSelect)[] = [];
+  const missedBlanksList: (typeof blanks.$inferSelect)[] = [];
 
-  const missedBlanksList = await db
-    .select()
-    .from(blanks)
-    .where(inArray(blanks.questionId, missedQIdArray))
-    .orderBy(asc(blanks.orderIndex))
-    .all();
+  for (let i = 0; i < missedQIdArray.length; i += IN_ARRAY_CHUNK_SIZE) {
+    const chunkIds = missedQIdArray.slice(i, i + IN_ARRAY_CHUNK_SIZE);
+    const [qChunk, bChunk] = await Promise.all([
+      db.select().from(questions).where(inArray(questions.id, chunkIds)).all(),
+      db
+        .select()
+        .from(blanks)
+        .where(inArray(blanks.questionId, chunkIds))
+        .orderBy(asc(blanks.orderIndex))
+        .all(),
+    ]);
+    missedQList.push(...qChunk);
+    missedBlanksList.push(...bChunk);
+  }
 
   const dynamicQuizId = crypto.randomUUID();
   const hash = await calculateContentHash(

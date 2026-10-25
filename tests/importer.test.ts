@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import fs from 'fs';
+import path from 'path';
 import { QuizImportSchema } from '../lib/validation';
 import { calculateContentHash } from '../lib/hash';
+import { importQuizData } from '../lib/importer';
 
 describe('Quiz Importer & Validation', () => {
   const validQuiz = {
@@ -78,5 +81,85 @@ describe('Quiz Importer & Validation', () => {
 
     expect(hash1).toBe(hash2);
     expect(hash1).toHaveLength(64);
+  });
+
+  it('imports unit 01 json with chunked inserts strictly under Cloudflare D1 100 bound parameter limit', async () => {
+    const insertCalls: { count: number; maxParams: number }[] = [];
+    const mockDb = {
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            get: async () => null,
+            all: async () => [],
+          }),
+        }),
+      }),
+      delete: () => ({
+        where: async () => {},
+      }),
+      insert: () => ({
+        values: async (rows: unknown) => {
+          const rowArray = Array.isArray(rows) ? rows : [rows];
+          const colCount = Object.keys(rowArray[0] || {}).length;
+          const paramCount = rowArray.length * colCount;
+          insertCalls.push({
+            count: rowArray.length,
+            maxParams: paramCount,
+          });
+        },
+      }),
+    };
+
+    const filePath = path.resolve(__dirname, '../sample-data/grammar_unit_01_grouped_english_fill_in_the_blank.json');
+    const rawJson = fs.readFileSync(filePath, 'utf8');
+    const res = await importQuizData(rawJson, mockDb as any);
+
+    expect(res.question_count).toBe(22);
+    expect(res.blank_count).toBeGreaterThan(0);
+
+    // Verify all chunked inserts never exceed Cloudflare D1's 100 parameter limit
+    expect(insertCalls.length).toBeGreaterThan(1);
+    for (const call of insertCalls) {
+      expect(call.maxParams).toBeLessThanOrEqual(100);
+    }
+  });
+
+  it('imports the 20-question JSON without exceeding D1 parameter limits', async () => {
+    const insertCalls: { count: number; maxParams: number }[] = [];
+    const mockDb = {
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            get: async () => null,
+            all: async () => [],
+          }),
+        }),
+      }),
+      delete: () => ({
+        where: async () => {},
+      }),
+      insert: () => ({
+        values: async (rows: unknown) => {
+          const rowArray = Array.isArray(rows) ? rows : [rows];
+          const colCount = Object.keys(rowArray[0] || {}).length;
+          const paramCount = rowArray.length * colCount;
+          insertCalls.push({
+            count: rowArray.length,
+            maxParams: paramCount,
+          });
+        },
+      }),
+    };
+
+    const filePath = path.resolve(__dirname, '../sample-data/grammar_unit_01_grouped_english_fill_in_the_blank.json');
+    const rawJson = fs.readFileSync(filePath, 'utf8');
+    const parsed = JSON.parse(rawJson);
+    parsed.questions = parsed.questions.slice(0, 20); // 20 questions
+    const res = await importQuizData(parsed, mockDb as any);
+    expect(res.question_count).toBe(20);
+    expect(res.blank_count).toBeGreaterThan(0);
+    for (const call of insertCalls) {
+      expect(call.maxParams).toBeLessThanOrEqual(100);
+    }
   });
 });

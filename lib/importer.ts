@@ -6,7 +6,12 @@ import type { drizzle } from 'drizzle-orm/d1';
 
 type DbInstance = ReturnType<typeof drizzle>;
 
-const SQLITE_BATCH_CHUNK_SIZE = 50;
+// Cloudflare D1 has a hard limit of 100 bound parameters per query.
+// Questions table has 14 columns: 5 * 14 = 70 parameters (safely < 100).
+// Blanks table has 7 columns: 10 * 7 = 70 parameters (safely < 100).
+const QUESTIONS_CHUNK_SIZE = 5;
+const BLANKS_CHUNK_SIZE = 10;
+const IN_ARRAY_CHUNK_SIZE = 50;
 
 export interface QuizImportResult {
   message: string;
@@ -142,8 +147,11 @@ export async function importQuizData(
 
       if (prevQuestions.length > 0) {
         const prevQIds = prevQuestions.map((q) => q.id);
-        await db.delete(blanks).where(inArray(blanks.questionId, prevQIds));
-        await db.delete(questions).where(inArray(questions.id, prevQIds));
+        for (let i = 0; i < prevQIds.length; i += IN_ARRAY_CHUNK_SIZE) {
+          const chunkQIds = prevQIds.slice(i, i + IN_ARRAY_CHUNK_SIZE);
+          await db.delete(blanks).where(inArray(blanks.questionId, chunkQIds));
+          await db.delete(questions).where(inArray(questions.id, chunkQIds));
+        }
       }
 
       await db.delete(quizzes).where(eq(quizzes.id, targetQuiz.id));
@@ -225,15 +233,15 @@ export async function importQuizData(
     }
   }
 
-  // Batch insert questions in chunks to respect SQLite limits
-  for (let i = 0; i < questionRows.length; i += SQLITE_BATCH_CHUNK_SIZE) {
-    const chunk = questionRows.slice(i, i + SQLITE_BATCH_CHUNK_SIZE);
+  // Batch insert questions in chunks to respect Cloudflare D1's 100 bound parameter limit
+  for (let i = 0; i < questionRows.length; i += QUESTIONS_CHUNK_SIZE) {
+    const chunk = questionRows.slice(i, i + QUESTIONS_CHUNK_SIZE);
     await db.insert(questions).values(chunk);
   }
 
-  // Batch insert blanks in chunks
-  for (let i = 0; i < blankRows.length; i += SQLITE_BATCH_CHUNK_SIZE) {
-    const chunk = blankRows.slice(i, i + SQLITE_BATCH_CHUNK_SIZE);
+  // Batch insert blanks in chunks to respect Cloudflare D1's 100 bound parameter limit
+  for (let i = 0; i < blankRows.length; i += BLANKS_CHUNK_SIZE) {
+    const chunk = blankRows.slice(i, i + BLANKS_CHUNK_SIZE);
     await db.insert(blanks).values(chunk);
   }
 
