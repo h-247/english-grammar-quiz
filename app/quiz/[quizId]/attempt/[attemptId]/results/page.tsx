@@ -23,6 +23,7 @@ import { getAttemptResults, startAttempt, practiceMistakesForAttempt } from "@/l
 import { AttemptResultResponse, QuestionResultReview, TopicMasteryItem } from "@/types/quiz";
 import { formatTime, cn } from "@/lib/utils";
 import { useToast } from "@/components/Toast";
+import { QuizHistoryModal } from "@/components/QuizHistoryModal";
 
 type FilterMode = "incorrect" | "all";
 
@@ -39,6 +40,7 @@ function QuizResultsContent() {
   const [filterMode, setFilterMode] = useState<FilterMode>("incorrect");
   const [isRetrying, setIsRetrying] = useState<boolean>(false);
   const [isPracticingMistakes, setIsPracticingMistakes] = useState<boolean>(false);
+  const [isQuizHistoryOpen, setIsQuizHistoryOpen] = useState<boolean>(false);
 
   const topicMastery: TopicMasteryItem[] = React.useMemo(() => {
     if (!results?.questions) return [];
@@ -227,13 +229,14 @@ function QuizResultsContent() {
                 <Layers className="w-4 h-4" />
                 <span>Quiz Library</span>
               </Link>
-              <Link
-                href="/history"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[#333333] hover:bg-[#404040] text-[#ECECEC] transition-colors border border-[#383838]"
+              <button
+                type="button"
+                onClick={() => setIsQuizHistoryOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[#333333] hover:bg-[#404040] text-[#ECECEC] transition-colors border border-[#383838] cursor-pointer"
               >
-                <History className="w-4 h-4" />
-                <span>Attempt History</span>
-              </Link>
+                <History className="w-4 h-4 text-blue-400" />
+                <span>Xem lịch sử bài quiz này</span>
+              </button>
             </div>
 
             <div className="flex items-center gap-3">
@@ -383,6 +386,36 @@ function QuizResultsContent() {
           </div>
         </div>
       </main>
+
+      {/* Quiz History & Score Statistics Modal */}
+      <QuizHistoryModal
+        quizId={quizId}
+        quizTitle={results?.quiz_title}
+        isOpen={isQuizHistoryOpen}
+        onClose={() => setIsQuizHistoryOpen(false)}
+        onStartExam={async (qId) => {
+          setIsRetrying(true);
+          try {
+            const att = await startAttempt(qId, 15, "timed");
+            router.push(`/quiz/${qId}/attempt/${att.id}`);
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Failed to start exam";
+            showToast(msg, "error");
+            setIsRetrying(false);
+          }
+        }}
+        onStartPractice={async (qId) => {
+          setIsRetrying(true);
+          try {
+            const att = await startAttempt(qId, 30, "practice");
+            router.push(`/quiz/${qId}/attempt/${att.id}`);
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Failed to start practice";
+            showToast(msg, "error");
+            setIsRetrying(false);
+          }
+        }}
+      />
     </div>
   );
 }

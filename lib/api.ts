@@ -11,6 +11,7 @@ import {
   QuestionCheckFeedback,
   TopicMasteryResponse,
   AppSettingsResponse,
+  QuizHistoryResponse,
 } from "@/types/quiz";
 
 export function getApiBase(): string {
@@ -346,6 +347,12 @@ export async function getAttemptResults(attemptId: string): Promise<AttemptResul
 
 export async function getAttemptHistory(skip = 0, limit = 50): Promise<AttemptHistoryResponse> {
   return fetchApi<AttemptHistoryResponse>(`/attempts?skip=${skip}&limit=${limit}`, {
+    cache: "no-store",
+  });
+}
+
+export async function getQuizHistory(quizId: string): Promise<QuizHistoryResponse> {
+  return fetchApi<QuizHistoryResponse>(`/quizzes/${quizId}/attempts`, {
     cache: "no-store",
   });
 }

@@ -12,6 +12,7 @@ import {
   FileText,
   Upload,
   ExternalLink,
+  History,
 } from "lucide-react";
 import { QuizSummary } from "@/types/quiz";
 import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
@@ -21,9 +22,16 @@ interface QuizCardProps {
   onStart: (quiz: QuizSummary) => void;
   onDelete?: (quiz: QuizSummary) => void;
   onUploadJson?: (quiz: QuizSummary) => void;
+  onViewHistory?: (quiz: QuizSummary) => void;
 }
 
-export const QuizCard = memo(function QuizCard({ quiz, onStart, onDelete, onUploadJson }: QuizCardProps) {
+export const QuizCard = memo(function QuizCard({
+  quiz,
+  onStart,
+  onDelete,
+  onUploadJson,
+  onViewHistory,
+}: QuizCardProps) {
   const [confirmDelete, setConfirmDelete] = useState<boolean>(false);
   const isPending = quiz.status === "pending_import" || quiz.question_count === 0;
 
@@ -222,13 +230,25 @@ export const QuizCard = memo(function QuizCard({ quiz, onStart, onDelete, onUplo
             )}
           </div>
         ) : (
-          <button
-            onClick={() => onStart(quiz)}
-            className="w-full py-2.5 px-4 rounded-lg text-sm font-semibold bg-white text-black hover:bg-neutral-200 transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <Play className="w-4 h-4 fill-current" />
-            <span>Start Quiz</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onStart(quiz)}
+              className="flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold bg-white text-black hover:bg-neutral-200 transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Play className="w-4 h-4 fill-current" />
+              <span>Start Quiz</span>
+            </button>
+            {onViewHistory && (
+              <button
+                type="button"
+                onClick={() => onViewHistory(quiz)}
+                title="Lịch sử làm bài & thống kê"
+                className="p-2.5 rounded-lg bg-[#333333] hover:bg-[#404040] text-blue-400 hover:text-blue-300 border border-[#3e3e3e] transition-colors cursor-pointer"
+              >
+                <History className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

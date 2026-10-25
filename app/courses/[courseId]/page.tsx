@@ -22,6 +22,7 @@ import {
   ClipboardPaste,
   Pencil,
   Bot,
+  History,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { ImportModal } from "@/components/ImportModal";
@@ -30,6 +31,7 @@ import { QuizConfigModal } from "@/components/QuizConfigModal";
 import { EditCourseModal } from "@/components/EditCourseModal";
 import { EditQuizChatModal } from "@/components/EditQuizChatModal";
 import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
+import { QuizHistoryModal } from "@/components/QuizHistoryModal";
 import { DEFAULT_PROMPT_CHAT_URL } from "@/lib/course-manifest";
 import {
   getCourse,
@@ -83,6 +85,15 @@ export default function CourseDetailPage() {
   const [selectedQuizForStart, setSelectedQuizForStart] = useState<QuizSummary | null>(null);
   const [isConfigOpen, setIsConfigOpen] = useState<boolean>(false);
   const [isStartingQuiz, setIsStartingQuiz] = useState<boolean>(false);
+
+  // Quiz History Modal
+  const [historyQuiz, setHistoryQuiz] = useState<QuizSummary | null>(null);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
+
+  const handleOpenQuizHistory = (quiz: QuizSummary) => {
+    setHistoryQuiz(quiz);
+    setIsHistoryModalOpen(true);
+  };
 
   // Fetch course details
   const loadCourse = useCallback(async (isSilent = false) => {
@@ -820,6 +831,15 @@ export default function CourseDetailPage() {
                               </button>
 
                               <button
+                                onClick={() => handleOpenQuizHistory(quiz)}
+                                title="Xem lịch sử làm bài & thống kê điểm số"
+                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-[#242424] hover:bg-[#303030] text-blue-400 hover:text-blue-300 border border-[#383838] transition-colors cursor-pointer"
+                              >
+                                <History className="w-3 h-3" />
+                                <span>Lịch sử</span>
+                              </button>
+
+                              <button
                                 onClick={() => {
                                   setTargetQuizForImport(quiz);
                                   setIsImportOpen(true);
@@ -999,6 +1019,25 @@ export default function CourseDetailPage() {
           if (selectedQuizForStart) {
             executeStartAttempt(selectedQuizForStart, durationMinutes, mode);
           }
+        }}
+      />
+
+      {/* Quiz Attempt History & Stats Modal */}
+      <QuizHistoryModal
+        quizId={historyQuiz?.id || null}
+        quizTitle={historyQuiz?.title}
+        isOpen={isHistoryModalOpen}
+        onClose={() => {
+          setIsHistoryModalOpen(false);
+          setHistoryQuiz(null);
+        }}
+        onStartExam={(quizId) => {
+          const target = course?.quizzes.find((q) => q.id === quizId);
+          if (target) handleStartExamClick(target);
+        }}
+        onStartPractice={(quizId) => {
+          const target = course?.quizzes.find((q) => q.id === quizId);
+          if (target) handleStartPracticeClick(target);
         }}
       />
     </div>
