@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, memo } from "react";
 import {
   Clock,
   HelpCircle,
@@ -23,7 +23,7 @@ interface QuizCardProps {
   onUploadJson?: (quiz: QuizSummary) => void;
 }
 
-export function QuizCard({ quiz, onStart, onDelete, onUploadJson }: QuizCardProps) {
+export const QuizCard = memo(function QuizCard({ quiz, onStart, onDelete, onUploadJson }: QuizCardProps) {
   const [confirmDelete, setConfirmDelete] = useState<boolean>(false);
   const isPending = quiz.status === "pending_import" || quiz.question_count === 0;
 
@@ -233,4 +233,4 @@ export function QuizCard({ quiz, onStart, onDelete, onUploadJson }: QuizCardProp
       </div>
     </div>
   );
-}
+});

@@ -39,9 +39,12 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
   if (!response.ok) {
     let errorDetail = "An unexpected error occurred.";
     try {
-      const errJson = (await response.json()) as any;
+      const errJson = (await response.json()) as { detail?: unknown };
       if (errJson && errJson.detail) {
-        errorDetail = typeof errJson.detail === "string" ? errJson.detail : JSON.stringify(errJson.detail);
+        errorDetail =
+          typeof errJson.detail === "string"
+            ? errJson.detail
+            : JSON.stringify(errJson.detail);
       }
     } catch {
       errorDetail = `Request failed with status ${response.status}: ${response.statusText}`;
@@ -153,29 +156,17 @@ export async function importQuizJson(
   if (courseId) query.append("course_id", courseId);
   const qStr = query.toString();
 
-  const url = `${getApiBase()}/quizzes/import${qStr ? `?${qStr}` : ""}`;
-  const response = await fetch(url, {
+  return fetchApi<{
+    message: string;
+    quiz_id: string;
+    title: string;
+    question_count: number;
+    blank_count: number;
+    is_duplicate: boolean;
+  }>(`/quizzes/import${qStr ? `?${qStr}` : ""}`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: jsonText,
   });
-
-  if (!response.ok) {
-    let errorDetail = "Failed to import quiz.";
-    try {
-      const errJson = (await response.json()) as any;
-      if (errJson && errJson.detail) {
-        errorDetail = typeof errJson.detail === "string" ? errJson.detail : JSON.stringify(errJson.detail);
-      }
-    } catch {
-      errorDetail = `Import failed: ${response.statusText}`;
-    }
-    throw new Error(errorDetail);
-  }
-
-  return response.json();
 }
 
 export async function getSettings(): Promise<AppSettingsResponse> {
@@ -286,26 +277,17 @@ export async function importQuizFile(
   if (courseId) query.append("course_id", courseId);
   const qStr = query.toString();
 
-  const url = `${getApiBase()}/quizzes/import${qStr ? `?${qStr}` : ""}`;
-  const response = await fetch(url, {
+  return fetchApi<{
+    message: string;
+    quiz_id: string;
+    title: string;
+    question_count: number;
+    blank_count: number;
+    is_duplicate: boolean;
+  }>(`/quizzes/import${qStr ? `?${qStr}` : ""}`, {
     method: "POST",
     body: formData,
   });
-
-  if (!response.ok) {
-    let errorDetail = "Failed to import quiz.";
-    try {
-      const errJson = (await response.json()) as any;
-      if (errJson && errJson.detail) {
-        errorDetail = typeof errJson.detail === "string" ? errJson.detail : JSON.stringify(errJson.detail);
-      }
-    } catch {
-      errorDetail = `Import failed: ${response.statusText}`;
-    }
-    throw new Error(errorDetail);
-  }
-
-  return response.json();
 }
 
 export async function startAttempt(

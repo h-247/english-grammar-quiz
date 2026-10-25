@@ -7,6 +7,9 @@ export interface AnswerMatchingConfig {
   rule?: string;
 }
 
+const INTERNAL_WHITESPACE_REGEX = /\s+/g;
+const NON_ALPHANUM_PUNCT_REGEX = /[^\p{L}\p{N}\s]/gu;
+
 export function normalizeAnswer(
   val: string | null | undefined,
   config?: AnswerMatchingConfig | null
@@ -16,9 +19,8 @@ export function normalizeAnswer(
   }
 
   const cfg = config || {};
-
-  // 1. Unicode normalization (default NFKC)
   const unicodeNorm = cfg.unicodeNormalization ?? 'NFKC';
+
   let normalized: string;
   try {
     normalized = String(val).normalize(unicodeNorm);
@@ -26,25 +28,20 @@ export function normalizeAnswer(
     normalized = String(val).normalize('NFKC');
   }
 
-  // 2. Trim whitespace (default true)
   if (cfg.trimWhitespace !== false) {
     normalized = normalized.trim();
   }
 
-  // 3. Collapse internal whitespace (default true)
   if (cfg.collapseInternalWhitespace !== false) {
-    normalized = normalized.replace(/\s+/g, ' ');
+    normalized = normalized.replace(INTERNAL_WHITESPACE_REGEX, ' ');
   }
 
-  // 4. Case sensitivity (default false -> lowercase)
   if (!cfg.caseSensitive) {
     normalized = normalized.toLowerCase();
   }
 
-  // 5. Punctuation preservation (default true)
   if (cfg.preservePunctuation === false) {
-    // Remove punctuation
-    normalized = normalized.replace(/[^\p{L}\p{N}\s]/gu, '');
+    normalized = normalized.replace(NON_ALPHANUM_PUNCT_REGEX, '');
   }
 
   return normalized;
@@ -52,10 +49,14 @@ export function normalizeAnswer(
 
 export function evaluateBlank(
   submittedAnswer: string | null | undefined,
-  acceptedAnswers: string[],
+  acceptedAnswers: readonly string[] | null | undefined,
   matchingConfig?: AnswerMatchingConfig | null
 ): boolean {
   if (submittedAnswer === null || submittedAnswer === undefined) {
+    return false;
+  }
+
+  if (!acceptedAnswers || acceptedAnswers.length === 0) {
     return false;
   }
 
@@ -64,10 +65,13 @@ export function evaluateBlank(
     return false;
   }
 
-  for (const accepted of acceptedAnswers) {
-    const normAccepted = normalizeAnswer(accepted, matchingConfig);
-    if (normSubmitted === normAccepted) {
-      return true;
+  for (let i = 0; i < acceptedAnswers.length; i++) {
+    const accepted = acceptedAnswers[i];
+    if (accepted !== null && accepted !== undefined) {
+      const normAccepted = normalizeAnswer(accepted, matchingConfig);
+      if (normSubmitted === normAccepted) {
+        return true;
+      }
     }
   }
 

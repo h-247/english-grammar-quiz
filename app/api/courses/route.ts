@@ -34,27 +34,28 @@ export async function GET() {
       .orderBy(asc(courses.createdAt))
       .all();
 
-    const response = [];
-    for (const c of allCourses) {
-      const stats = await calculateCourseStats(c.id, db, user.userId);
-      response.push({
-        id: c.id,
-        title: c.title,
-        description: c.description,
-        drive_folder_id: c.driveFolderId,
-        drive_folder_url: c.driveFolderUrl,
-        banner_url:
-          c.bannerUrl && c.bannerUrl.startsWith('http')
-            ? c.bannerUrl
-            : DEFAULT_COURSE_BANNER,
-        total_quizzes: stats.total_quizzes,
-        ready_quizzes: stats.ready_quizzes,
-        pending_quizzes: stats.pending_quizzes,
-        completed_quizzes: stats.completed_quizzes,
-        created_at: c.createdAt,
-        updated_at: c.updatedAt,
-      });
-    }
+    const response = await Promise.all(
+      allCourses.map(async (c) => {
+        const stats = await calculateCourseStats(c.id, db, user.userId);
+        return {
+          id: c.id,
+          title: c.title,
+          description: c.description,
+          drive_folder_id: c.driveFolderId,
+          drive_folder_url: c.driveFolderUrl,
+          banner_url:
+            c.bannerUrl && c.bannerUrl.startsWith('http')
+              ? c.bannerUrl
+              : DEFAULT_COURSE_BANNER,
+          total_quizzes: stats.total_quizzes,
+          ready_quizzes: stats.ready_quizzes,
+          pending_quizzes: stats.pending_quizzes,
+          completed_quizzes: stats.completed_quizzes,
+          created_at: c.createdAt,
+          updated_at: c.updatedAt,
+        };
+      })
+    );
 
     return NextResponse.json(response);
   } catch (err: any) {

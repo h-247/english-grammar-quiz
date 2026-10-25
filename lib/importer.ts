@@ -6,6 +6,8 @@ import type { drizzle } from 'drizzle-orm/d1';
 
 type DbInstance = ReturnType<typeof drizzle>;
 
+const SQLITE_BATCH_CHUNK_SIZE = 50;
+
 export interface QuizImportResult {
   message: string;
   quiz_id: string;
@@ -16,7 +18,7 @@ export interface QuizImportResult {
 }
 
 export async function importQuizData(
-  rawContent: string | Record<string, any>,
+  rawContent: string | Record<string, unknown>,
   db: DbInstance,
   options?: {
     overwrite?: boolean;
@@ -33,12 +35,13 @@ export async function importQuizData(
   } = options || {};
 
   // 1. Parse JSON
-  let data: any;
+  let data: unknown;
   if (typeof rawContent === 'string') {
     try {
       data = JSON.parse(rawContent);
-    } catch (err: any) {
-      throw new Error(`Invalid JSON syntax: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Invalid JSON syntax';
+      throw new Error(`Invalid JSON syntax: ${msg}`);
     }
   } else {
     data = rawContent;
@@ -65,7 +68,7 @@ export async function importQuizData(
   const quizTitle =
     unitTitle || (unitNumber ? `Unit ${unitNumber}` : 'English Grammar Quiz');
 
-  let targetQuiz: any = null;
+  let targetQuiz: typeof quizzes.$inferSelect | null = null;
 
   if (courseId) {
     // Only look within the designated course
@@ -83,18 +86,20 @@ export async function importQuizData(
           (unitNumber !== null && q.unitNumber === unitNumber)
       ) || null;
   } else {
-    targetQuiz = await db
+    const foundByHash = await db
       .select()
       .from(quizzes)
       .where(eq(quizzes.contentHash, contentHash))
       .get();
 
-    if (!targetQuiz && unitNumber !== null) {
-      targetQuiz = await db
+    if (foundByHash) {
+      targetQuiz = foundByHash;
+    } else if (unitNumber !== null) {
+      targetQuiz = (await db
         .select()
         .from(quizzes)
         .where(eq(quizzes.unitNumber, unitNumber))
-        .get();
+        .get()) || null;
     }
   }
 
@@ -147,8 +152,8 @@ export async function importQuizData(
 
   // 5. Calculate blank counts
   let totalBlanks = 0;
-  for (const q of validatedQuiz.questions) {
-    totalBlanks += q.blanks.length;
+  for (let i = 0; i < validatedQuiz.questions.length; i++) {
+    totalBlanks += validatedQuiz.questions[i].blanks.length;
   }
 
   const nowIso = new Date().toISOString();
@@ -161,8 +166,8 @@ export async function importQuizData(
     quizType: validatedQuiz.quizType,
     language: validatedQuiz.language,
     title: quizTitle,
-    unitNumber: unitNumber,
-    unitTitle: unitTitle,
+    unitNumber,
+    unitTitle,
     instructions: validatedQuiz.instructions || null,
     placeholderSyntax: validatedQuiz.placeholderSyntax,
     gradingConfig: validatedQuiz.grading || null,
@@ -178,12 +183,18 @@ export async function importQuizData(
     createdAt: nowIso,
   });
 
-  // 7. Insert Question & Blank records
+  // 7. Prepare and bulk-insert Question & Blank records
+  type QuestionInsertRow = typeof questions.$inferInsert;
+  type BlankInsertRow = typeof blanks.$inferInsert;
+
+  const questionRows: QuestionInsertRow[] = [];
+  const blankRows: BlankInsertRow[] = [];
+
   for (let qIndex = 0; qIndex < validatedQuiz.questions.length; qIndex++) {
     const q = validatedQuiz.questions[qIndex];
     const questionId = crypto.randomUUID();
 
-    await db.insert(questions).values({
+    questionRows.push({
       id: questionId,
       quizId: targetQuizId,
       externalId: q.id,
@@ -202,10 +213,8 @@ export async function importQuizData(
 
     for (let bIndex = 0; bIndex < q.blanks.length; bIndex++) {
       const b = q.blanks[bIndex];
-      const blankId = crypto.randomUUID();
-
-      await db.insert(blanks).values({
-        id: blankId,
+      blankRows.push({
+        id: crypto.randomUUID(),
         questionId,
         blankIdentifier: b.id,
         orderIndex: bIndex,
@@ -214,6 +223,18 @@ export async function importQuizData(
         objectiveId: b.objectiveId || null,
       });
     }
+  }
+
+  // Batch insert questions in chunks to respect SQLite limits
+  for (let i = 0; i < questionRows.length; i += SQLITE_BATCH_CHUNK_SIZE) {
+    const chunk = questionRows.slice(i, i + SQLITE_BATCH_CHUNK_SIZE);
+    await db.insert(questions).values(chunk);
+  }
+
+  // Batch insert blanks in chunks
+  for (let i = 0; i < blankRows.length; i += SQLITE_BATCH_CHUNK_SIZE) {
+    const chunk = blankRows.slice(i, i + SQLITE_BATCH_CHUNK_SIZE);
+    await db.insert(blanks).values(chunk);
   }
 
   return {

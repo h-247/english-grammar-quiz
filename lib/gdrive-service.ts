@@ -11,8 +11,12 @@ interface TokenResponse {
 }
 
 let cachedAccessToken: string | null = null;
+let inflightRefreshPromise: Promise<string | null> | null = null;
 
-// In-memory caches to prevent redundant Google Drive API calls
+const MAX_CACHE_ENTRIES = 500;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// In-memory caches with size limits to prevent memory leaks
 const metadataCache = new Map<
   string,
   { data: { id: string; name: string } | null; timestamp: number }
@@ -21,7 +25,16 @@ const filesCache = new Map<
   string,
   { data: DriveFileItem[]; timestamp: number }
 >();
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function setInCache<K, V>(map: Map<K, V>, key: K, value: V): void {
+  if (map.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = map.keys().next().value;
+    if (oldestKey !== undefined) {
+      map.delete(oldestKey);
+    }
+  }
+  map.set(key, value);
+}
 
 export function clearDriveCache(): void {
   metadataCache.clear();
@@ -82,7 +95,9 @@ async function getGoogleCredentials(): Promise<{
         .all();
 
       const map = new Map<string, string>();
-      for (const r of rows) map.set(r.key, r.value);
+      for (let i = 0; i < rows.length; i++) {
+        map.set(rows[i].key, rows[i].value);
+      }
 
       if (!accessToken && map.has('gdrive_access_token')) {
         accessToken = map.get('gdrive_access_token') || null;
@@ -145,6 +160,7 @@ async function getGoogleCredentials(): Promise<{
 /**
  * Refreshes an expired Google OAuth access token using a refresh token.
  * Persists the refreshed token to DB and disk where possible.
+ * Deduplicates concurrent refresh requests to prevent race conditions.
  */
 async function refreshAccessToken(
   refreshToken: string,
@@ -152,51 +168,61 @@ async function refreshAccessToken(
   clientSecret: string,
   tokenFilePath: string | null
 ): Promise<string | null> {
-  try {
-    const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: refreshToken,
-        grant_type: 'refresh_token',
-      }),
-    });
-
-    if (!refreshRes.ok) return null;
-
-    const newTokens = (await refreshRes.json()) as TokenResponse;
-    if (newTokens.access_token) {
-      cachedAccessToken = newTokens.access_token;
-
-      // 1. Persist to appSettings in DB
-      try {
-        const { getDb } = await import('@/db');
-        const { sql } = await import('drizzle-orm');
-        const db = getDb();
-        await db.run(
-          sql`INSERT OR REPLACE INTO app_settings (key, value) VALUES ('gdrive_access_token', ${newTokens.access_token})`
-        );
-      } catch {}
-
-      // 2. Persist to file if local Node
-      if (tokenFilePath && typeof process !== 'undefined' && process.versions?.node) {
-        try {
-          const fs = await import('fs');
-          const currentContent = JSON.parse(fs.readFileSync(tokenFilePath, 'utf8'));
-          if (!currentContent.token) currentContent.token = {};
-          currentContent.token.access_token = newTokens.access_token;
-          fs.writeFileSync(tokenFilePath, JSON.stringify(currentContent, null, 2));
-        } catch {}
-      }
-
-      return newTokens.access_token;
-    }
-  } catch (err) {
-    console.error('Error refreshing Google Drive token:', err);
+  if (inflightRefreshPromise) {
+    return inflightRefreshPromise;
   }
-  return null;
+
+  inflightRefreshPromise = (async () => {
+    try {
+      const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          refresh_token: refreshToken,
+          grant_type: 'refresh_token',
+        }),
+      });
+
+      if (!refreshRes.ok) return null;
+
+      const newTokens = (await refreshRes.json()) as TokenResponse;
+      if (newTokens.access_token) {
+        cachedAccessToken = newTokens.access_token;
+
+        // 1. Persist to appSettings in DB
+        try {
+          const { getDb } = await import('@/db');
+          const { sql } = await import('drizzle-orm');
+          const db = getDb();
+          await db.run(
+            sql`INSERT OR REPLACE INTO app_settings (key, value) VALUES ('gdrive_access_token', ${newTokens.access_token})`
+          );
+        } catch {}
+
+        // 2. Persist to file if local Node
+        if (tokenFilePath && typeof process !== 'undefined' && process.versions?.node) {
+          try {
+            const fs = await import('fs');
+            const currentContent = JSON.parse(fs.readFileSync(tokenFilePath, 'utf8'));
+            if (!currentContent.token) currentContent.token = {};
+            currentContent.token.access_token = newTokens.access_token;
+            fs.writeFileSync(tokenFilePath, JSON.stringify(currentContent, null, 2));
+          } catch {}
+        }
+
+        return newTokens.access_token;
+      }
+    } catch (err) {
+      console.error('Error refreshing Google Drive token:', err);
+    } finally {
+      inflightRefreshPromise = null;
+    }
+    return null;
+  })();
+
+  return inflightRefreshPromise;
 }
 
 /**
@@ -258,6 +284,8 @@ export async function fetchDriveFolderMetadata(
   folderId: string,
   options?: { forceRefresh?: boolean }
 ): Promise<{ id: string; name: string } | null> {
+  if (!folderId) return null;
+
   const now = Date.now();
   if (!options?.forceRefresh) {
     const cached = metadataCache.get(folderId);
@@ -274,7 +302,7 @@ export async function fetchDriveFolderMetadata(
       const data = (await res.json()) as { id: string; name: string };
       if (data?.name) {
         const result = { id: folderId, name: data.name };
-        metadataCache.set(folderId, { data: result, timestamp: now });
+        setInCache(metadataCache, folderId, { data: result, timestamp: now });
         return result;
       }
     }
@@ -285,11 +313,11 @@ export async function fetchDriveFolderMetadata(
   // Fallback for default repository folder
   if (folderId === '1wqG3TMDqwYCQv5eQ9eDyFKdy8X9lJWTd') {
     const defaultRes = { id: folderId, name: 'grammar' };
-    metadataCache.set(folderId, { data: defaultRes, timestamp: now });
+    setInCache(metadataCache, folderId, { data: defaultRes, timestamp: now });
     return defaultRes;
   }
 
-  metadataCache.set(folderId, { data: null, timestamp: now });
+  setInCache(metadataCache, folderId, { data: null, timestamp: now });
   return null;
 }
 
@@ -300,6 +328,8 @@ export async function listDriveFolderFiles(
   folderId: string,
   options?: { forceRefresh?: boolean }
 ): Promise<DriveFileItem[]> {
+  if (!folderId) return [];
+
   const now = Date.now();
   if (!options?.forceRefresh) {
     const cached = filesCache.get(folderId);
@@ -316,7 +346,7 @@ export async function listDriveFolderFiles(
     if (res && res.ok) {
       const data = (await res.json()) as { files?: DriveFileItem[] };
       const files = data.files || [];
-      filesCache.set(folderId, { data: files, timestamp: now });
+      setInCache(filesCache, folderId, { data: files, timestamp: now });
       return files;
     }
   } catch (err) {
@@ -332,6 +362,8 @@ export async function listDriveFolderFiles(
 export async function fetchDriveFileContent(
   fileId: string
 ): Promise<string | null> {
+  if (!fileId) return null;
+
   try {
     const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`;
     const res = await fetchWithDriveAuth(url);

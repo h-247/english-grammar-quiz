@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, memo } from "react";
 import Link from "next/link";
 import {
   ExternalLink,
@@ -18,6 +18,7 @@ import {
 import { CourseSummary, QuizSummary } from "@/types/quiz";
 import { DEFAULT_COURSE_BANNER, DEFAULT_PROMPT_CHAT_URL } from "@/lib/course-manifest";
 import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
+import { formatDateOnly } from "@/lib/utils";
 
 interface CourseCardProps {
   course: CourseSummary;
@@ -28,7 +29,7 @@ interface CourseCardProps {
   onStartQuiz: (quiz: QuizSummary, mode: "timed" | "practice") => void;
 }
 
-export function CourseCard({
+export const CourseCard = memo(function CourseCard({
   course,
   quizzes = [],
   onSyncDrive,
@@ -74,11 +75,7 @@ export function CourseCard({
   };
 
   const bannerImg = course.banner_url || DEFAULT_COURSE_BANNER;
-  const syncDate = new Date(course.updated_at).toLocaleDateString("en-US", {
-    month: "numeric",
-    day: "numeric",
-    year: "numeric",
-  });
+  const syncDate = formatDateOnly(course.updated_at);
 
   return (
     <div className="group rounded-2xl bg-[#1c1c1c] border border-[#2e2e2e] hover:border-[#444444] transition-all duration-200 overflow-hidden flex flex-col justify-between shadow-xl shadow-black/40">
@@ -329,4 +326,4 @@ export function CourseCard({
       </div>
     </div>
   );
-}
+});

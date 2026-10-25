@@ -1,13 +1,30 @@
-function sortKeys(obj: any): any {
+const BYTE_TO_HEX: string[] = Array.from({ length: 256 }, (_, i) =>
+  i.toString(16).padStart(2, '0')
+);
+
+const textEncoder = new TextEncoder();
+
+function bytesToHex(bytes: Uint8Array): string {
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) {
+    hex += BYTE_TO_HEX[bytes[i]];
+  }
+  return hex;
+}
+
+function sortKeys(obj: unknown): unknown {
   if (obj === null || typeof obj !== 'object') {
     return obj;
   }
   if (Array.isArray(obj)) {
     return obj.map(sortKeys);
   }
-  const sorted: Record<string, any> = {};
-  for (const key of Object.keys(obj).sort()) {
-    sorted[key] = sortKeys(obj[key]);
+  const record = obj as Record<string, unknown>;
+  const sorted: Record<string, unknown> = {};
+  const keys = Object.keys(record).sort();
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    sorted[key] = sortKeys(record[key]);
   }
   return sorted;
 }
@@ -24,8 +41,8 @@ export async function calculateContentHash(data: unknown): Promise<string> {
   } else {
     canonicalJson = JSON.stringify(sortKeys(data));
   }
-  const msgBuffer = new TextEncoder().encode(canonicalJson);
+
+  const msgBuffer = textEncoder.encode(canonicalJson);
   const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  return bytesToHex(new Uint8Array(hashBuffer));
 }

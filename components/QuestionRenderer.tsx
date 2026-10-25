@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useMemo, memo } from "react";
 import { QuestionPublic, QuestionCheckFeedback } from "@/types/quiz";
 import { cn } from "@/lib/utils";
 import { Sparkles, Loader2, CheckCircle2, XCircle, Lightbulb } from "lucide-react";
@@ -18,7 +18,9 @@ interface QuestionRendererProps {
   isChecking?: boolean;
 }
 
-export function QuestionRenderer({
+const PLACEHOLDER_SPLIT_REGEX = /(\{\{[^}]+\}\})/g;
+
+export const QuestionRenderer = memo(function QuestionRenderer({
   question,
   questionNumber,
   totalQuestions,
@@ -32,15 +34,29 @@ export function QuestionRenderer({
 }: QuestionRendererProps) {
   const firstInputRef = useRef<HTMLInputElement>(null);
 
-  // Focus the first empty blank or the first blank on question change
+  // Focus the first blank on question change
   useEffect(() => {
     if (!disabled && firstInputRef.current) {
       firstInputRef.current.focus();
     }
   }, [question.id, disabled]);
 
-  // Parse prompt preserving lines and placeholders
-  const lines = question.prompt.split("\n");
+  // Parse prompt preserving lines
+  const lines = useMemo(() => {
+    return (question.prompt || "").split("\n");
+  }, [question.prompt]);
+
+  // Build O(1) lookup map for practice feedback
+  const feedbackByBlank = useMemo(() => {
+    const map = new Map<string, NonNullable<typeof practiceFeedback>["blanks"][0]>();
+    if (practiceFeedback?.blanks) {
+      for (let i = 0; i < practiceFeedback.blanks.length; i++) {
+        const b = practiceFeedback.blanks[i];
+        map.set(b.blank_identifier, b);
+      }
+    }
+    return map;
+  }, [practiceFeedback]);
 
   let inputCounter = 0;
 
@@ -76,8 +92,7 @@ export function QuestionRenderer({
       {/* Render Prompt with inline editable blanks */}
       <div className="space-y-3.5 text-base sm:text-lg leading-relaxed text-[#ECECEC]">
         {lines.map((line, lineIdx) => {
-          // Split by {{n}} placeholders
-          const segments = line.split(/(\{\{[^}]+\}\})/g);
+          const segments = line.split(PLACEHOLDER_SPLIT_REGEX);
 
           return (
             <div key={lineIdx} className="min-h-[1.75rem] flex flex-wrap items-center gap-y-2">
@@ -88,9 +103,7 @@ export function QuestionRenderer({
                   const isFirstInput = inputCounter === 0;
                   inputCounter++;
 
-                  const blankFeedback = practiceFeedback?.blanks?.find(
-                    (b) => b.blank_identifier === blankId
-                  );
+                  const blankFeedback = feedbackByBlank.get(blankId);
 
                   return (
                     <span key={`${lineIdx}-${segIdx}-${blankId}`} className="inline-flex items-center gap-1.5 mx-1">
@@ -195,4 +208,4 @@ export function QuestionRenderer({
       )}
     </div>
   );
-}
+});

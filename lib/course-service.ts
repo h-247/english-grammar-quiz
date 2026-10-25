@@ -1,4 +1,4 @@
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, inArray } from 'drizzle-orm';
 import { courses, quizzes, quizAttempts, appSettings } from '@/db/schema';
 import {
   DEFAULT_COURSE_TITLE,
@@ -24,7 +24,7 @@ export async function ensureDefaultCourseExists(db: DbInstance) {
       .where(eq(appSettings.key, 'has_seeded_initial_course'))
       .get();
     if (setting) {
-      // Already seeded at least once. If courses table is empty, it means the user deleted courses; do not resurrect!
+      // Already seeded at least once. If courses table is empty, user deleted courses; do not resurrect.
       const anyExisting = await db.select().from(courses).limit(1).get();
       return anyExisting || null;
     }
@@ -99,6 +99,50 @@ export interface DriveSyncResult {
   fileReports: DriveFileReport[];
 }
 
+async function createPlaceholderQuiz(
+  db: DbInstance,
+  courseId: string,
+  params: {
+    title: string;
+    unitNumber: number | null;
+    unitTitle: string;
+    driveFileId: string;
+    sourceFilename: string;
+    contentHashKey: string;
+  }
+): Promise<void> {
+  const placeholderHash = await calculateContentHash(params.contentHashKey);
+  const nowIso = new Date().toISOString();
+
+  await db.insert(quizzes).values({
+    id: crypto.randomUUID(),
+    courseId,
+    contentHash: placeholderHash,
+    schemaVersion: '2.0.0',
+    quizType: 'multi_blank_fill_in_the_blank',
+    language: 'en',
+    title: params.title,
+    unitNumber: params.unitNumber,
+    unitTitle: params.unitTitle,
+    instructions:
+      'Fill in every numbered blank. Answers are tied to their numbered placeholders.',
+    placeholderSyntax: '{{n}}',
+    gradingConfig: {
+      mode: 'per_blank',
+      questionCompleteWhen: 'all_blanks_correct',
+    },
+    topics: params.unitNumber
+      ? [{ id: `unit_${params.unitNumber}`, title: params.unitTitle }]
+      : null,
+    questionCount: 0,
+    blankCount: 0,
+    status: 'pending_import',
+    driveFileId: params.driveFileId,
+    sourceFilename: params.sourceFilename,
+    createdAt: nowIso,
+  });
+}
+
 export async function syncCourseDriveQuizzes(
   courseId: string,
   db: DbInstance,
@@ -128,7 +172,8 @@ export async function syncCourseDriveQuizzes(
   const quizByUnitNum = new Map<number, (typeof existingCourseQuizzes)[0]>();
   const quizByFilename = new Map<string, (typeof existingCourseQuizzes)[0]>();
 
-  for (const q of existingCourseQuizzes) {
+  for (let i = 0; i < existingCourseQuizzes.length; i++) {
+    const q = existingCourseQuizzes[i];
     if (q.driveFileId) quizByDriveId.set(q.driveFileId, q);
     if (q.unitNumber !== null) quizByUnitNum.set(q.unitNumber, q);
     if (q.sourceFilename) quizByFilename.set(q.sourceFilename, q);
@@ -157,7 +202,8 @@ export async function syncCourseDriveQuizzes(
     const nextOffset = hasMore ? offset + batchSize : null;
 
     // Dynamic import & synchronization per file in the batch
-    for (const file of batchSlice) {
+    for (let i = 0; i < batchSlice.length; i++) {
+      const file = batchSlice[i];
       const filename = file.name;
       const driveFileId = file.id;
 
@@ -172,7 +218,7 @@ export async function syncCourseDriveQuizzes(
 
       if (existing) {
         let needsUpdate = false;
-        const updateData: Record<string, any> = {};
+        const updateData: Record<string, string> = {};
 
         if (!existing.driveFileId && driveFileId) {
           updateData.driveFileId = driveFileId;
@@ -209,13 +255,14 @@ export async function syncCourseDriveQuizzes(
                 error: 'Empty file content',
               });
             }
-          } catch (err: any) {
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Failed to parse or import file';
             failedCount++;
             fileReports.push({
               fileId: driveFileId,
               filename,
               status: 'failed',
-              error: err?.message || 'Failed to parse or import file',
+              error: msg,
             });
           }
         } else {
@@ -240,14 +287,15 @@ export async function syncCourseDriveQuizzes(
           syncedCount++;
           fileReports.push({ fileId: driveFileId, filename, status: 'synced' });
         }
-      } catch (err: any) {
-        console.warn(`File ${filename} corrupt or failed import:`, err?.message);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Import failed';
+        console.warn(`File ${filename} corrupt or failed import:`, msg);
         failedCount++;
         fileReports.push({
           fileId: driveFileId,
           filename,
           status: 'failed',
-          error: err?.message || 'Import failed',
+          error: msg,
         });
       }
 
@@ -259,35 +307,14 @@ export async function syncCourseDriveQuizzes(
             unitNum !== null
               ? `Unit ${String(unitNum).padStart(2, '0')}: ${cleanName}`
               : cleanName;
-          const placeholderHash = await calculateContentHash(
-            `course_${courseId}_file_${driveFileId}_${filename}`
-          );
-          const nowIso = new Date().toISOString();
 
-          await db.insert(quizzes).values({
-            id: crypto.randomUUID(),
-            courseId,
-            contentHash: placeholderHash,
-            schemaVersion: '2.0.0',
-            quizType: 'multi_blank_fill_in_the_blank',
-            language: 'en',
+          await createPlaceholderQuiz(db, courseId, {
             title: unitTitle,
             unitNumber: unitNum,
             unitTitle: cleanName,
-            instructions:
-              'Fill in every numbered blank. Answers are tied to their numbered placeholders.',
-            placeholderSyntax: '{{n}}',
-            gradingConfig: {
-              mode: 'per_blank',
-              questionCompleteWhen: 'all_blanks_correct',
-            },
-            topics: unitNum ? [{ id: `unit_${unitNum}`, title: cleanName }] : null,
-            questionCount: 0,
-            blankCount: 0,
-            status: 'pending_import',
             driveFileId,
             sourceFilename: filename,
-            createdAt: nowIso,
+            contentHashKey: `course_${courseId}_file_${driveFileId}_${filename}`,
           });
           syncedCount++;
           fileReports.push({ fileId: driveFileId, filename, status: 'updated' });
@@ -309,7 +336,8 @@ export async function syncCourseDriveQuizzes(
 
   // 2. Fallback to static manifest for default grammar course if Drive is unreachable
   if (course.driveFolderId === DEFAULT_DRIVE_FOLDER_ID) {
-    for (const item of GRAMMAR_UNITS_MANIFEST) {
+    for (let i = 0; i < GRAMMAR_UNITS_MANIFEST.length; i++) {
+      const item = GRAMMAR_UNITS_MANIFEST[i];
       const unitNum = item.unit;
       const unitTitle = item.title;
       const filename = item.filename;
@@ -318,7 +346,7 @@ export async function syncCourseDriveQuizzes(
       if (quizByUnitNum.has(unitNum)) {
         const q = quizByUnitNum.get(unitNum)!;
         let needsUpdate = false;
-        const updateData: Record<string, any> = {};
+        const updateData: Record<string, string> = {};
 
         if (!q.driveFileId && driveFileId) {
           updateData.driveFileId = driveFileId;
@@ -338,35 +366,13 @@ export async function syncCourseDriveQuizzes(
       }
 
       // Create pending placeholder quiz
-      const placeholderHash = await calculateContentHash(
-        `course_${courseId}_unit_${unitNum}_${filename}`
-      );
-      const nowIso = new Date().toISOString();
-
-      await db.insert(quizzes).values({
-        id: crypto.randomUUID(),
-        courseId,
-        contentHash: placeholderHash,
-        schemaVersion: '2.0.0',
-        quizType: 'multi_blank_fill_in_the_blank',
-        language: 'en',
+      await createPlaceholderQuiz(db, courseId, {
         title: `Unit ${String(unitNum).padStart(2, '0')}: ${unitTitle}`,
         unitNumber: unitNum,
         unitTitle,
-        instructions:
-          'Fill in every numbered blank. Answers are tied to their numbered placeholders.',
-        placeholderSyntax: '{{n}}',
-        gradingConfig: {
-          mode: 'per_blank',
-          questionCompleteWhen: 'all_blanks_correct',
-        },
-        topics: [{ id: `unit_${unitNum}`, title: unitTitle }],
-        questionCount: 0,
-        blankCount: 0,
-        status: 'pending_import',
         driveFileId,
         sourceFilename: filename,
-        createdAt: nowIso,
+        contentHashKey: `course_${courseId}_unit_${unitNum}_${filename}`,
       });
 
       syncedCount++;
@@ -398,35 +404,45 @@ export async function calculateCourseStats(
     .all();
 
   const total = courseQuizzes.length;
-  const ready = courseQuizzes.filter(
-    (q) => q.status === 'ready' && q.questionCount > 0
-  ).length;
-  const pending = courseQuizzes.filter(
-    (q) => q.status === 'pending_import' || q.questionCount === 0
-  ).length;
+  let ready = 0;
+  let pending = 0;
+  const quizIds: string[] = [];
 
-  const quizIds = courseQuizzes.map((q) => q.id);
+  for (let i = 0; i < courseQuizzes.length; i++) {
+    const q = courseQuizzes[i];
+    quizIds.push(q.id);
+    if (q.status === 'ready' && q.questionCount > 0) {
+      ready++;
+    } else if (q.status === 'pending_import' || q.questionCount === 0) {
+      pending++;
+    }
+  }
+
   let completed = 0;
 
   if (quizIds.length > 0) {
-    const attemptsQuery = db
+    const isLocal = !userId || userId === 'local-user';
+    const whereConditions = [
+      eq(quizAttempts.status, 'completed'),
+      inArray(quizAttempts.quizId, quizIds),
+    ];
+
+    if (!isLocal) {
+      whereConditions.push(eq(quizAttempts.userId, userId));
+    }
+
+    const completedAttempts = await db
       .select({
         quizId: quizAttempts.quizId,
       })
       .from(quizAttempts)
-      .where(
-        userId && userId !== 'local-user'
-          ? and(eq(quizAttempts.status, 'completed'), eq(quizAttempts.userId, userId))
-          : eq(quizAttempts.status, 'completed')
-      );
+      .where(and(...whereConditions))
+      .all();
 
-    const completedAttempts = await attemptsQuery.all();
-
-    const completedQuizIdSet = new Set(
-      completedAttempts
-        .filter((a) => quizIds.includes(a.quizId))
-        .map((a) => a.quizId)
-    );
+    const completedQuizIdSet = new Set<string>();
+    for (let i = 0; i < completedAttempts.length; i++) {
+      completedQuizIdSet.add(completedAttempts[i].quizId);
+    }
     completed = completedQuizIdSet.size;
   }
 

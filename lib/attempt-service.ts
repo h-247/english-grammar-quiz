@@ -1,5 +1,6 @@
-import { eq, and, desc, asc, inArray } from 'drizzle-orm';
+import { eq, and, desc, asc, inArray, sql } from 'drizzle-orm';
 import {
+  courses,
   quizzes,
   questions,
   blanks,
@@ -12,6 +13,38 @@ import { calculateContentHash } from './hash';
 import type { drizzle } from 'drizzle-orm/d1';
 
 type DbInstance = ReturnType<typeof drizzle>;
+
+const SQLITE_BATCH_CHUNK_SIZE = 50;
+
+export interface BlankReviewItem {
+  blank_identifier: string;
+  user_answer: string;
+  correct_answer: string;
+  accepted_answers: string[];
+  is_correct: boolean;
+  is_unanswered: boolean;
+}
+
+export interface AttemptResultQuestion {
+  question_id: string;
+  external_id: string;
+  order_index: number;
+  title: string;
+  topic: string;
+  section: string | null;
+  prompt: string;
+  explanation: string | null;
+  is_fully_correct: boolean;
+  blanks: BlankReviewItem[];
+}
+
+export interface TopicMasteryItem {
+  topic: string;
+  totalBlanks: number;
+  correctBlanks: number;
+  percentage: number;
+  masteryLevel: 'mastered' | 'proficient' | 'developing' | 'needs_practice';
+}
 
 export async function createAttempt(
   quizId: string,
@@ -32,7 +65,7 @@ export async function createAttempt(
 
   if (mode === 'practice') {
     durationSeconds = 0;
-    // 10 years in the future
+    // 10 years in the future for self-paced practice
     deadlineDate = new Date(now.getTime() + 10 * 365 * 24 * 60 * 60 * 1000);
   } else {
     const mins = durationMinutes && durationMinutes > 0 ? durationMinutes : 15;
@@ -41,7 +74,7 @@ export async function createAttempt(
   }
 
   const attemptId = crypto.randomUUID();
-  await db.insert(quizAttempts).values({
+  const attemptRow = {
     id: attemptId,
     quizId: quiz.id,
     userId: userId || 'local-user',
@@ -51,15 +84,11 @@ export async function createAttempt(
     status: 'in_progress',
     mode,
     createdAt: startedAt,
-  });
+  };
 
-  const attempt = (await db
-    .select()
-    .from(quizAttempts)
-    .where(eq(quizAttempts.id, attemptId))
-    .get())!;
+  await db.insert(quizAttempts).values(attemptRow);
 
-  return buildAttemptState(attempt, quiz, db);
+  return buildAttemptState(attemptRow as typeof quizAttempts.$inferSelect, quiz, db);
 }
 
 export async function getAttemptState(
@@ -147,7 +176,7 @@ export async function saveAttemptAnswers(
 
   // Load question and blank mapping for validation
   const quizQuestions = await db
-    .select()
+    .select({ id: questions.id })
     .from(questions)
     .where(eq(questions.quizId, attempt.quizId))
     .all();
@@ -156,14 +185,15 @@ export async function saveAttemptAnswers(
   const quizBlanks =
     questionIds.length > 0
       ? await db
-          .select()
+          .select({ questionId: blanks.questionId, blankIdentifier: blanks.blankIdentifier })
           .from(blanks)
           .where(inArray(blanks.questionId, questionIds))
           .all()
       : [];
 
   const validBlanksByQuestion = new Map<string, Set<string>>();
-  for (const b of quizBlanks) {
+  for (let i = 0; i < quizBlanks.length; i++) {
+    const b = quizBlanks[i];
     if (!validBlanksByQuestion.has(b.questionId)) {
       validBlanksByQuestion.set(b.questionId, new Set());
     }
@@ -178,12 +208,14 @@ export async function saveAttemptAnswers(
     .all();
 
   const respLookup = new Map<string, (typeof existingResponses)[0]>();
-  for (const r of existingResponses) {
+  for (let i = 0; i < existingResponses.length; i++) {
+    const r = existingResponses[i];
     respLookup.set(`${r.questionId}:${r.blankIdentifier}`, r);
   }
 
   let savedCount = 0;
   const nowIso = now.toISOString();
+  const rowsToInsert: (typeof userResponses.$inferInsert)[] = [];
 
   for (const [qId, blankAnswers] of Object.entries(answersData)) {
     const allowedBlanks = validBlanksByQuestion.get(qId);
@@ -205,7 +237,7 @@ export async function saveAttemptAnswers(
           savedCount++;
         }
       } else {
-        await db.insert(userResponses).values({
+        rowsToInsert.push({
           id: crypto.randomUUID(),
           attemptId,
           questionId: qId,
@@ -216,6 +248,12 @@ export async function saveAttemptAnswers(
         savedCount++;
       }
     }
+  }
+
+  // Batch insert new responses
+  for (let i = 0; i < rowsToInsert.length; i += SQLITE_BATCH_CHUNK_SIZE) {
+    const chunk = rowsToInsert.slice(i, i + SQLITE_BATCH_CHUNK_SIZE);
+    await db.insert(userResponses).values(chunk);
   }
 
   const remainingSeconds = Math.max(
@@ -276,15 +314,17 @@ export async function checkQuestionAnswers(
     .all();
 
   // Autosave answers
-  await saveAttemptAnswers(attemptId, { [questionId]: answers }, db);
+  await saveAttemptAnswers(attemptId, { [questionId]: answers }, db, userId);
 
-  const gradingConfig = (quiz.gradingConfig as any) || {};
-  const matchingConfig: AnswerMatchingConfig = gradingConfig.answerMatching || {};
+  const gradingConfig = (quiz.gradingConfig as Record<string, unknown>) || {};
+  const matchingConfig: AnswerMatchingConfig =
+    (gradingConfig.answerMatching as AnswerMatchingConfig) || {};
 
   let allBlanksCorrect = true;
-  const blankFeedbacks = [];
+  const blankFeedbacks: BlankReviewItem[] = [];
 
-  for (const b of qBlanks) {
+  for (let i = 0; i < qBlanks.length; i++) {
+    const b = qBlanks[i];
     const userText = answers[b.blankIdentifier] ?? '';
     const userTrimmed = userText.trim();
     const isUnanswered = userTrimmed === '';
@@ -446,17 +486,37 @@ export async function listAttemptHistory(
   db: DbInstance,
   userId?: string
 ) {
-  const query = db.select().from(quizAttempts);
-  const allAttempts =
-    userId && userId !== 'local-user'
-      ? await query
-          .where(eq(quizAttempts.userId, userId))
-          .orderBy(desc(quizAttempts.startedAt))
-          .all()
-      : await query.orderBy(desc(quizAttempts.startedAt)).all();
+  const isFilteredUser = userId && userId !== 'local-user';
+  const userCondition = isFilteredUser ? eq(quizAttempts.userId, userId) : undefined;
 
-  const total = allAttempts.length;
-  const pagedAttempts = allAttempts.slice(skip, skip + limit);
+  // Use SQL count(*) instead of loading all attempts into memory
+  const countRow = userCondition
+    ? await db
+        .select({ count: sql<number>`count(*)` })
+        .from(quizAttempts)
+        .where(userCondition)
+        .get()
+    : await db
+        .select({ count: sql<number>`count(*)` })
+        .from(quizAttempts)
+        .get();
+
+  const total = countRow?.count ?? 0;
+
+  // Use SQL limit and offset for efficient database-level pagination
+  const baseQuery = db.select().from(quizAttempts);
+  const pagedAttempts = userCondition
+    ? await baseQuery
+        .where(userCondition)
+        .orderBy(desc(quizAttempts.startedAt))
+        .limit(limit)
+        .offset(skip)
+        .all()
+    : await baseQuery
+        .orderBy(desc(quizAttempts.startedAt))
+        .limit(limit)
+        .offset(skip)
+        .all();
 
   const attemptIds = pagedAttempts.map((a) => a.id);
   const quizIds = Array.from(new Set(pagedAttempts.map((a) => a.quizId)));
@@ -466,8 +526,8 @@ export async function listAttemptHistory(
       ? await db.select().from(quizzes).where(inArray(quizzes.id, quizIds)).all()
       : [];
   const quizTitleMap = new Map<string, string>();
-  for (const q of quizList) {
-    quizTitleMap.set(q.id, q.title);
+  for (let i = 0; i < quizList.length; i++) {
+    quizTitleMap.set(quizList[i].id, quizList[i].title);
   }
 
   const resultsList =
@@ -479,8 +539,8 @@ export async function listAttemptHistory(
           .all()
       : [];
   const resultMap = new Map<string, (typeof resultsList)[0]>();
-  for (const r of resultsList) {
-    resultMap.set(r.attemptId, r);
+  for (let i = 0; i < resultsList.length; i++) {
+    resultMap.set(resultsList[i].attemptId, resultsList[i]);
   }
 
   const items = pagedAttempts.map((att) => {
@@ -506,7 +566,7 @@ export async function listAttemptHistory(
   return { total, items };
 }
 
-// --- Helpers ---
+// --- Internal Helpers ---
 
 async function buildAttemptState(
   attempt: typeof quizAttempts.$inferSelect,
@@ -532,7 +592,8 @@ async function buildAttemptState(
       : [];
 
   const blanksByQuestion = new Map<string, typeof quizBlanks>();
-  for (const b of quizBlanks) {
+  for (let i = 0; i < quizBlanks.length; i++) {
+    const b = quizBlanks[i];
     if (!blanksByQuestion.has(b.questionId)) {
       blanksByQuestion.set(b.questionId, []);
     }
@@ -546,7 +607,8 @@ async function buildAttemptState(
     .all();
 
   const savedAnswers: Record<string, Record<string, string>> = {};
-  for (const r of savedResponses) {
+  for (let i = 0; i < savedResponses.length; i++) {
+    const r = savedResponses[i];
     if (!savedAnswers[r.questionId]) {
       savedAnswers[r.questionId] = {};
     }
@@ -585,15 +647,13 @@ async function buildAttemptState(
     quiz_id: quiz.id,
     quiz_title: quiz.title,
     duration_seconds: attempt.durationSeconds,
+    remaining_seconds: remainingSeconds,
     started_at: attempt.startedAt,
     deadline_at: attempt.deadlineAt,
-    server_now: now.toISOString(),
-    remaining_seconds: remainingSeconds,
     status: attempt.status,
-    submission_reason: attempt.submissionReason,
     mode: attempt.mode,
-    saved_answers: savedAnswers,
     questions: publicQuestions,
+    saved_answers: savedAnswers,
   };
 }
 
@@ -640,7 +700,8 @@ async function gradeAttempt(
       : [];
 
   const blanksByQuestion = new Map<string, typeof quizBlanks>();
-  for (const b of quizBlanks) {
+  for (let i = 0; i < quizBlanks.length; i++) {
+    const b = quizBlanks[i];
     if (!blanksByQuestion.has(b.questionId)) {
       blanksByQuestion.set(b.questionId, []);
     }
@@ -654,35 +715,41 @@ async function gradeAttempt(
     .all();
 
   const userAnswers: Record<string, Record<string, string>> = {};
-  for (const r of responses) {
+  for (let i = 0; i < responses.length; i++) {
+    const r = responses[i];
     if (!userAnswers[r.questionId]) {
       userAnswers[r.questionId] = {};
     }
     userAnswers[r.questionId][r.blankIdentifier] = r.responseText;
   }
 
-  const gradingConfig = (quiz.gradingConfig as any) || {};
-  const matchingConfig: AnswerMatchingConfig = gradingConfig.answerMatching || {};
+  const gradingConfig = (quiz.gradingConfig as Record<string, unknown>) || {};
+  const matchingConfig: AnswerMatchingConfig =
+    (gradingConfig.answerMatching as AnswerMatchingConfig) || {};
 
-  const totalQuestions = quizQuestions.length;
+  let totalQuestions = quizQuestions.length;
   let totalBlanks = 0;
   let correctBlanks = 0;
   let incorrectBlanks = 0;
   let unansweredBlanks = 0;
   let fullyCorrectQuestions = 0;
 
-  const detailedQuestions = [];
+  const detailedQuestions: AttemptResultQuestion[] = [];
 
-  for (const q of quizQuestions) {
+  for (let i = 0; i < quizQuestions.length; i++) {
+    const q = quizQuestions[i];
     const qBlanks = blanksByQuestion.get(q.id) || [];
-    const qResponses = userAnswers[q.id] || {};
-    let allBlanksCorrect = true;
-    const blankReviews = [];
+    const qAnswers = userAnswers[q.id] || {};
 
-    for (const b of qBlanks) {
+    let allBlanksCorrect = true;
+    const blankReviews: BlankReviewItem[] = [];
+
+    for (let j = 0; j < qBlanks.length; j++) {
+      const b = qBlanks[j];
       totalBlanks++;
-      const userText = qResponses[b.blankIdentifier] ?? '';
-      const userTrimmed = userText.trim();
+
+      const submittedText = qAnswers[b.blankIdentifier] ?? '';
+      const userTrimmed = submittedText.trim();
       const isUnanswered = userTrimmed === '';
 
       const acceptedList: string[] = Array.isArray(b.acceptedAnswers)
@@ -691,21 +758,22 @@ async function gradeAttempt(
       const primaryCorrect = acceptedList[0] || '';
 
       let isCorrect = false;
-      if (!isUnanswered) {
-        isCorrect = evaluateBlank(userText, acceptedList, matchingConfig);
-      }
-
-      if (isCorrect) {
-        correctBlanks++;
-      } else {
-        incorrectBlanks++;
-        if (isUnanswered) unansweredBlanks++;
+      if (isUnanswered) {
+        unansweredBlanks++;
         allBlanksCorrect = false;
+      } else {
+        isCorrect = evaluateBlank(submittedText, acceptedList, matchingConfig);
+        if (isCorrect) {
+          correctBlanks++;
+        } else {
+          incorrectBlanks++;
+          allBlanksCorrect = false;
+        }
       }
 
       blankReviews.push({
         blank_identifier: b.blankIdentifier,
-        user_answer: userText,
+        user_answer: submittedText,
         correct_answer: primaryCorrect,
         accepted_answers: acceptedList,
         is_correct: isCorrect,
@@ -777,7 +845,7 @@ function buildResultResponse(
   result: typeof attemptResults.$inferSelect,
   quizTitle: string
 ) {
-  const detailed = (result.detailedResults as any) || {};
+  const detailed = (result.detailedResults as { questions?: AttemptResultQuestion[] }) || {};
   return {
     attempt_id: attempt.id,
     quiz_id: attempt.quizId,
@@ -795,16 +863,8 @@ function buildResultResponse(
     duration_seconds: attempt.durationSeconds,
     started_at: attempt.startedAt,
     finalized_at: result.finalizedAt,
-    questions: detailed.questions || [],
+    questions: (detailed.questions as AttemptResultQuestion[]) || [],
   };
-}
-
-export interface TopicMasteryItem {
-  topic: string;
-  totalBlanks: number;
-  correctBlanks: number;
-  percentage: number;
-  masteryLevel: 'mastered' | 'proficient' | 'developing' | 'needs_practice';
 }
 
 /**
@@ -818,15 +878,17 @@ export function calculateAttemptTopicMastery(
 ): TopicMasteryItem[] {
   const statsMap = new Map<string, { total: number; correct: number }>();
 
-  for (const q of detailedQuestions) {
+  for (let i = 0; i < detailedQuestions.length; i++) {
+    const q = detailedQuestions[i];
     const rawTopic = (q.topic || 'General Grammar').trim();
     if (!statsMap.has(rawTopic)) {
       statsMap.set(rawTopic, { total: 0, correct: 0 });
     }
     const stat = statsMap.get(rawTopic)!;
-    for (const b of q.blanks || []) {
+    const qBlanks = q.blanks || [];
+    for (let j = 0; j < qBlanks.length; j++) {
       stat.total++;
-      if (b.is_correct) stat.correct++;
+      if (qBlanks[j].is_correct) stat.correct++;
     }
   }
 
@@ -884,9 +946,10 @@ export async function getUserTopicMastery(
   }> = [];
 
   let sumAccuracy = 0;
-  for (const row of rows) {
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
     sumAccuracy += row.accuracyPercentage || 0;
-    const detailed = (row.detailedResults as any) || {};
+    const detailed = (row.detailedResults as { questions?: AttemptResultQuestion[] }) || {};
     if (Array.isArray(detailed.questions)) {
       allQuestions.push(...detailed.questions);
     }
@@ -904,7 +967,79 @@ export async function getUserTopicMastery(
 }
 
 /**
+ * Reusable helper to replicate a list of questions and their blanks into a new dynamic quiz.
+ * Performs batch insertions to eliminate N+1 round trips.
+ */
+async function replicateQuestionsToQuiz(
+  db: DbInstance,
+  targetQuizId: string,
+  sourceQuestions: (typeof questions.$inferSelect)[],
+  sourceBlanks: (typeof blanks.$inferSelect)[]
+): Promise<void> {
+  const blanksByQuestionId = new Map<string, (typeof blanks.$inferSelect)[]>();
+  for (let i = 0; i < sourceBlanks.length; i++) {
+    const b = sourceBlanks[i];
+    if (!blanksByQuestionId.has(b.questionId)) {
+      blanksByQuestionId.set(b.questionId, []);
+    }
+    blanksByQuestionId.get(b.questionId)!.push(b);
+  }
+
+  const newQuestionRows: (typeof questions.$inferInsert)[] = [];
+  const newBlankRows: (typeof blanks.$inferInsert)[] = [];
+
+  for (let i = 0; i < sourceQuestions.length; i++) {
+    const origQ = sourceQuestions[i];
+    const newQId = crypto.randomUUID();
+
+    newQuestionRows.push({
+      id: newQId,
+      quizId: targetQuizId,
+      externalId: `${origQ.externalId}_mistake`,
+      orderIndex: i + 1,
+      topic: origQ.topic,
+      section: origQ.section,
+      questionType: origQ.questionType,
+      title: origQ.title,
+      prompt: origQ.prompt,
+      blankCount: origQ.blankCount,
+      objectiveIds: origQ.objectiveIds,
+      explanation: origQ.explanation,
+      difficulty: origQ.difficulty,
+      sourcePdfPage: origQ.sourcePdfPage,
+    });
+
+    const origBlanks = blanksByQuestionId.get(origQ.id) || [];
+    for (let j = 0; j < origBlanks.length; j++) {
+      const ob = origBlanks[j];
+      newBlankRows.push({
+        id: crypto.randomUUID(),
+        questionId: newQId,
+        blankIdentifier: ob.blankIdentifier,
+        orderIndex: ob.orderIndex,
+        acceptedAnswers: ob.acceptedAnswers,
+        sourceQuestionId: ob.sourceQuestionId,
+        objectiveId: ob.objectiveId,
+      });
+    }
+  }
+
+  // Batch insert questions
+  for (let i = 0; i < newQuestionRows.length; i += SQLITE_BATCH_CHUNK_SIZE) {
+    const chunk = newQuestionRows.slice(i, i + SQLITE_BATCH_CHUNK_SIZE);
+    await db.insert(questions).values(chunk);
+  }
+
+  // Batch insert blanks
+  for (let i = 0; i < newBlankRows.length; i += SQLITE_BATCH_CHUNK_SIZE) {
+    const chunk = newBlankRows.slice(i, i + SQLITE_BATCH_CHUNK_SIZE);
+    await db.insert(blanks).values(chunk);
+  }
+}
+
+/**
  * Creates a dynamic "Practice Mistakes Only" attempt from a specific past attempt.
+ * Batch queries questions and blanks to avoid N+1 bottlenecks.
  */
 export async function createMistakesPracticeAttempt(
   sourceAttemptId: string,
@@ -922,22 +1057,40 @@ export async function createMistakesPracticeAttempt(
     throw new Error(`Original quiz ${result.quiz_id} not found.`);
   }
 
-  const missedQuestions = result.questions.filter((q) => !q.is_fully_correct);
+  const missedQuestions: AttemptResultQuestion[] = result.questions.filter(
+    (q: AttemptResultQuestion) => !q.is_fully_correct
+  );
   if (missedQuestions.length === 0) {
     throw new Error(
       'Awesome work! All questions in this attempt were answered correctly, so there are no mistakes to review.'
     );
   }
 
-  // Create a dynamic practice quiz containing only the missed questions
+  const missedQIds = missedQuestions.map((q) => q.question_id);
+
+  // Batch fetch source questions and blanks in 2 queries
+  const origQuestions = await db
+    .select()
+    .from(questions)
+    .where(inArray(questions.id, missedQIds))
+    .all();
+
+  const origBlanks = await db
+    .select()
+    .from(blanks)
+    .where(inArray(blanks.questionId, missedQIds))
+    .orderBy(asc(blanks.orderIndex))
+    .all();
+
+  // Create dynamic practice quiz
   const dynamicQuizId = crypto.randomUUID();
   const hash = await calculateContentHash(
     `practice_mistakes_${sourceAttemptId}_${Date.now()}`
   );
 
   let totalBlanks = 0;
-  for (const q of missedQuestions) {
-    totalBlanks += q.blanks?.length || 0;
+  for (let i = 0; i < missedQuestions.length; i++) {
+    totalBlanks += missedQuestions[i].blanks?.length || 0;
   }
 
   const nowIso = new Date().toISOString();
@@ -961,54 +1114,8 @@ export async function createMistakesPracticeAttempt(
     createdAt: nowIso,
   });
 
-  // Duplicate the missed questions and their blanks for the new dynamic quiz
-  let orderIdx = 1;
-  for (const mq of missedQuestions) {
-    const origQ = await db
-      .select()
-      .from(questions)
-      .where(eq(questions.id, mq.question_id))
-      .get();
-
-    if (!origQ) continue;
-
-    const newQId = crypto.randomUUID();
-    await db.insert(questions).values({
-      id: newQId,
-      quizId: dynamicQuizId,
-      externalId: `${origQ.externalId}_mistake`,
-      orderIndex: orderIdx++,
-      topic: origQ.topic,
-      section: origQ.section,
-      questionType: origQ.questionType,
-      title: origQ.title,
-      prompt: origQ.prompt,
-      blankCount: origQ.blankCount,
-      objectiveIds: origQ.objectiveIds,
-      explanation: origQ.explanation,
-      difficulty: origQ.difficulty,
-      sourcePdfPage: origQ.sourcePdfPage,
-    });
-
-    const origBlanks = await db
-      .select()
-      .from(blanks)
-      .where(eq(blanks.questionId, origQ.id))
-      .orderBy(asc(blanks.orderIndex))
-      .all();
-
-    for (const ob of origBlanks) {
-      await db.insert(blanks).values({
-        id: crypto.randomUUID(),
-        questionId: newQId,
-        blankIdentifier: ob.blankIdentifier,
-        orderIndex: ob.orderIndex,
-        acceptedAnswers: ob.acceptedAnswers,
-        sourceQuestionId: ob.sourceQuestionId,
-        objectiveId: ob.objectiveId,
-      });
-    }
-  }
+  // Replicate questions and blanks in bulk
+  await replicateQuestionsToQuiz(db, dynamicQuizId, origQuestions, origBlanks);
 
   // Create an immediate self-paced practice attempt
   const attempt = await createAttempt(
@@ -1046,7 +1153,7 @@ export async function createCourseMistakesPracticeAttempt(
   }
 
   const courseQuizzes = await db
-    .select()
+    .select({ id: quizzes.id })
     .from(quizzes)
     .where(eq(quizzes.courseId, courseId))
     .all();
@@ -1057,7 +1164,12 @@ export async function createCourseMistakesPracticeAttempt(
   }
 
   // Get completed attempts for these quizzes
-  const attQuery = db
+  const conditions = [inArray(quizAttempts.quizId, quizIds)];
+  if (!isLocal) {
+    conditions.push(eq(quizAttempts.userId, userId));
+  }
+
+  const rows = await db
     .select({
       id: quizAttempts.id,
       quizId: quizAttempts.quizId,
@@ -1065,11 +1177,8 @@ export async function createCourseMistakesPracticeAttempt(
     })
     .from(quizAttempts)
     .innerJoin(attemptResults, eq(quizAttempts.id, attemptResults.attemptId))
-    .where(inArray(quizAttempts.quizId, quizIds));
-
-  const rows = isLocal
-    ? await attQuery.all()
-    : await attQuery.where(eq(quizAttempts.userId, userId)).all();
+    .where(and(...conditions))
+    .all();
 
   if (rows.length === 0) {
     throw new Error('No completed quiz attempts found for this course.');
@@ -1077,10 +1186,11 @@ export async function createCourseMistakesPracticeAttempt(
 
   // Collect missed question IDs (deduplicated)
   const missedQuestionIds = new Set<string>();
-  for (const row of rows) {
-    const detailed = (row.detailedResults as any) || {};
+  for (let i = 0; i < rows.length; i++) {
+    const detailed = (rows[i].detailedResults as { questions?: AttemptResultQuestion[] }) || {};
     if (Array.isArray(detailed.questions)) {
-      for (const q of detailed.questions) {
+      for (let j = 0; j < detailed.questions.length; j++) {
+        const q = detailed.questions[j];
         if (!q.is_fully_correct && q.question_id) {
           missedQuestionIds.add(q.question_id);
         }
@@ -1092,10 +1202,20 @@ export async function createCourseMistakesPracticeAttempt(
     throw new Error('Great job! No mistakes found across any quizzes in this course.');
   }
 
+  const missedQIdArray = Array.from(missedQuestionIds);
+
+  // Batch fetch questions and blanks in 2 queries
   const missedQList = await db
     .select()
     .from(questions)
-    .where(inArray(questions.id, Array.from(missedQuestionIds)))
+    .where(inArray(questions.id, missedQIdArray))
+    .all();
+
+  const missedBlanksList = await db
+    .select()
+    .from(blanks)
+    .where(inArray(blanks.questionId, missedQIdArray))
+    .orderBy(asc(blanks.orderIndex))
     .all();
 
   const dynamicQuizId = crypto.randomUUID();
@@ -1104,8 +1224,8 @@ export async function createCourseMistakesPracticeAttempt(
   );
 
   let totalBlanks = 0;
-  for (const q of missedQList) {
-    totalBlanks += q.blankCount || 0;
+  for (let i = 0; i < missedQList.length; i++) {
+    totalBlanks += missedQList[i].blankCount || 0;
   }
 
   const nowIso = new Date().toISOString();
@@ -1129,45 +1249,8 @@ export async function createCourseMistakesPracticeAttempt(
     createdAt: nowIso,
   });
 
-  let orderIdx = 1;
-  for (const origQ of missedQList) {
-    const newQId = crypto.randomUUID();
-    await db.insert(questions).values({
-      id: newQId,
-      quizId: dynamicQuizId,
-      externalId: `${origQ.externalId}_mistake`,
-      orderIndex: orderIdx++,
-      topic: origQ.topic,
-      section: origQ.section,
-      questionType: origQ.questionType,
-      title: origQ.title,
-      prompt: origQ.prompt,
-      blankCount: origQ.blankCount,
-      objectiveIds: origQ.objectiveIds,
-      explanation: origQ.explanation,
-      difficulty: origQ.difficulty,
-      sourcePdfPage: origQ.sourcePdfPage,
-    });
-
-    const origBlanks = await db
-      .select()
-      .from(blanks)
-      .where(eq(blanks.questionId, origQ.id))
-      .orderBy(asc(blanks.orderIndex))
-      .all();
-
-    for (const ob of origBlanks) {
-      await db.insert(blanks).values({
-        id: crypto.randomUUID(),
-        questionId: newQId,
-        blankIdentifier: ob.blankIdentifier,
-        orderIndex: ob.orderIndex,
-        acceptedAnswers: ob.acceptedAnswers,
-        sourceQuestionId: ob.sourceQuestionId,
-        objectiveId: ob.objectiveId,
-      });
-    }
-  }
+  // Replicate questions and blanks in bulk
+  await replicateQuestionsToQuiz(db, dynamicQuizId, missedQList, missedBlanksList);
 
   const attempt = await createAttempt(dynamicQuizId, 0, 'practice', db, userId);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, memo } from "react";
 import { Clock, AlertTriangle, BookOpen } from "lucide-react";
 import { formatTime, cn } from "@/lib/utils";
 import { useToast } from "@/components/Toast";
@@ -14,7 +14,7 @@ interface CountdownTimerProps {
   className?: string;
 }
 
-export function CountdownTimer({
+export const CountdownTimer = memo(function CountdownTimer({
   deadlineAt,
   startedAt,
   serverNow,
@@ -23,6 +23,11 @@ export function CountdownTimer({
   className,
 }: CountdownTimerProps) {
   const { showToast } = useToast();
+  const showToastRef = useRef(showToast);
+
+  useEffect(() => {
+    showToastRef.current = showToast;
+  }, [showToast]);
 
   // For timed exam mode: countdown
   const [secondsLeft, setSecondsLeft] = useState<number>(() => {
@@ -75,7 +80,7 @@ export function CountdownTimer({
       // 60-second warning notification
       if (left <= 60 && left > 0 && !warnedRef.current) {
         warnedRef.current = true;
-        showToast("One minute remaining! Please finalize your answers.", "warning", 5000);
+        showToastRef.current("One minute remaining! Please finalize your answers.", "warning", 5000);
       }
 
       // Expiration trigger
@@ -89,7 +94,7 @@ export function CountdownTimer({
     const interval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(interval);
-  }, [deadlineAt, startedAt, mode, showToast]);
+  }, [deadlineAt, startedAt, mode]);
 
   // Practice mode display
   if (mode === "practice") {
@@ -99,37 +104,40 @@ export function CountdownTimer({
           "flex items-center gap-2 px-3.5 py-1.5 rounded-lg border border-emerald-500/40 bg-emerald-950/30 text-emerald-300 font-mono text-sm font-semibold shadow-sm",
           className
         )}
-        aria-label={`Practice session elapsed time: ${formatTime(elapsedSeconds)}`}
+        title="Self-paced practice mode (Stopwatch)"
       >
         <BookOpen className="w-4 h-4 text-emerald-400" />
-        <span>Practice • {formatTime(elapsedSeconds)}</span>
+        <span className="text-xs uppercase tracking-wider font-sans text-emerald-400 font-bold hidden sm:inline">
+          Practice
+        </span>
+        <span aria-live="off">{formatTime(elapsedSeconds)}</span>
       </div>
     );
   }
 
-  // Timed exam display
-  const isLowTime = secondsLeft <= 60;
-  const isCritical = secondsLeft <= 15;
+  // Timed exam mode display
+  const isUrgent = secondsLeft <= 60;
+  const isWarning = secondsLeft <= 180 && !isUrgent;
 
   return (
     <div
       className={cn(
-        "flex items-center gap-2 px-3.5 py-1.5 rounded-lg border font-mono text-sm font-semibold transition-all shadow-sm",
-        isCritical
-          ? "bg-rose-950/60 border-rose-500/80 text-rose-300 animate-pulse"
-          : isLowTime
-          ? "bg-amber-950/50 border-amber-500/70 text-amber-300"
-          : "bg-[#262626] border-[#383838] text-[#ECECEC]",
+        "flex items-center gap-2 px-3.5 py-1.5 rounded-lg border font-mono text-sm font-semibold shadow-sm transition-colors",
+        isUrgent
+          ? "border-rose-500 bg-rose-950/50 text-rose-200 animate-pulse"
+          : isWarning
+          ? "border-amber-500/60 bg-amber-950/40 text-amber-200"
+          : "border-[#383838] bg-[#1A1A1A] text-[#ECECEC]",
         className
       )}
-      aria-label={`Time remaining: ${formatTime(secondsLeft)}`}
+      title="Remaining time before auto-submission"
     >
-      {isLowTime ? (
-        <AlertTriangle className={cn("w-4 h-4", isCritical ? "text-rose-400" : "text-amber-400")} />
+      {isUrgent ? (
+        <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
       ) : (
-        <Clock className="w-4 h-4 text-[#9CA3AF]" />
+        <Clock className="w-4 h-4 text-[#9CA3AF] shrink-0" />
       )}
-      <span>{formatTime(secondsLeft)}</span>
+      <span aria-live="polite">{formatTime(secondsLeft)}</span>
     </div>
   );
-}
+});

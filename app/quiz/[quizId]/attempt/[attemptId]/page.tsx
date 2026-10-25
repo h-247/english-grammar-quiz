@@ -114,24 +114,26 @@ function QuizSessionContent() {
     if (!currentQuestion) return;
 
     const qId = currentQuestion.id;
-    const updated = {
-      ...answers,
-      [qId]: {
-        ...answers[qId],
-        [blankId]: value,
-      },
-    };
+    setAnswers((prev) => {
+      const updated = {
+        ...prev,
+        [qId]: {
+          ...prev[qId],
+          [blankId]: value,
+        },
+      };
 
-    setAnswers(updated);
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+
+      debounceTimerRef.current = setTimeout(() => {
+        triggerSave(updated);
+      }, 1200);
+
+      return updated;
+    });
     setSaveStatus("saving");
-
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    debounceTimerRef.current = setTimeout(() => {
-      triggerSave(updated);
-    }, 1200);
   };
 
   // Immediate save when changing questions

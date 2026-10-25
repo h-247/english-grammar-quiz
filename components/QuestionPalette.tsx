@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo, memo } from "react";
 import { QuestionPublic } from "@/types/quiz";
 import { cn } from "@/lib/utils";
 
@@ -12,25 +12,39 @@ interface QuestionPaletteProps {
   className?: string;
 }
 
-export function QuestionPalette({
+export const QuestionPalette = memo(function QuestionPalette({
   questions,
   currentIndex,
   userAnswers,
   onSelectQuestion,
   className,
 }: QuestionPaletteProps) {
-  // A question is answered if all its required blanks have nonempty responses
-  const isQuestionAnswered = (q: QuestionPublic): boolean => {
-    const qAnswers = userAnswers[q.id] || {};
-    if (q.blanks.length === 0) return false;
-    return q.blanks.every((b) => {
-      const val = qAnswers[b.blank_identifier];
-      return typeof val === "string" && val.trim().length > 0;
-    });
-  };
+  // Precompute answered questions set in a single O(N*M) pass
+  const answeredSet = useMemo(() => {
+    const set = new Set<string>();
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      const qAnswers = userAnswers[q.id];
+      if (q.blanks.length > 0 && qAnswers) {
+        let isAllAnswered = true;
+        for (let j = 0; j < q.blanks.length; j++) {
+          const val = qAnswers[q.blanks[j].blank_identifier];
+          if (typeof val !== "string" || val.trim().length === 0) {
+            isAllAnswered = false;
+            break;
+          }
+        }
+        if (isAllAnswered) {
+          set.add(q.id);
+        }
+      }
+    }
+    return set;
+  }, [questions, userAnswers]);
 
-  const answeredCount = questions.filter(isQuestionAnswered).length;
-  const progressPercent = questions.length > 0 ? Math.round((answeredCount / questions.length) * 100) : 0;
+  const answeredCount = answeredSet.size;
+  const progressPercent =
+    questions.length > 0 ? Math.round((answeredCount / questions.length) * 100) : 0;
 
   return (
     <div className={cn("bg-[#262626] border border-[#383838] rounded-xl p-5 shadow-sm", className)}>
@@ -54,7 +68,7 @@ export function QuestionPalette({
       <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-11 lg:grid-cols-8 xl:grid-cols-11 gap-2">
         {questions.map((q, idx) => {
           const isCurrent = idx === currentIndex;
-          const answered = isQuestionAnswered(q);
+          const answered = answeredSet.has(q.id);
 
           return (
             <button
@@ -96,4 +110,4 @@ export function QuestionPalette({
       </div>
     </div>
   );
-}
+});
