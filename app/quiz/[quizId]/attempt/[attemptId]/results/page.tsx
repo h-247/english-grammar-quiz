@@ -235,7 +235,7 @@ function QuizResultsContent() {
                 className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[#333333] hover:bg-[#404040] text-[#ECECEC] transition-colors border border-[#383838] cursor-pointer"
               >
                 <History className="w-4 h-4 text-blue-400" />
-                <span>Xem lịch sử bài quiz này</span>
+                <span>Quiz Attempt History</span>
               </button>
             </div>
 

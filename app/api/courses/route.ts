@@ -122,7 +122,7 @@ export async function POST(request: Request) {
       if (existingByFolder) {
         return NextResponse.json(
           {
-            detail: `Khóa học từ thư mục Google Drive này đã tồn tại trong thư viện: "${existingByFolder.title}". Không được thêm khóa học đã có trong repo.`,
+            detail: `A course from this Google Drive folder already exists in the library: "${existingByFolder.title}". Duplicate courses cannot be added.`,
             existing_course_id: existingByFolder.id,
           },
           { status: 409 }
@@ -144,7 +144,7 @@ export async function POST(request: Request) {
     if (existingByTitle) {
       return NextResponse.json(
         {
-          detail: `Khóa học với tiêu đề "${finalTitle}" đã tồn tại trong thư viện. Không được thêm khóa học đã có trong repo.`,
+          detail: `A course with the title "${finalTitle}" already exists in the library. Duplicate courses cannot be added.`,
           existing_course_id: existingByTitle.id,
         },
         { status: 409 }

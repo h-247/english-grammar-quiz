@@ -68,7 +68,7 @@ export function QuizHistoryModal({
         const msg =
           err instanceof Error
             ? err.message
-            : "Không thể tải lịch sử làm bài của quiz này.";
+            : "Failed to load attempt history for this quiz.";
         setError(msg);
       } finally {
         setIsLoading(false);
@@ -151,7 +151,7 @@ export function QuizHistoryModal({
                 </h2>
               </div>
               <p className="text-xs text-[#9CA3AF] mt-0.5">
-                Lịch sử làm bài & Thống kê điểm số tương ứng
+                Attempt History & Score Statistics
               </p>
             </div>
           </div>
@@ -160,14 +160,14 @@ export function QuizHistoryModal({
             <button
               onClick={() => loadHistory(true)}
               disabled={isRefreshing || isLoading}
-              title="Làm mới dữ liệu"
+              title="Refresh data"
               className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#333333] transition-colors cursor-pointer disabled:opacity-50"
             >
               <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin text-blue-400")} />
             </button>
             <button
               onClick={onClose}
-              title="Đóng modal"
+              title="Close modal"
               className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#333333] transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
@@ -180,18 +180,18 @@ export function QuizHistoryModal({
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20 text-[#9CA3AF]">
               <Loader2 className="w-8 h-8 animate-spin text-blue-400 mb-3" />
-              <span className="text-sm">Đang tải lịch sử & thống kê điểm...</span>
+              <span className="text-sm">Loading history & score statistics...</span>
             </div>
           ) : error ? (
             <div className="p-6 bg-rose-950/30 border border-rose-500/40 rounded-xl text-center space-y-3">
               <AlertCircle className="w-8 h-8 text-rose-400 mx-auto" />
-              <h3 className="text-base font-semibold text-white">Lỗi tải dữ liệu</h3>
+              <h3 className="text-base font-semibold text-white">Error loading data</h3>
               <p className="text-xs text-rose-300">{error}</p>
               <button
                 onClick={() => loadHistory()}
                 className="px-4 py-2 rounded-lg text-xs font-semibold bg-[#2e2e2e] hover:bg-[#3e3e3e] text-white transition-colors cursor-pointer"
               >
-                Thử lại
+                Try Again
               </button>
             </div>
           ) : stats ? (
@@ -201,10 +201,10 @@ export function QuizHistoryModal({
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
                     <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
-                    <span>Thống kê điểm số</span>
+                    <span>Score Statistics</span>
                   </h3>
                   <span className="text-xs text-gray-400">
-                    {stats.completed_attempts} / {stats.total_attempts} lần hoàn thành
+                    {stats.completed_attempts} of {stats.total_attempts} completed
                   </span>
                 </div>
 
@@ -212,7 +212,7 @@ export function QuizHistoryModal({
                   {/* Highest Score */}
                   <div className="p-3.5 rounded-xl bg-[#252525] border border-[#353535] relative overflow-hidden group hover:border-[#454545] transition-colors">
                     <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
-                      <span>Điểm cao nhất</span>
+                      <span>Highest Score</span>
                       <Trophy className="w-3.5 h-3.5 text-amber-400" />
                     </div>
                     <div className={cn("text-2xl font-extrabold", getScoreColor(stats.completed_attempts > 0 ? stats.highest_score : null))}>
@@ -221,56 +221,56 @@ export function QuizHistoryModal({
                     <div className="text-[11px] text-gray-500 mt-1 truncate">
                       {stats.completed_attempts > 0
                         ? `${stats.highest_correct_blanks}/${stats.total_blanks} blanks`
-                        : "Chưa có điểm"}
+                        : "No score yet"}
                     </div>
                   </div>
 
                   {/* Latest Score */}
                   <div className="p-3.5 rounded-xl bg-[#252525] border border-[#353535] group hover:border-[#454545] transition-colors">
                     <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
-                      <span>Điểm gần nhất</span>
+                      <span>Latest Score</span>
                       <Zap className="w-3.5 h-3.5 text-blue-400" />
                     </div>
                     <div className={cn("text-2xl font-extrabold", getScoreColor(stats.latest_score))}>
                       {stats.latest_score != null ? `${stats.latest_score}%` : "—"}
                     </div>
                     <div className="text-[11px] text-gray-500 mt-1 truncate">
-                      {attempts.length > 0 ? "Lần làm mới nhất" : "Chưa có điểm"}
+                      {attempts.length > 0 ? "Most recent attempt" : "No score yet"}
                     </div>
                   </div>
 
                   {/* Average Score */}
                   <div className="p-3.5 rounded-xl bg-[#252525] border border-[#353535] group hover:border-[#454545] transition-colors">
                     <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
-                      <span>Điểm trung bình</span>
+                      <span>Average Score</span>
                       <Target className="w-3.5 h-3.5 text-emerald-400" />
                     </div>
                     <div className={cn("text-2xl font-extrabold", getScoreColor(stats.completed_attempts > 0 ? stats.average_score : null))}>
                       {stats.completed_attempts > 0 ? `${stats.average_score}%` : "—"}
                     </div>
                     <div className="text-[11px] text-gray-500 mt-1 truncate">
-                      {stats.completed_attempts > 0 ? `Qua ${stats.completed_attempts} bài thi` : "Chưa có"}
+                      {stats.completed_attempts > 0 ? `Across ${stats.completed_attempts} attempts` : "None"}
                     </div>
                   </div>
 
                   {/* Total Attempts */}
                   <div className="p-3.5 rounded-xl bg-[#252525] border border-[#353535] group hover:border-[#454545] transition-colors">
                     <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
-                      <span>Số lần làm</span>
+                      <span>Total Attempts</span>
                       <Layers className="w-3.5 h-3.5 text-purple-400" />
                     </div>
                     <div className="text-2xl font-extrabold text-white">
                       {stats.total_attempts}
                     </div>
                     <div className="text-[11px] text-gray-500 mt-1 truncate">
-                      Lượt thi & luyện tập
+                      Exams & practice sessions
                     </div>
                   </div>
 
                   {/* Average Time */}
                   <div className="p-3.5 rounded-xl bg-[#252525] border border-[#353535] col-span-2 sm:col-span-1 group hover:border-[#454545] transition-colors">
                     <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
-                      <span>Thời gian TB</span>
+                      <span>Avg Time</span>
                       <Clock className="w-3.5 h-3.5 text-cyan-400" />
                     </div>
                     <div className="text-2xl font-extrabold text-white">
@@ -279,7 +279,7 @@ export function QuizHistoryModal({
                         : "—"}
                     </div>
                     <div className="text-[11px] text-gray-500 mt-1 truncate">
-                      Mỗi lần nộp bài
+                      Per submission
                     </div>
                   </div>
                 </div>
@@ -288,7 +288,7 @@ export function QuizHistoryModal({
               {/* Action Buttons: Practice or Retake Exam */}
               <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-xl bg-[#252525]/70 border border-[#333333]">
                 <div className="text-xs text-gray-300">
-                  <span className="font-semibold text-white">Muốn cải thiện điểm số?</span> Chọn chế độ phù hợp để làm lại quiz này:
+                  <span className="font-semibold text-white">Want to improve your score?</span> Choose a mode to retake this quiz:
                 </div>
                 <div className="flex items-center gap-2">
                   {onStartPractice && (
@@ -301,7 +301,7 @@ export function QuizHistoryModal({
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#333333] hover:bg-[#3f3f3f] text-gray-200 border border-[#444] transition-colors cursor-pointer"
                     >
                       <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Luyện tập tự do</span>
+                      <span>Self-Paced Practice</span>
                     </button>
                   )}
                   {onStartExam && (
@@ -314,7 +314,7 @@ export function QuizHistoryModal({
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-black hover:bg-neutral-200 transition-colors shadow-sm cursor-pointer"
                     >
                       <Play className="w-3 h-3 fill-black text-black" />
-                      <span>Thi lại (Exam)</span>
+                      <span>Retake Exam</span>
                     </button>
                   )}
                 </div>
@@ -324,9 +324,9 @@ export function QuizHistoryModal({
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-xs text-gray-400 px-1">
                   <span className="font-bold uppercase tracking-wider">
-                    Lịch sử các lần làm bài ({attempts.length})
+                    Past Attempts ({attempts.length})
                   </span>
-                  <span>Bấm nút "Xem chi tiết" để xem lại câu hỏi & lời giải</span>
+                  <span>Click &quot;Inspect&quot; to review questions &amp; explanations</span>
                 </div>
 
                 {attempts.length === 0 ? (
@@ -335,9 +335,9 @@ export function QuizHistoryModal({
                       <History className="w-6 h-6" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-semibold text-white">Chưa có lượt làm bài nào</h4>
+                      <h4 className="text-sm font-semibold text-white">No attempts recorded yet</h4>
                       <p className="text-xs text-gray-400 mt-1">
-                        Bạn chưa làm bài quiz này. Hãy bắt đầu ngay để ghi nhận điểm số!
+                        You haven&apos;t completed this quiz yet. Start an attempt to record your score!
                       </p>
                     </div>
                   </div>
@@ -371,12 +371,12 @@ export function QuizHistoryModal({
                                 {isPractice ? (
                                   <>
                                     <BookOpen className="w-3 h-3" />
-                                    <span>Luyện tập</span>
+                                    <span>Practice</span>
                                   </>
                                 ) : (
                                   <>
                                     <Clock className="w-3 h-3" />
-                                    <span>Thi bấm giờ</span>
+                                    <span>Timed Exam</span>
                                   </>
                                 )}
                               </span>
@@ -393,10 +393,10 @@ export function QuizHistoryModal({
                                 )}
                               >
                                 {att.status === "completed"
-                                  ? "Hoàn thành"
+                                  ? "Completed"
                                   : att.status === "timed_out"
-                                  ? "Hết giờ"
-                                  : "Đang làm"}
+                                  ? "Timed Out"
+                                  : "In Progress"}
                               </span>
 
                               <span className="text-xs text-gray-400">
@@ -406,20 +406,20 @@ export function QuizHistoryModal({
 
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
                               <span>
-                                Điểm blanks:{" "}
+                                Blanks:{" "}
                                 <strong className="text-white font-semibold">
                                   {att.correct_blanks ?? 0} / {att.total_blanks ?? stats.total_blanks}
                                 </strong>
                               </span>
                               <span>
-                                Câu đúng tuyệt đối:{" "}
+                                Fully Correct:{" "}
                                 <strong className="text-white font-semibold">
                                   {att.fully_correct_questions ?? 0} / {att.total_questions ?? stats.total_questions}
                                 </strong>
                               </span>
                               {att.time_spent_seconds != null && att.time_spent_seconds > 0 && (
                                 <span>
-                                  Thời gian:{" "}
+                                  Time Spent:{" "}
                                   <strong className="text-gray-300">
                                     {formatTime(att.time_spent_seconds)}
                                   </strong>
@@ -442,7 +442,7 @@ export function QuizHistoryModal({
                                   : "—"}
                               </span>
                               <span className="text-[10px] text-gray-400 uppercase tracking-wider block">
-                                Độ chính xác
+                                Accuracy
                               </span>
                             </div>
 
@@ -453,7 +453,7 @@ export function QuizHistoryModal({
                                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-[#333333] hover:bg-[#404040] text-white border border-[#444] transition-colors cursor-pointer"
                               >
                                 <Eye className="w-3.5 h-3.5 text-blue-400" />
-                                <span>Xem chi tiết</span>
+                                <span>Inspect</span>
                               </button>
                             )}
                           </div>
@@ -473,7 +473,7 @@ export function QuizHistoryModal({
             onClick={onClose}
             className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#333333] hover:bg-[#404040] text-gray-200 transition-colors cursor-pointer"
           >
-            Đóng
+            Close
           </button>
         </div>
       </div>

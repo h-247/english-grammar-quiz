@@ -242,7 +242,7 @@ export const QuizCard = memo(function QuizCard({
               <button
                 type="button"
                 onClick={() => onViewHistory(quiz)}
-                title="Lịch sử làm bài & thống kê"
+                title="Attempt history & statistics"
                 className="p-2.5 rounded-lg bg-[#333333] hover:bg-[#404040] text-blue-400 hover:text-blue-300 border border-[#3e3e3e] transition-colors cursor-pointer"
               >
                 <History className="w-4 h-4" />

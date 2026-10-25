@@ -832,11 +832,11 @@ export default function CourseDetailPage() {
 
                               <button
                                 onClick={() => handleOpenQuizHistory(quiz)}
-                                title="Xem lịch sử làm bài & thống kê điểm số"
+                                title="View attempt history & score statistics"
                                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-[#242424] hover:bg-[#303030] text-blue-400 hover:text-blue-300 border border-[#383838] transition-colors cursor-pointer"
                               >
                                 <History className="w-3 h-3" />
-                                <span>Lịch sử</span>
+                                <span>History</span>
                               </button>
 
                               <button

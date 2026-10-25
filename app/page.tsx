@@ -191,7 +191,7 @@ export default function CoursesDashboardPage() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-5">
-        {/* Single Line Header (Gọn gàng nhất có thể) */}
+        {/* Single Line Header */}
         <div className="flex items-center justify-between gap-3 mb-6">
           <div className="flex items-center gap-2.5">
             <h1 className="text-lg font-bold text-white tracking-tight">Courses</h1>
