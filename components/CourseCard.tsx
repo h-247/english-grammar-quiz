@@ -11,14 +11,15 @@ import {
   ArrowRight,
   HardDrive,
   Clock,
-  Sparkles,
+  Link2,
+  MessageSquare,
   Pencil,
-  Bot,
 } from "lucide-react";
 import { CourseSummary, QuizSummary } from "@/types/quiz";
 import { DEFAULT_COURSE_BANNER, DEFAULT_PROMPT_CHAT_URL } from "@/lib/course-manifest";
 import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
-import { formatDateOnly } from "@/lib/utils";
+import { EditQuizChatModal } from "@/components/EditQuizChatModal";
+import { formatDateOnly, cn } from "@/lib/utils";
 
 interface CourseCardProps {
   course: CourseSummary;
@@ -56,6 +57,15 @@ export const CourseCard = memo(function CourseCard({
     quizzes.find((q) => q.status === "ready" && q.question_count > 0) ||
     quizzes[0] ||
     null;
+
+  const [currentQuizChatUrl, setCurrentQuizChatUrl] = useState<string | null>(
+    nextQuiz?.chatgpt_url || null
+  );
+  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+
+  useEffect(() => {
+    setCurrentQuizChatUrl(nextQuiz?.chatgpt_url || null);
+  }, [nextQuiz?.chatgpt_url]);
 
   const handleSync = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -250,30 +260,76 @@ export const CourseCard = memo(function CourseCard({
                   target="_blank"
                   rel="noreferrer"
                   title="Open Prompt Chat"
-                  className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-[#1a291e] hover:bg-[#223627] text-emerald-400 border border-emerald-900/40 transition-colors"
+                  className="p-2 rounded-lg bg-[#132c1e] hover:bg-[#1a3827] text-emerald-400 border border-[#1e5233] transition-colors flex items-center justify-center cursor-pointer shadow-sm"
                 >
-                  <Sparkles className="w-3 h-3" />
-                  <span>Prompt</span>
+                  <Link2 className="w-3.5 h-3.5" />
                 </a>
+              </div>
 
-                {/* Dedicated Quiz ChatGPT link if configured */}
-                {nextQuiz.chatgpt_url && (
+              {/* Second row: Quiz Dedicated ChatGPT Link Pill (Green if set, Amber if not) */}
+              <div className="flex items-center gap-2 mt-2.5">
+                <div
+                  className={cn(
+                    "flex items-center rounded-lg p-0.5 shadow-sm border",
+                    currentQuizChatUrl
+                      ? "bg-[#132c1e] border-[#1e5233] text-emerald-400"
+                      : "bg-[#2c1d0c] border-[#4d3214] text-amber-400"
+                  )}
+                >
                   <a
-                    href={nextQuiz.chatgpt_url}
+                    href={currentQuizChatUrl || promptChatUrl || "https://chatgpt.com"}
                     target="_blank"
                     rel="noreferrer"
-                    title={`Open Quiz ChatGPT Link: ${nextQuiz.chatgpt_url}`}
-                    className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-[#142338] hover:bg-[#1a2c47] text-blue-400 border border-blue-900/40 transition-colors"
+                    title={
+                      currentQuizChatUrl
+                        ? `Open Quiz ChatGPT: ${currentQuizChatUrl}`
+                        : "Open ChatGPT or configure link for this quiz"
+                    }
+                    className={cn(
+                      "p-1.5 rounded transition-colors flex items-center justify-center",
+                      currentQuizChatUrl
+                        ? "hover:text-emerald-300 hover:bg-[#1a3827]"
+                        : "hover:text-amber-300 hover:bg-[#382610]"
+                    )}
                   >
-                    <Bot className="w-3 h-3" />
-                    <span>Chat 2</span>
+                    <MessageSquare className="w-3.5 h-3.5" />
                   </a>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => setIsChatModalOpen(true)}
+                    title={
+                      currentQuizChatUrl
+                        ? "Edit Quiz ChatGPT Link"
+                        : "Add ChatGPT Link for this quiz"
+                    }
+                    className={cn(
+                      "p-1.5 rounded transition-colors cursor-pointer border-l",
+                      currentQuizChatUrl
+                        ? "border-[#1e5233] hover:text-emerald-300 hover:bg-[#1a3827]"
+                        : "border-[#4d3214] hover:text-amber-300 hover:bg-[#382610]"
+                    )}
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Edit Quiz Chat Modal */}
+      {nextQuiz && (
+        <EditQuizChatModal
+          isOpen={isChatModalOpen}
+          onClose={() => setIsChatModalOpen(false)}
+          quiz={nextQuiz}
+          onSave={(_qId, newUrl) => {
+            setCurrentQuizChatUrl(newUrl);
+            nextQuiz.chatgpt_url = newUrl;
+          }}
+        />
+      )}
 
       {/* Card Footer */}
       <div className="px-5 py-3.5 border-t border-[#2a2a2a] bg-[#181818]/80 flex items-center justify-between">

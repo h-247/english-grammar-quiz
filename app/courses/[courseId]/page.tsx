@@ -21,8 +21,9 @@ import {
   Sparkles,
   ClipboardPaste,
   Pencil,
-  Bot,
   History,
+  Link2,
+  MessageSquare,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { ImportModal } from "@/components/ImportModal";
@@ -33,6 +34,7 @@ import { EditQuizChatModal } from "@/components/EditQuizChatModal";
 import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
 import { QuizHistoryModal } from "@/components/QuizHistoryModal";
 import { DEFAULT_PROMPT_CHAT_URL } from "@/lib/course-manifest";
+import { cn } from "@/lib/utils";
 import {
   getCourse,
   syncCourseDrive,
@@ -627,48 +629,57 @@ export default function CourseDetailPage() {
                       href={promptChatUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-medium bg-[#1a291e] hover:bg-[#223627] text-emerald-400 border border-emerald-900/40 transition-colors cursor-pointer"
+                      className="p-2.5 rounded-xl bg-[#132c1e] hover:bg-[#1a3827] text-emerald-400 border border-[#1e5233] transition-colors flex items-center justify-center cursor-pointer shadow-sm"
                       title="Open Prompt Chat"
                     >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>Prompt Chat</span>
-                      <ExternalLink className="w-3 h-3 text-emerald-500/70" />
+                      <Link2 className="w-3.5 h-3.5" />
                     </a>
 
-                    {/* Second ChatGPT Link for this quiz (added & editable) */}
-                    {nextQuiz.chatgpt_url ? (
-                      <div className="flex items-center rounded-xl bg-[#142338] border border-blue-800/50 p-0.5 shadow-sm">
-                        <a
-                          href={nextQuiz.chatgpt_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors"
-                          title={`Open Quiz ChatGPT: ${nextQuiz.chatgpt_url}`}
-                        >
-                          <Bot className="w-3.5 h-3.5 text-blue-400" />
-                          <span>ChatGPT 2</span>
-                          <ExternalLink className="w-3 h-3 text-blue-500/70" />
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => setQuizForChatEdit(nextQuiz)}
-                          title="Edit ChatGPT Link for this quiz"
-                          className="p-2 text-blue-400/70 hover:text-white hover:bg-blue-900/40 rounded-lg transition-colors cursor-pointer border-l border-blue-800/50"
-                        >
-                          <Pencil className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ) : (
+                    {/* Dedicated Quiz ChatGPT Link Pill (Green if configured, Amber if not) */}
+                    <div
+                      className={cn(
+                        "flex items-center rounded-xl p-0.5 shadow-sm border",
+                        nextQuiz.chatgpt_url
+                          ? "bg-[#132c1e] border-[#1e5233] text-emerald-400"
+                          : "bg-[#2c1d0c] border-[#4d3214] text-amber-400"
+                      )}
+                    >
+                      <a
+                        href={nextQuiz.chatgpt_url || promptChatUrl || "https://chatgpt.com"}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={cn(
+                          "p-2 rounded-lg transition-colors flex items-center justify-center",
+                          nextQuiz.chatgpt_url
+                            ? "hover:text-emerald-300 hover:bg-[#1a3827]"
+                            : "hover:text-amber-300 hover:bg-[#382610]"
+                        )}
+                        title={
+                          nextQuiz.chatgpt_url
+                            ? `Open Quiz ChatGPT: ${nextQuiz.chatgpt_url}`
+                            : "Open ChatGPT or configure link for this unit"
+                        }
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                      </a>
                       <button
                         type="button"
                         onClick={() => setQuizForChatEdit(nextQuiz)}
-                        title="Add dedicated ChatGPT link for this quiz"
-                        className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-medium bg-[#142338]/60 hover:bg-[#1a2c47] text-blue-400 border border-blue-900/40 transition-colors cursor-pointer"
+                        title={
+                          nextQuiz.chatgpt_url
+                            ? "Edit Quiz ChatGPT Link"
+                            : "Add ChatGPT Link for this unit"
+                        }
+                        className={cn(
+                          "p-2 rounded-lg transition-colors cursor-pointer border-l",
+                          nextQuiz.chatgpt_url
+                            ? "border-[#1e5233] hover:text-emerald-300 hover:bg-[#1a3827]"
+                            : "border-[#4d3214] hover:text-amber-300 hover:bg-[#382610]"
+                        )}
                       >
-                        <Bot className="w-3.5 h-3.5" />
-                        <span>+ ChatGPT Link</span>
+                        <Pencil className="w-3 h-3" />
                       </button>
-                    )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -888,42 +899,56 @@ export default function CourseDetailPage() {
                             target="_blank"
                             rel="noreferrer"
                             title={`Open Prompt Chat for Unit ${quiz.unit_number ?? ''}`}
-                            className="p-1.5 text-emerald-400 hover:text-emerald-300 rounded-lg hover:bg-emerald-950/30 transition-colors"
+                            className="p-1.5 text-emerald-400 hover:text-emerald-300 rounded-lg hover:bg-[#1a3827] bg-[#132c1e] border border-[#1e5233] transition-colors flex items-center justify-center cursor-pointer shadow-sm"
                           >
-                            <Sparkles className="w-3.5 h-3.5" />
+                            <Link2 className="w-3.5 h-3.5" />
                           </a>
 
-                          {/* Second ChatGPT link for this quiz (added & editable) */}
-                          {quiz.chatgpt_url ? (
-                            <div className="flex items-center rounded-lg bg-[#142338] border border-blue-800/50 p-0.5">
-                              <a
-                                href={quiz.chatgpt_url}
-                                target="_blank"
-                                rel="noreferrer"
-                                title={`Open Quiz ChatGPT Link: ${quiz.chatgpt_url}`}
-                                className="p-1 text-blue-400 hover:text-blue-300 transition-colors flex items-center"
-                              >
-                                <Bot className="w-3.5 h-3.5" />
-                              </a>
-                              <button
-                                type="button"
-                                onClick={() => setQuizForChatEdit(quiz)}
-                                title="Edit Quiz ChatGPT Link"
-                                className="p-1 text-blue-400/70 hover:text-white hover:bg-blue-900/40 rounded transition-colors cursor-pointer border-l border-blue-800/40"
-                              >
-                                <Pencil className="w-2.5 h-2.5" />
-                              </button>
-                            </div>
-                          ) : (
+                          {/* Unit ChatGPT link (Green if configured, Amber if not) */}
+                          <div
+                            className={cn(
+                              "flex items-center rounded-lg p-0.5 shadow-sm border",
+                              quiz.chatgpt_url
+                                ? "bg-[#132c1e] border-[#1e5233] text-emerald-400"
+                                : "bg-[#2c1d0c] border-[#4d3214] text-amber-400"
+                            )}
+                          >
+                            <a
+                              href={quiz.chatgpt_url || promptChatUrl || "https://chatgpt.com"}
+                              target="_blank"
+                              rel="noreferrer"
+                              title={
+                                quiz.chatgpt_url
+                                  ? `Open Quiz ChatGPT Link: ${quiz.chatgpt_url}`
+                                  : `Open ChatGPT or configure link for Unit ${quiz.unit_number ?? ""}`
+                              }
+                              className={cn(
+                                "p-1 rounded transition-colors flex items-center justify-center",
+                                quiz.chatgpt_url
+                                  ? "hover:text-emerald-300 hover:bg-[#1a3827]"
+                                  : "hover:text-amber-300 hover:bg-[#382610]"
+                              )}
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                            </a>
                             <button
                               type="button"
                               onClick={() => setQuizForChatEdit(quiz)}
-                              title={`Add ChatGPT Link for Unit ${quiz.unit_number ?? ''}`}
-                              className="p-1.5 text-gray-500 hover:text-blue-400 hover:bg-[#1a2333] rounded-lg transition-colors cursor-pointer border border-transparent hover:border-blue-900/40"
+                              title={
+                                quiz.chatgpt_url
+                                  ? "Edit Quiz ChatGPT Link"
+                                  : `Add ChatGPT Link for Unit ${quiz.unit_number ?? ""}`
+                              }
+                              className={cn(
+                                "p-1 rounded transition-colors cursor-pointer border-l",
+                                quiz.chatgpt_url
+                                  ? "border-[#1e5233] hover:text-emerald-300 hover:bg-[#1a3827]"
+                                  : "border-[#4d3214] hover:text-amber-300 hover:bg-[#382610]"
+                              )}
                             >
-                              <Bot className="w-3.5 h-3.5" />
+                              <Pencil className="w-2.5 h-2.5" />
                             </button>
-                          )}
+                          </div>
 
                           {/* Delete Quiz Button */}
                           <button

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Sparkles, ExternalLink, RotateCcw, Check, Loader2 } from "lucide-react";
+import { X, Link2, ExternalLink, RotateCcw, Check, Loader2 } from "lucide-react";
 import { DEFAULT_PROMPT_CHAT_URL } from "@/lib/course-manifest";
 import { updatePromptChatUrl } from "@/lib/api";
 import { useToast } from "@/components/Toast";
@@ -106,7 +106,7 @@ export function EditPromptChatModal({
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#2e2e2e] bg-[#242424]">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              <Sparkles className="w-5 h-5" />
+              <Link2 className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-base font-bold text-white">Edit "Prompt Chat" Link</h3>
