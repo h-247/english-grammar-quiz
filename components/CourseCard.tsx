@@ -12,7 +12,8 @@ import {
   HardDrive,
   Clock,
   Link2,
-  MessageSquare,
+  MessageSquareCheck,
+  MessageSquarePlus,
   Pencil,
 } from "lucide-react";
 import { CourseSummary, QuizSummary } from "@/types/quiz";
@@ -276,24 +277,26 @@ export const CourseCard = memo(function CourseCard({
                       : "bg-[#2c1d0c] border-[#4d3214] text-amber-400"
                   )}
                 >
-                  <a
-                    href={currentQuizChatUrl || promptChatUrl || "https://chatgpt.com"}
-                    target="_blank"
-                    rel="noreferrer"
-                    title={
-                      currentQuizChatUrl
-                        ? `Open Quiz ChatGPT: ${currentQuizChatUrl}`
-                        : "Open ChatGPT or configure link for this quiz"
-                    }
-                    className={cn(
-                      "p-1.5 rounded transition-colors flex items-center justify-center",
-                      currentQuizChatUrl
-                        ? "hover:text-emerald-300 hover:bg-[#1a3827]"
-                        : "hover:text-amber-300 hover:bg-[#382610]"
-                    )}
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" />
-                  </a>
+                  {currentQuizChatUrl ? (
+                    <a
+                      href={currentQuizChatUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={`Open Quiz ChatGPT: ${currentQuizChatUrl}`}
+                      className="p-1.5 rounded transition-colors flex items-center justify-center hover:text-emerald-300 hover:bg-[#1a3827]"
+                    >
+                      <MessageSquareCheck className="w-3.5 h-3.5" />
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsChatModalOpen(true)}
+                      title="Add ChatGPT Link for this quiz"
+                      className="p-1.5 rounded transition-colors flex items-center justify-center hover:text-amber-300 hover:bg-[#382610] cursor-pointer"
+                    >
+                      <MessageSquarePlus className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setIsChatModalOpen(true)}

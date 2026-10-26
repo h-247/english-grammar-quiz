@@ -23,7 +23,8 @@ import {
   Pencil,
   History,
   Link2,
-  MessageSquare,
+  MessageSquareCheck,
+  MessageSquarePlus,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { ImportModal } from "@/components/ImportModal";
@@ -644,24 +645,26 @@ export default function CourseDetailPage() {
                           : "bg-[#2c1d0c] border-[#4d3214] text-amber-400"
                       )}
                     >
-                      <a
-                        href={nextQuiz.chatgpt_url || promptChatUrl || "https://chatgpt.com"}
-                        target="_blank"
-                        rel="noreferrer"
-                        className={cn(
-                          "p-2 rounded-lg transition-colors flex items-center justify-center",
-                          nextQuiz.chatgpt_url
-                            ? "hover:text-emerald-300 hover:bg-[#1a3827]"
-                            : "hover:text-amber-300 hover:bg-[#382610]"
-                        )}
-                        title={
-                          nextQuiz.chatgpt_url
-                            ? `Open Quiz ChatGPT: ${nextQuiz.chatgpt_url}`
-                            : "Open ChatGPT or configure link for this unit"
-                        }
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" />
-                      </a>
+                      {nextQuiz.chatgpt_url ? (
+                        <a
+                          href={nextQuiz.chatgpt_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="p-2 rounded-lg transition-colors flex items-center justify-center hover:text-emerald-300 hover:bg-[#1a3827]"
+                          title={`Open Quiz ChatGPT: ${nextQuiz.chatgpt_url}`}
+                        >
+                          <MessageSquareCheck className="w-3.5 h-3.5" />
+                        </a>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setQuizForChatEdit(nextQuiz)}
+                          className="p-2 rounded-lg transition-colors flex items-center justify-center hover:text-amber-300 hover:bg-[#382610] cursor-pointer"
+                          title="Add ChatGPT Link for this unit"
+                        >
+                          <MessageSquarePlus className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => setQuizForChatEdit(nextQuiz)}
@@ -913,24 +916,26 @@ export default function CourseDetailPage() {
                                 : "bg-[#2c1d0c] border-[#4d3214] text-amber-400"
                             )}
                           >
-                            <a
-                              href={quiz.chatgpt_url || promptChatUrl || "https://chatgpt.com"}
-                              target="_blank"
-                              rel="noreferrer"
-                              title={
-                                quiz.chatgpt_url
-                                  ? `Open Quiz ChatGPT Link: ${quiz.chatgpt_url}`
-                                  : `Open ChatGPT or configure link for Unit ${quiz.unit_number ?? ""}`
-                              }
-                              className={cn(
-                                "p-1 rounded transition-colors flex items-center justify-center",
-                                quiz.chatgpt_url
-                                  ? "hover:text-emerald-300 hover:bg-[#1a3827]"
-                                  : "hover:text-amber-300 hover:bg-[#382610]"
-                              )}
-                            >
-                              <MessageSquare className="w-3.5 h-3.5" />
-                            </a>
+                            {quiz.chatgpt_url ? (
+                              <a
+                                href={quiz.chatgpt_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                title={`Open Quiz ChatGPT Link: ${quiz.chatgpt_url}`}
+                                className="p-1 rounded transition-colors flex items-center justify-center hover:text-emerald-300 hover:bg-[#1a3827]"
+                              >
+                                <MessageSquareCheck className="w-3.5 h-3.5" />
+                              </a>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setQuizForChatEdit(quiz)}
+                                title={`Add ChatGPT Link for Unit ${quiz.unit_number ?? ""}`}
+                                className="p-1 rounded transition-colors flex items-center justify-center hover:text-amber-300 hover:bg-[#382610] cursor-pointer"
+                              >
+                                <MessageSquarePlus className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => setQuizForChatEdit(quiz)}
