@@ -1,3 +1,5 @@
+export type ChapterStatus = 'To do' | 'Doing' | 'Done';
+
 export interface Topic {
   id: string;
   title: string;
@@ -40,71 +42,110 @@ export interface DriveSyncResult {
   fileReports: DriveFileReport[];
 }
 
-export interface CourseSummary {
+export interface BookSummary {
   id: string;
   title: string;
   description?: string | null;
+  author?: string | null;
+  goodreads_url?: string | null;
+  cover_url?: string | null;
+  rating?: number | null;
+  rating_count?: number | null;
+  page_count?: number | null;
+  isbn?: string | null;
+  published_year?: string | null;
+  genres?: string[] | null;
   drive_folder_id?: string | null;
   drive_folder_url?: string | null;
   banner_url?: string | null;
+  
+  // Chapter counts & status
+  status?: ChapterStatus;
+  total_chapters: number;
+  todo_chapters: number;
+  doing_chapters: number;
+  done_chapters: number;
+
+  // Backward-compat aliases
   total_quizzes: number;
   ready_quizzes: number;
   pending_quizzes: number;
   completed_quizzes: number;
+
   created_at: string;
   updated_at: string;
 }
 
-export interface CourseDetail extends CourseSummary {
-  quizzes: QuizSummary[];
+export type CourseSummary = BookSummary;
+
+export function computeBookStatus(
+  totalChapters: number,
+  doneChapters: number,
+  doingChapters: number = 0
+): ChapterStatus {
+  if (totalChapters > 0 && doneChapters >= totalChapters) return "Done";
+  if (doneChapters > 0 || doingChapters > 0) return "Doing";
+  return "To do";
+}
+
+export interface ChapterSummary {
+  id: string;
+  title: string;
+  unit_number?: number | null;
+  unit_title?: string | null;
+  instructions?: string | null;
+  placeholder_syntax: string;
+  question_count: number;
+  blank_count: number;
+  topics: Topic[];
+  course_id?: string | null;
+  course_title?: string | null;
+  book_id?: string | null;
+  book_title?: string | null;
+  drive_file_id?: string | null;
+  source_filename?: string | null;
+  chatgpt_url?: string | null;
+  status: ChapterStatus | string;
+  reading_status?: string | null;
+  start_page?: number | null;
+  end_page?: number | null;
+  created_at: string;
+}
+
+export type QuizSummary = ChapterSummary;
+
+export interface BookDetail extends BookSummary {
+  chapters: ChapterSummary[];
+  quizzes: ChapterSummary[]; // alias for compatibility
   sync_result?: DriveSyncResult;
 }
 
-export interface CourseCreatePayload {
+export type CourseDetail = BookDetail;
+
+export interface BookCreatePayload {
   title: string;
   description?: string;
+  author?: string;
+  goodreads_url?: string;
+  cover_url?: string;
+  rating?: number;
+  rating_count?: number;
+  page_count?: number;
+  isbn?: string;
+  published_year?: string;
+  genres?: string[];
   drive_folder_id?: string;
   drive_folder_url?: string;
   banner_url?: string;
 }
 
-export interface QuizSummary {
-  id: string;
-  title: string;
-  unit_number?: number | null;
-  unit_title?: string | null;
-  instructions?: string | null;
-  placeholder_syntax: string;
-  question_count: number;
-  blank_count: number;
-  topics: Topic[];
-  course_id?: string | null;
-  course_title?: string | null;
-  drive_file_id?: string | null;
-  source_filename?: string | null;
-  chatgpt_url?: string | null;
-  status?: "ready" | "pending_import";
-  created_at: string;
-}
+export type CourseCreatePayload = BookCreatePayload;
 
-export interface QuizDetail {
-  id: string;
-  title: string;
-  unit_number?: number | null;
-  unit_title?: string | null;
-  instructions?: string | null;
-  placeholder_syntax: string;
-  question_count: number;
-  blank_count: number;
-  topics: Topic[];
-  course_id?: string | null;
-  course_title?: string | null;
-  drive_file_id?: string | null;
-  source_filename?: string | null;
-  chatgpt_url?: string | null;
-  status?: "ready" | "pending_import";
+export interface ChapterDetail extends ChapterSummary {
   questions: QuestionPublic[];
 }
+
+export type QuizDetail = ChapterDetail;
 
 export interface AttemptState {
   id: string;
@@ -118,7 +159,7 @@ export interface AttemptState {
   status: "in_progress" | "completed" | "timed_out";
   submission_reason?: "manual" | "timeout" | null;
   mode?: "timed" | "practice";
-  saved_answers: Record<string, Record<string, string>>; // question_id -> { blank_id: response }
+  saved_answers: Record<string, Record<string, string>>;
   questions: QuestionPublic[];
 }
 
@@ -232,4 +273,17 @@ export interface AppSettingsResponse {
     has_refresh_token: boolean;
     client_id?: string;
   };
+}
+
+export interface GoodreadsBookDetails {
+  title: string;
+  author?: string;
+  description?: string;
+  coverUrl?: string;
+  rating?: number;
+  ratingCount?: number;
+  pageCount?: number;
+  isbn?: string;
+  publishedYear?: string;
+  goodreadsUrl?: string;
 }

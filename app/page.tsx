@@ -6,10 +6,10 @@ import {
   Plus,
   Search,
   X,
-  Layers,
   RefreshCw,
   Loader2,
   AlertCircle,
+  BookOpen,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { CourseCard } from "@/components/CourseCard";
@@ -28,19 +28,20 @@ import {
 import { CourseSummary, QuizSummary } from "@/types/quiz";
 import { useToast } from "@/components/Toast";
 
-export default function CoursesDashboardPage() {
+export default function BooksDashboardPage() {
   const router = useRouter();
   const { showToast } = useToast();
 
-  // Courses & Quizzes Data
+  // Books & Chapters Data
   const [courses, setCourses] = useState<CourseSummary[]>([]);
   const [quizzes, setQuizzes] = useState<QuizSummary[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Search
+  // Search & Status filters
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [selectedStatus, setSelectedStatus] = useState<"all" | "To do" | "Doing" | "Done">("all");
 
   // Modals state
   const [isImportCourseOpen, setIsImportCourseOpen] = useState<boolean>(false);
@@ -48,12 +49,12 @@ export default function CoursesDashboardPage() {
   const [isDeletingCourse, setIsDeletingCourse] = useState<boolean>(false);
   const [courseToEdit, setCourseToEdit] = useState<CourseSummary | null>(null);
 
-  // Quiz Start modal state
+  // Quiz / Chapter Start modal state
   const [selectedQuizForStart, setSelectedQuizForStart] = useState<QuizSummary | null>(null);
   const [isQuizConfigOpen, setIsQuizConfigOpen] = useState<boolean>(false);
   const [isStartingQuiz, setIsStartingQuiz] = useState<boolean>(false);
 
-  // Load all courses and quizzes
+  // Load all books and chapters
   const loadData = useCallback(async (isSilent = false) => {
     if (!isSilent) setIsLoading(true);
     else setIsRefreshing(true);
@@ -67,7 +68,7 @@ export default function CoursesDashboardPage() {
       setCourses(coursesData);
       setQuizzes(quizzesData);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to load courses data.";
+      const msg = err instanceof Error ? err.message : "Failed to load books.";
       setError(msg);
     } finally {
       setIsLoading(false);
@@ -79,54 +80,96 @@ export default function CoursesDashboardPage() {
     loadData();
   }, [loadData]);
 
-  // Group quizzes by courseId
+  // Group chapters by bookId
   const quizzesByCourse = useMemo(() => {
     const map = new Map<string, QuizSummary[]>();
     quizzes.forEach((q) => {
-      if (q.course_id) {
-        if (!map.has(q.course_id)) {
-          map.set(q.course_id, []);
+      const parentId = q.book_id || q.course_id;
+      if (parentId) {
+        if (!map.has(parentId)) {
+          map.set(parentId, []);
         }
-        map.get(q.course_id)!.push(q);
+        map.get(parentId)!.push(q);
       }
     });
-    // Sort quizzes by unit number ascending
+    // Sort chapters by unit number ascending
     map.forEach((list) => {
       list.sort((a, b) => (a.unit_number ?? 999) - (b.unit_number ?? 999));
     });
     return map;
   }, [quizzes]);
 
+  // Determine book reading status based on chapters
+  const getBookStatus = useCallback(
+    (course: CourseSummary): "To do" | "Doing" | "Done" => {
+      const bookQuizzes = quizzesByCourse.get(course.id) || [];
+      const total =
+        bookQuizzes.length > 0
+          ? bookQuizzes.length
+          : course.total_chapters || course.total_quizzes || 0;
+      const done =
+        bookQuizzes.length > 0
+          ? bookQuizzes.filter((q) => q.status === "Done").length
+          : course.done_chapters || course.completed_quizzes || 0;
+      const doing =
+        bookQuizzes.length > 0
+          ? bookQuizzes.filter((q) => q.status === "Doing").length
+          : course.doing_chapters || 0;
 
-  // Filtered courses by search query
+      if (total > 0 && done >= total) return "Done";
+      if (done > 0 || doing > 0) return "Doing";
+      return "To do";
+    },
+    [quizzesByCourse]
+  );
+
+  // Status counts for filter tabs
+  const statusCounts = useMemo(() => {
+    let todo = 0;
+    let doing = 0;
+    let done = 0;
+    courses.forEach((c) => {
+      const s = getBookStatus(c);
+      if (s === "Done") done++;
+      else if (s === "Doing") doing++;
+      else todo++;
+    });
+    return { all: courses.length, todo, doing, done };
+  }, [courses, getBookStatus]);
+
+  // Filtered books by search query and status filter
   const filteredCourses = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return courses;
     return courses.filter((c) => {
-      const titleMatch = c.title.toLowerCase().includes(q);
-      const descMatch = c.description?.toLowerCase().includes(q) ?? false;
-      return titleMatch || descMatch;
+      const titleMatch =
+        !q ||
+        c.title.toLowerCase().includes(q) ||
+        (c.description?.toLowerCase().includes(q) ?? false) ||
+        (c.author?.toLowerCase().includes(q) ?? false);
+      const statusMatch =
+        selectedStatus === "all" || getBookStatus(c) === selectedStatus;
+      return titleMatch && statusMatch;
     });
-  }, [courses, searchQuery]);
+  }, [courses, searchQuery, selectedStatus, getBookStatus]);
 
-  // Handle Sync Course with Drive
+  // Handle Sync Book with Drive
   const handleSyncDrive = async (courseId: string) => {
     try {
       const updated = await syncCourseDrive(courseId);
       showToast(
-        `Synchronized "${updated.title}" with Google Drive! (${updated.total_quizzes} units mapped)`,
+        `Synchronized "${updated.title}" with Google Drive! (${updated.total_chapters || updated.total_quizzes} chapters)`,
         "success",
         5000
       );
       await loadData(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to sync course with Drive.";
+      const msg = err instanceof Error ? err.message : "Failed to sync book with Drive.";
       showToast(msg, "error", 6000);
       throw err;
     }
   };
 
-  // Handle Delete Course Modal
+  // Handle Delete Book Modal
   const handleDeleteCourseClick = (course: CourseSummary) => {
     setCourseToDelete(course);
   };
@@ -136,25 +179,23 @@ export default function CoursesDashboardPage() {
     setIsDeletingCourse(true);
     try {
       await deleteCourse(courseToDelete.id);
-      showToast(`Course "${courseToDelete.title}" and its quizzes were deleted.`, "info", 5000);
+      showToast(`Book "${courseToDelete.title}" and its chapters were deleted.`, "info", 5000);
       setCourseToDelete(null);
       await loadData(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to delete course.";
+      const msg = err instanceof Error ? err.message : "Failed to delete book.";
       showToast(msg, "error", 6000);
     } finally {
       setIsDeletingCourse(false);
     }
   };
 
-  // Handle Start Quiz from Next Unit highlight
+  // Handle Start Quiz / Chapter
   const handleStartQuiz = (quiz: QuizSummary, mode: "timed" | "practice") => {
     setSelectedQuizForStart(quiz);
     if (mode === "practice") {
-      // Direct start practice mode
       executeStartQuiz(quiz, 30, "practice");
     } else {
-      // Open config modal for timed exam
       setIsQuizConfigOpen(true);
     }
   };
@@ -168,14 +209,14 @@ export default function CoursesDashboardPage() {
     try {
       const attempt = await startAttempt(quiz.id, durationMinutes, mode);
       if (mode === "timed") {
-        showToast(`Timed quiz started! You have ${durationMinutes} minutes.`, "info", 4000);
+        showToast(`Timed session started! You have ${durationMinutes} minutes.`, "info", 4000);
       } else {
         showToast("Self-paced practice started! Immediate feedback active.", "success", 4000);
       }
       setIsQuizConfigOpen(false);
       router.push(`/quiz/${quiz.id}/attempt/${attempt.id}`);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to start quiz attempt.";
+      const msg = err instanceof Error ? err.message : "Failed to start chapter session.";
       showToast(msg, "error", 5000);
       setIsStartingQuiz(false);
     }
@@ -191,10 +232,10 @@ export default function CoursesDashboardPage() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-5">
-        {/* Single Line Header (Gọn gàng nhất có thể) */}
+        {/* Single Line Header */}
         <div className="flex items-center justify-between gap-3 mb-6">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-lg font-bold text-white tracking-tight">Courses</h1>
+            <h1 className="text-lg font-bold text-white tracking-tight">Books</h1>
             <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#2a2a2a] text-gray-300 border border-[#3d3d3d]">
               {courses.length}
             </span>
@@ -207,7 +248,7 @@ export default function CoursesDashboardPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search courses..."
+                placeholder="Search books by title, author..."
                 className="w-full bg-[#1b1b1b] border border-[#333333] rounded-xl pl-8 pr-7 py-1.5 text-xs text-[#ececec] placeholder-gray-500 focus:outline-none focus:border-white transition-colors"
               />
               {searchQuery && (
@@ -223,7 +264,7 @@ export default function CoursesDashboardPage() {
             <button
               onClick={() => loadData(true)}
               disabled={isRefreshing}
-              title="Refresh courses"
+              title="Refresh books"
               className="p-1.5 rounded-xl bg-[#1b1b1b] border border-[#333333] hover:border-gray-500 text-gray-300 hover:text-white transition-all cursor-pointer disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-blue-400" : ""}`} />
@@ -234,21 +275,56 @@ export default function CoursesDashboardPage() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white text-black hover:bg-neutral-200 transition-all shadow-sm cursor-pointer shrink-0"
             >
               <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span className="hidden sm:inline">Import Course</span>
+              <span className="hidden sm:inline">Import Book</span>
             </button>
           </div>
         </div>
+
+        {/* Book Status Filter Tabs */}
+        {courses.length > 0 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 mb-6 scrollbar-none">
+            {(
+              [
+                { key: "all", label: "All Books", count: statusCounts.all },
+                { key: "To do", label: "To do", count: statusCounts.todo },
+                { key: "Doing", label: "Doing", count: statusCounts.doing },
+                { key: "Done", label: "Done", count: statusCounts.done },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setSelectedStatus(tab.key)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                  selectedStatus === tab.key
+                    ? "bg-white text-black shadow-sm"
+                    : "bg-[#1b1b1b] text-gray-400 hover:text-white border border-[#303030]"
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                    selectedStatus === tab.key
+                      ? "bg-neutral-200 text-black"
+                      : "bg-[#252525] text-gray-400"
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Content Loading / Error / Grid */}
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-24 text-gray-400">
             <Loader2 className="w-8 h-8 animate-spin text-white mb-3" />
-            <span className="text-sm">Loading course catalog...</span>
+            <span className="text-sm">Loading book library...</span>
           </div>
         ) : error ? (
           <div className="max-w-lg mx-auto p-6 bg-rose-950/30 border border-rose-500/40 rounded-2xl text-center space-y-3">
             <AlertCircle className="w-8 h-8 text-rose-400 mx-auto" />
-            <h3 className="text-base font-semibold text-white">Failed to load courses</h3>
+            <h3 className="text-base font-semibold text-white">Failed to load books</h3>
             <p className="text-xs text-rose-300">{error}</p>
             <button
               onClick={() => loadData()}
@@ -258,42 +334,39 @@ export default function CoursesDashboardPage() {
             </button>
           </div>
         ) : courses.length === 0 ? (
-          /* Empty State - No Courses */
-          <div className="max-w-md mx-auto py-20 px-6 text-center bg-[#1c1c1c] border border-[#2e2e2e] rounded-2xl shadow-xl space-y-5">
-            <div className="w-16 h-16 rounded-2xl bg-[#262626] border border-[#383838] flex items-center justify-center text-white mx-auto shadow-inner">
-              <Layers className="w-8 h-8 text-blue-400" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-white">No courses yet</h3>
-              <p className="text-xs text-[#9CA3AF] mt-1.5 leading-relaxed">
-                Import your first English Grammar course directly from Google Drive to get started with units and quizzes.
-              </p>
-            </div>
+          <div className="p-12 text-center border border-dashed border-[#333333] rounded-2xl bg-[#191919]">
+            <BookOpen className="w-12 h-12 text-gray-500 mx-auto mb-3" />
+            <h3 className="text-base font-bold text-white mb-1">Your Book Library is Empty</h3>
+            <p className="text-xs text-gray-400 max-w-md mx-auto mb-5">
+              Import books using Goodreads links to fetch rich details, and Google Drive links to add chapters.
+            </p>
             <button
               onClick={() => setIsImportCourseOpen(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-white text-black hover:bg-neutral-200 transition-all shadow-md cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-white text-black hover:bg-neutral-200 transition-all shadow-md cursor-pointer"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>Import Course from Google Drive</span>
+              <span>Import First Book</span>
             </button>
           </div>
         ) : filteredCourses.length === 0 ? (
-          /* Empty Search State */
-          <div className="max-w-md mx-auto py-16 px-6 text-center bg-[#1c1c1c] border border-[#2e2e2e] rounded-2xl space-y-3">
-            <Search className="w-8 h-8 text-gray-400 mx-auto" />
-            <h3 className="text-base font-semibold text-white">No matching courses</h3>
-            <p className="text-xs text-gray-400">
-              No courses found matching "{searchQuery}".
+          <div className="p-12 text-center border border-dashed border-[#333333] rounded-2xl bg-[#191919]">
+            <BookOpen className="w-10 h-10 text-gray-500 mx-auto mb-3" />
+            <h3 className="text-sm font-bold text-white mb-1">No Books Found</h3>
+            <p className="text-xs text-gray-400 max-w-md mx-auto mb-4">
+              No books match the selected status &quot;{selectedStatus}&quot;
+              {searchQuery ? ` or search &quot;${searchQuery}&quot;` : ""}.
             </p>
             <button
-              onClick={() => setSearchQuery("")}
-              className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#2a2a2a] hover:bg-[#333333] text-white transition-colors cursor-pointer"
+              onClick={() => {
+                setSelectedStatus("all");
+                setSearchQuery("");
+              }}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[#2a2a2a] hover:bg-[#353535] text-white transition-colors cursor-pointer"
             >
-              Clear Search
+              Reset Filters
             </button>
           </div>
         ) : (
-          /* Courses Cards Grid (Matching Image 1) */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredCourses.map((course) => (
               <CourseCard
@@ -310,56 +383,50 @@ export default function CoursesDashboardPage() {
         )}
       </main>
 
-      {/* Import Course Modal */}
+      {/* Import Book Modal */}
       <ImportCourseModal
         isOpen={isImportCourseOpen}
         onClose={() => setIsImportCourseOpen(false)}
-        onCreateCourse={createCourse}
-        onImportSuccess={async (newCourseId) => {
-          showToast("Course imported and synchronized successfully!", "success", 5000);
+        onImportSuccess={async () => {
+          showToast("Book imported successfully!", "success", 4000);
           await loadData(true);
-          router.push(`/courses/${newCourseId}`);
         }}
+        onCreateCourse={createCourse}
       />
 
-      {/* Edit Course Modal */}
-      <EditCourseModal
-        isOpen={!!courseToEdit}
-        onClose={() => setCourseToEdit(null)}
-        course={courseToEdit}
-        onSave={async (updated) => {
-          setCourses((prev) =>
-            prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c))
-          );
-        }}
-      />
-
-      {/* Delete Course Confirmation Modal */}
+      {/* Delete Book Confirmation Modal */}
       <DeleteConfirmModal
         isOpen={!!courseToDelete}
         onClose={() => setCourseToDelete(null)}
         onConfirm={handleConfirmDeleteCourse}
-        title="Delete Course"
-        itemName={courseToDelete?.title || ""}
-        itemType="Course"
+        title={`Delete Book: ${courseToDelete?.title || ""}`}
+        description="Are you sure you want to delete this book? All associated chapters and reading sessions will be permanently deleted."
         isDeleting={isDeletingCourse}
       />
 
-      {/* Quiz Config Modal for Starting Timed Quiz */}
-      <QuizConfigModal
-        quiz={selectedQuizForStart}
-        isOpen={isQuizConfigOpen}
-        isStarting={isStartingQuiz}
-        onClose={() => {
-          setIsQuizConfigOpen(false);
-          setIsStartingQuiz(false);
-        }}
-        onStart={(durationMinutes, mode) => {
-          if (selectedQuizForStart) {
-            executeStartQuiz(selectedQuizForStart, durationMinutes, mode);
+      {/* Edit Book Modal */}
+      {courseToEdit && (
+        <EditCourseModal
+          isOpen={!!courseToEdit}
+          onClose={() => setCourseToEdit(null)}
+          course={courseToEdit}
+          onSuccess={() => loadData(true)}
+        />
+      )}
+
+      {/* Quiz Config Modal */}
+      {selectedQuizForStart && (
+        <QuizConfigModal
+          isOpen={isQuizConfigOpen}
+          onClose={() => setIsQuizConfigOpen(false)}
+          quizTitle={selectedQuizForStart.title}
+          unitNumber={selectedQuizForStart.unit_number}
+          onStart={(duration) =>
+            executeStartQuiz(selectedQuizForStart, duration, "timed")
           }
-        }}
-      />
+          isStarting={isStartingQuiz}
+        />
+      )}
     </div>
   );
 }

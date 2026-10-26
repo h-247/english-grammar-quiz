@@ -15,8 +15,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "English Grammar Timed Quiz",
-  description: "Full-stack interactive timed quiz application for English grammar",
+  title: "Book Manager - Goodreads & Chapters",
+  description: "Book library manager with Goodreads import, Google Drive chapter management, and reading status tracking",
   other: {
     "darkreader-lock": "",
   },

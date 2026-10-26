@@ -17,6 +17,15 @@ export async function ensureDatabaseInitialized(): Promise<void> {
             id TEXT PRIMARY KEY,
             title TEXT NOT NULL,
             description TEXT,
+            author TEXT,
+            goodreads_url TEXT,
+            cover_url TEXT,
+            rating REAL,
+            rating_count INTEGER,
+            page_count INTEGER,
+            isbn TEXT,
+            published_year TEXT,
+            genres TEXT,
             drive_folder_id TEXT,
             drive_folder_url TEXT,
             banner_url TEXT,
@@ -48,7 +57,10 @@ export async function ensureDatabaseInitialized(): Promise<void> {
             drive_file_id TEXT,
             source_filename TEXT,
             chatgpt_url TEXT,
-            status TEXT NOT NULL DEFAULT 'ready',
+            status TEXT NOT NULL DEFAULT 'To do',
+            reading_status TEXT DEFAULT 'To do',
+            start_page INTEGER,
+            end_page INTEGER,
             created_at TEXT NOT NULL
           );
         `),
@@ -132,6 +144,35 @@ export async function ensureDatabaseInitialized(): Promise<void> {
           );
         `),
       ]);
+
+      // Safe migrations for newly added columns if table previously existed
+      const courseColumns = [
+        'author TEXT',
+        'goodreads_url TEXT',
+        'cover_url TEXT',
+        'rating REAL',
+        'rating_count INTEGER',
+        'page_count INTEGER',
+        'isbn TEXT',
+        'published_year TEXT',
+        'genres TEXT',
+      ];
+      for (const col of courseColumns) {
+        try {
+          await db.run(sql.raw(`ALTER TABLE courses ADD COLUMN ${col}`));
+        } catch {}
+      }
+
+      const quizColumns = [
+        'reading_status TEXT DEFAULT \'To do\'',
+        'start_page INTEGER',
+        'end_page INTEGER',
+      ];
+      for (const col of quizColumns) {
+        try {
+          await db.run(sql.raw(`ALTER TABLE quizzes ADD COLUMN ${col}`));
+        } catch {}
+      }
 
       tablesChecked = true;
     })();

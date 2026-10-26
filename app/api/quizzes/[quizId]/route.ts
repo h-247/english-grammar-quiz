@@ -36,7 +36,7 @@ export async function GET(
 
     if (!row) {
       return NextResponse.json(
-        { detail: `Quiz with ID ${quizId} not found.` },
+        { detail: `Chapter/Quiz with ID ${quizId} not found.` },
         { status: 404 }
       );
     }
@@ -47,7 +47,7 @@ export async function GET(
       row.courseUserId !== user.userId
     ) {
       return NextResponse.json(
-        { detail: `Quiz with ID ${quizId} not found.` },
+        { detail: `Chapter/Quiz with ID ${quizId} not found.` },
         { status: 404 }
       );
     }
@@ -97,6 +97,11 @@ export async function GET(
       })),
     }));
 
+    let displayStatus = q.status;
+    if (displayStatus === 'ready' || displayStatus === 'pending_import' || !displayStatus) {
+      displayStatus = 'To do';
+    }
+
     return NextResponse.json({
       id: q.id,
       title: q.title,
@@ -109,11 +114,17 @@ export async function GET(
       topics: (q.topics as any) || [],
       course_id: q.courseId,
       course_title: courseTitle,
+      book_id: q.courseId,
+      book_title: courseTitle,
       drive_file_id: q.driveFileId,
       source_filename: q.sourceFilename,
       chatgpt_url: q.chatgptUrl || null,
-      status: q.status,
+      status: displayStatus,
+      reading_status: q.readingStatus || displayStatus,
+      start_page: q.startPage,
+      end_page: q.endPage,
       questions: publicQuestions,
+      created_at: q.createdAt,
     });
   } catch (err: any) {
     return NextResponse.json({ detail: err.message }, { status: 500 });
@@ -138,7 +149,7 @@ export async function DELETE(
 
     if (!quiz) {
       return NextResponse.json(
-        { detail: `Quiz with ID ${quizId} not found.` },
+        { detail: `Chapter with ID ${quizId} not found.` },
         { status: 404 }
       );
     }
@@ -147,13 +158,13 @@ export async function DELETE(
       const c = await db.select().from(courses).where(eq(courses.id, quiz.courseId)).get();
       if (c && c.userId && c.userId !== user.userId) {
         return NextResponse.json(
-          { detail: 'You do not have permission to delete this quiz.' },
+          { detail: 'You do not have permission to delete this chapter.' },
           { status: 403 }
         );
       }
     }
 
-    // Explicitly delete attempts, results, responses, questions, blanks for clean cascade in SQLite
+    // Cascade delete any attempts, responses, and questions
     const attempts = await db
       .select({ id: quizAttempts.id })
       .from(quizAttempts)
@@ -179,38 +190,12 @@ export async function DELETE(
       await db.delete(questions).where(inArray(questions.id, qIds));
     }
 
-    // If quiz is part of a course curriculum, reset it to pending_import instead of removing the unit
-    if (quiz.courseId && quiz.unitNumber !== null) {
-      await db
-        .update(quizzes)
-        .set({
-          status: 'pending_import',
-          questionCount: 0,
-          blankCount: 0,
-          instructions:
-            'Fill in every numbered blank. Answers are tied to their numbered placeholders.',
-          gradingConfig: {
-            mode: 'per_blank',
-            questionCompleteWhen: 'all_blanks_correct',
-          },
-          topics: null,
-          learningObjectives: null,
-          coverageAudit: null,
-        })
-        .where(eq(quizzes.id, quizId));
-
-      return NextResponse.json({
-        message: `Quiz '${quiz.title}' questions and attempts were deleted, reset to pending.`,
-        quiz_id: quizId,
-        reset: true,
-      });
-    }
-
     await db.delete(quizzes).where(eq(quizzes.id, quizId));
 
     return NextResponse.json({
-      message: `Quiz '${quiz.title}' was deleted successfully.`,
+      message: `Chapter '${quiz.title}' was deleted successfully.`,
       quiz_id: quizId,
+      chapter_id: quizId,
       reset: false,
     });
   } catch (err: any) {
@@ -236,7 +221,7 @@ export async function PATCH(
 
     if (!quiz) {
       return NextResponse.json(
-        { detail: `Quiz with ID ${quizId} not found.` },
+        { detail: `Chapter with ID ${quizId} not found.` },
         { status: 404 }
       );
     }
@@ -245,7 +230,7 @@ export async function PATCH(
       const c = await db.select().from(courses).where(eq(courses.id, quiz.courseId)).get();
       if (c && c.userId && c.userId !== user.userId) {
         return NextResponse.json(
-          { detail: 'You do not have permission to modify this quiz.' },
+          { detail: 'You do not have permission to modify this chapter.' },
           { status: 403 }
         );
       }
@@ -253,6 +238,22 @@ export async function PATCH(
 
     const body = (await request.json()) as Record<string, any>;
     const updateData: Record<string, any> = {};
+
+    if (body.status !== undefined) {
+      const validStatuses = ['To do', 'Doing', 'Done'];
+      const newStatus = validStatuses.includes(body.status) ? body.status : 'To do';
+      updateData.status = newStatus;
+      updateData.readingStatus = newStatus;
+    }
+
+    if (body.title !== undefined && typeof body.title === 'string' && body.title.trim()) {
+      updateData.title = body.title.trim();
+      updateData.unitTitle = body.title.trim();
+    }
+
+    if (body.instructions !== undefined) {
+      updateData.instructions = body.instructions;
+    }
 
     if (body.chatgpt_url !== undefined) {
       const trimmed =
@@ -275,8 +276,10 @@ export async function PATCH(
       title: updated!.title,
       unit_number: updated!.unitNumber,
       unit_title: updated!.unitTitle,
+      status: updated!.status,
+      reading_status: updated!.readingStatus,
       chatgpt_url: updated!.chatgptUrl || null,
-      message: 'Quiz ChatGPT link updated successfully.',
+      message: 'Chapter status updated successfully.',
     });
   } catch (err: any) {
     return NextResponse.json({ detail: err.message }, { status: 500 });

@@ -41,12 +41,32 @@ export async function GET() {
           id: c.id,
           title: c.title,
           description: c.description,
+          author: c.author,
+          goodreads_url: c.goodreadsUrl,
+          cover_url: c.coverUrl || c.bannerUrl,
+          rating: c.rating,
+          rating_count: c.ratingCount,
+          page_count: c.pageCount,
+          isbn: c.isbn,
+          published_year: c.publishedYear,
+          genres: c.genres,
           drive_folder_id: c.driveFolderId,
           drive_folder_url: c.driveFolderUrl,
           banner_url:
             c.bannerUrl && c.bannerUrl.startsWith('http')
               ? c.bannerUrl
-              : DEFAULT_COURSE_BANNER,
+              : c.coverUrl || DEFAULT_COURSE_BANNER,
+          total_chapters: stats.total_chapters,
+          todo_chapters: stats.todo_chapters,
+          doing_chapters: stats.doing_chapters,
+          done_chapters: stats.done_chapters,
+          status:
+            stats.total_chapters > 0 && stats.done_chapters >= stats.total_chapters
+              ? 'Done'
+              : stats.done_chapters > 0 || stats.doing_chapters > 0
+              ? 'Doing'
+              : 'To do',
+          // Backwards-compatible aliases
           total_quizzes: stats.total_quizzes,
           ready_quizzes: stats.ready_quizzes,
           pending_quizzes: stats.pending_quizzes,
@@ -78,28 +98,42 @@ export async function POST(request: Request) {
       );
     }
 
-    const { title, description, drive_folder_id, drive_folder_url, banner_url } = parsed.data;
-    
+    const {
+      title,
+      description,
+      author,
+      goodreads_url,
+      cover_url,
+      rating,
+      rating_count,
+      page_count,
+      isbn,
+      published_year,
+      genres,
+      drive_folder_id,
+      drive_folder_url,
+      banner_url,
+    } = parsed.data;
+
     // Automatically extract folder ID from URL or raw ID
     const rawDrive = drive_folder_url || drive_folder_id || '';
     const folderId = rawDrive ? extractDriveFolderId(rawDrive) : null;
     const folderUrl =
       drive_folder_url ||
       (folderId ? `https://drive.google.com/drive/folders/${folderId}` : null);
-    const banner = banner_url || DEFAULT_COURSE_BANNER;
+    const banner = cover_url || banner_url || DEFAULT_COURSE_BANNER;
 
-    // 1. Resolve course title: if Google Drive link provided, prioritize actual Drive folder name
+    // Resolve book title: if Google Drive link provided, prioritize actual Drive folder name if no explicit title
     let finalTitle = title ? title.trim() : '';
-    if (folderId) {
+    if (folderId && (!finalTitle || finalTitle === 'd' || finalTitle === DEFAULT_COURSE_TITLE)) {
       const driveMeta = await fetchDriveFolderMetadata(folderId);
       if (driveMeta?.name) {
-        if (!finalTitle || finalTitle === 'd' || finalTitle === DEFAULT_COURSE_TITLE) {
-          finalTitle = driveMeta.name;
-        }
+        finalTitle = driveMeta.name;
       }
     }
+
     if (!finalTitle) {
-      finalTitle = folderId ? `Course (${folderId.slice(0, 8)})` : DEFAULT_COURSE_TITLE;
+      finalTitle = folderId ? `Book (${folderId.slice(0, 8)})` : DEFAULT_COURSE_TITLE;
     }
 
     const userScope =
@@ -107,7 +141,7 @@ export async function POST(request: Request) {
         ? undefined
         : or(eq(courses.userId, user.userId), isNull(courses.userId));
 
-    // 2. Check if a course already exists by Google Drive Folder ID for this user
+    // Check if a book already exists by Google Drive Folder ID for this user
     if (folderId) {
       const folderFilter = userScope
         ? and(eq(courses.driveFolderId, folderId), userScope)
@@ -122,7 +156,7 @@ export async function POST(request: Request) {
       if (existingByFolder) {
         return NextResponse.json(
           {
-            detail: `Khóa học từ thư mục Google Drive này đã tồn tại trong thư viện: "${existingByFolder.title}". Không được thêm khóa học đã có trong repo.`,
+            detail: `Cuốn sách từ thư mục Google Drive này đã tồn tại trong thư viện: "${existingByFolder.title}".`,
             existing_course_id: existingByFolder.id,
           },
           { status: 409 }
@@ -130,7 +164,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Check if a course already exists by Title for this user
+    // Check if a book already exists by Title for this user
     const titleFilter = userScope
       ? and(eq(courses.title, finalTitle), userScope)
       : eq(courses.title, finalTitle);
@@ -144,14 +178,14 @@ export async function POST(request: Request) {
     if (existingByTitle) {
       return NextResponse.json(
         {
-          detail: `Khóa học với tiêu đề "${finalTitle}" đã tồn tại trong thư viện. Không được thêm khóa học đã có trong repo.`,
+          detail: `Cuốn sách với tiêu đề "${finalTitle}" đã tồn tại trong thư viện.`,
           existing_course_id: existingByTitle.id,
         },
         { status: 409 }
       );
     }
 
-    // 4. Create a clean fresh course scoped to current user
+    // Create a clean fresh book scoped to current user
     const courseId = crypto.randomUUID();
     const nowIso = new Date().toISOString();
 
@@ -159,6 +193,15 @@ export async function POST(request: Request) {
       id: courseId,
       title: finalTitle,
       description: description || null,
+      author: author || null,
+      goodreadsUrl: goodreads_url || null,
+      coverUrl: cover_url || banner,
+      rating: rating != null ? rating : null,
+      ratingCount: rating_count != null ? rating_count : null,
+      pageCount: page_count != null ? page_count : null,
+      isbn: isbn || null,
+      publishedYear: published_year || null,
+      genres: genres || null,
       driveFolderId: folderId,
       driveFolderUrl: folderUrl,
       bannerUrl: banner,
@@ -177,9 +220,22 @@ export async function POST(request: Request) {
         id: courseId,
         title: finalTitle,
         description: description || null,
+        author: author || null,
+        goodreads_url: goodreads_url || null,
+        cover_url: cover_url || banner,
+        rating: rating != null ? rating : null,
+        rating_count: rating_count != null ? rating_count : null,
+        page_count: page_count != null ? page_count : null,
+        isbn: isbn || null,
+        published_year: published_year || null,
+        genres: genres || null,
         drive_folder_id: folderId,
         drive_folder_url: folderUrl,
         banner_url: banner,
+        total_chapters: stats.total_chapters,
+        todo_chapters: stats.todo_chapters,
+        doing_chapters: stats.doing_chapters,
+        done_chapters: stats.done_chapters,
         total_quizzes: stats.total_quizzes,
         ready_quizzes: stats.ready_quizzes,
         pending_quizzes: stats.pending_quizzes,

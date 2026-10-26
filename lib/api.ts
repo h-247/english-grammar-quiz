@@ -4,6 +4,8 @@ import {
   CourseSummary,
   CourseDetail,
   CourseCreatePayload,
+  ChapterStatus,
+  GoodreadsBookDetails,
   AttemptState,
   SaveAnswersResponse,
   AttemptResultResponse,
@@ -92,7 +94,16 @@ export async function deleteCourse(courseId: string): Promise<{ message: string;
 
 export async function updateCourse(
   courseId: string,
-  data: { title?: string; description?: string; banner_url?: string }
+  data: {
+    title?: string;
+    description?: string;
+    author?: string;
+    goodreads_url?: string;
+    cover_url?: string;
+    banner_url?: string;
+    rating?: number;
+    page_count?: number;
+  }
 ): Promise<CourseSummary> {
   return fetchApi<CourseSummary>(`/courses/${courseId}`, {
     method: "PATCH",
@@ -128,14 +139,35 @@ export async function deleteQuiz(quizId: string): Promise<{ message: string; qui
 
 export async function updateQuiz(
   quizId: string,
-  data: { chatgpt_url?: string | null }
-): Promise<{ id: string; title: string; chatgpt_url: string | null; message: string }> {
-  return fetchApi<{ id: string; title: string; chatgpt_url: string | null; message: string }>(
+  data: { chatgpt_url?: string | null; status?: ChapterStatus | string }
+): Promise<{ id: string; title: string; status?: string; chatgpt_url: string | null; message: string }> {
+  return fetchApi<{ id: string; title: string; status?: string; chatgpt_url: string | null; message: string }>(
     `/quizzes/${quizId}`,
     {
       method: "PATCH",
       body: JSON.stringify(data),
     }
+  );
+}
+
+export async function updateChapterStatus(
+  chapterId: string,
+  status: ChapterStatus
+): Promise<{ id: string; title: string; status: string; message: string }> {
+  return fetchApi<{ id: string; title: string; status: string; message: string }>(
+    `/quizzes/${chapterId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }
+  );
+}
+
+export async function fetchGoodreadsInfo(
+  url: string
+): Promise<GoodreadsBookDetails> {
+  return fetchApi<GoodreadsBookDetails>(
+    `/books/goodreads?url=${encodeURIComponent(url)}`
   );
 }
 
@@ -198,16 +230,12 @@ export async function testDriveConnection(folderId?: string): Promise<{
   success: boolean;
   folder_name?: string;
   files_found?: number;
-  sample_files?: string[];
-  message?: string;
   error?: string;
 }> {
   return fetchApi<{
     success: boolean;
     folder_name?: string;
     files_found?: number;
-    sample_files?: string[];
-    message?: string;
     error?: string;
   }>("/settings/test-drive", {
     method: "POST",
@@ -215,107 +243,22 @@ export async function testDriveConnection(folderId?: string): Promise<{
   });
 }
 
-export async function practiceMistakesForAttempt(attemptId: string): Promise<{
-  success: boolean;
-  attempt_id: string;
-  quiz_id: string;
-  mistake_count: number;
-  message: string;
-}> {
-  return fetchApi<{
-    success: boolean;
-    attempt_id: string;
-    quiz_id: string;
-    mistake_count: number;
-    message: string;
-  }>(`/attempts/${attemptId}/practice-mistakes`, {
-    method: "POST",
-  });
-}
-
-export async function practiceMistakesForCourse(courseId: string): Promise<{
-  success: boolean;
-  attempt_id: string;
-  quiz_id: string;
-  mistake_count: number;
-  message: string;
-}> {
-  return fetchApi<{
-    success: boolean;
-    attempt_id: string;
-    quiz_id: string;
-    mistake_count: number;
-    message: string;
-  }>(`/courses/${courseId}/practice-mistakes`, {
-    method: "POST",
-  });
-}
-
-export async function getTopicMastery(): Promise<TopicMasteryResponse> {
-  return fetchApi<TopicMasteryResponse>("/mastery", {
-    cache: "no-store",
-  });
-}
-
-export async function importQuizFile(
-  file: File,
-  overwrite: boolean = false,
-  courseId?: string
-): Promise<{
-  message: string;
-  quiz_id: string;
-  title: string;
-  question_count: number;
-  blank_count: number;
-  is_duplicate: boolean;
-}> {
-  const formData = new FormData();
-  formData.append("file", file);
-
-  const query = new URLSearchParams();
-  if (overwrite) query.append("overwrite", "true");
-  if (courseId) query.append("course_id", courseId);
-  const qStr = query.toString();
-
-  return fetchApi<{
-    message: string;
-    quiz_id: string;
-    title: string;
-    question_count: number;
-    blank_count: number;
-    is_duplicate: boolean;
-  }>(`/quizzes/import${qStr ? `?${qStr}` : ""}`, {
-    method: "POST",
-    body: formData,
-  });
-}
-
 export async function startAttempt(
   quizId: string,
-  durationMinutes = 15,
+  durationMinutes: number = 15,
   mode: "timed" | "practice" = "timed"
-): Promise<AttemptState> {
-  return fetchApi<AttemptState>(`/quizzes/${quizId}/attempts`, {
-    method: "POST",
-    body: JSON.stringify({ duration_minutes: durationMinutes, mode }),
-  });
-}
-
-export async function checkQuestionAnswers(
-  attemptId: string,
-  questionId: string,
-  answers: Record<string, string>
-): Promise<QuestionCheckFeedback> {
-  return fetchApi<QuestionCheckFeedback>(`/attempts/${attemptId}/check-question`, {
-    method: "POST",
-    body: JSON.stringify({ question_id: questionId, answers }),
-  });
+): Promise<{ id: string; quiz_id: string; mode: string }> {
+  return fetchApi<{ id: string; quiz_id: string; mode: string }>(
+    `/quizzes/${quizId}/attempts`,
+    {
+      method: "POST",
+      body: JSON.stringify({ duration_minutes: durationMinutes, mode }),
+    }
+  );
 }
 
 export async function getAttempt(attemptId: string): Promise<AttemptState> {
-  return fetchApi<AttemptState>(`/attempts/${attemptId}`, {
-    cache: "no-store",
-  });
+  return fetchApi<AttemptState>(`/attempts/${attemptId}`);
 }
 
 export async function saveAnswers(
@@ -328,24 +271,77 @@ export async function saveAnswers(
   });
 }
 
+export async function checkQuestion(
+  attemptId: string,
+  questionId: string,
+  answers: Record<string, string>
+): Promise<QuestionCheckFeedback> {
+  return fetchApi<QuestionCheckFeedback>(
+    `/attempts/${attemptId}/check-question`,
+    {
+      method: "POST",
+      body: JSON.stringify({ question_id: questionId, answers }),
+    }
+  );
+}
+
+export const checkQuestionAnswers = checkQuestion;
+
 export async function submitAttempt(
   attemptId: string,
   answers?: Record<string, Record<string, string>>
-): Promise<AttemptResultResponse> {
-  return fetchApi<AttemptResultResponse>(`/attempts/${attemptId}/submit`, {
-    method: "POST",
-    body: JSON.stringify({ answers }),
-  });
+): Promise<{ message: string; attempt_id: string; accuracy_percentage: number }> {
+  return fetchApi<{ message: string; attempt_id: string; accuracy_percentage: number }>(
+    `/attempts/${attemptId}/submit`,
+    {
+      method: "POST",
+      body: JSON.stringify({ answers }),
+    }
+  );
 }
 
 export async function getAttemptResults(attemptId: string): Promise<AttemptResultResponse> {
-  return fetchApi<AttemptResultResponse>(`/attempts/${attemptId}/results`, {
-    cache: "no-store",
-  });
+  return fetchApi<AttemptResultResponse>(`/attempts/${attemptId}/results`);
 }
 
-export async function getAttemptHistory(skip = 0, limit = 50): Promise<AttemptHistoryResponse> {
-  return fetchApi<AttemptHistoryResponse>(`/attempts?skip=${skip}&limit=${limit}`, {
-    cache: "no-store",
-  });
+export async function getAttemptHistory(): Promise<AttemptHistoryResponse> {
+  return fetchApi<AttemptHistoryResponse>("/attempts");
 }
+
+export async function getTopicMastery(): Promise<TopicMasteryResponse> {
+  return fetchApi<TopicMasteryResponse>("/mastery");
+}
+
+export async function practiceMistakesForAttempt(
+  attemptId: string
+): Promise<{ attempt_id: string; quiz_id: string; total_questions: number }> {
+  return fetchApi<{ attempt_id: string; quiz_id: string; total_questions: number }>(
+    `/attempts/${attemptId}/practice-mistakes`,
+    {
+      method: "POST",
+    }
+  );
+}
+
+export async function practiceMistakesForCourse(
+  courseId: string
+): Promise<{ attempt_id: string; quiz_id: string; total_questions: number }> {
+  return fetchApi<{ attempt_id: string; quiz_id: string; total_questions: number }>(
+    `/courses/${courseId}/practice-mistakes`,
+    {
+      method: "POST",
+    }
+  );
+}
+
+// Book & Chapter domain aliases
+export const getBooks = getCourses;
+export const getBook = getCourse;
+export const createBook = createCourse;
+export const updateBook = updateCourse;
+export const deleteBook = deleteCourse;
+export const syncBookDrive = syncCourseDrive;
+export const getChapters = getQuizzes;
+export const getChapter = getQuiz;
+export const updateChapter = updateQuiz;
+export const deleteChapter = deleteQuiz;

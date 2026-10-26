@@ -15,6 +15,14 @@ export const DEFAULT_COURSE_BANNER =
 export const DEFAULT_PROMPT_CHAT_URL =
   process.env.NEXT_PUBLIC_PROMPT_CHAT_URL || 'https://chatgpt.com';
 
+// Sample Book Manifest Constants (Keach Hagey - The Optimist)
+export const SAMPLE_BOOK_DRIVE_FOLDER_ID = '13_vo8ifAR_FS8jPYGKxyW_nYSlGoNYbT';
+export const SAMPLE_BOOK_DRIVE_URL = `https://drive.google.com/drive/folders/${SAMPLE_BOOK_DRIVE_FOLDER_ID}`;
+export const SAMPLE_BOOK_TITLE = 'The Optimist: Sam Altman, OpenAI, and the Race to Invent the Future';
+export const SAMPLE_BOOK_AUTHOR = 'Keach Hagey';
+export const SAMPLE_BOOK_BANNER = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=800&auto=format&fit=crop';
+export const SAMPLE_BOOK_GOODREADS_URL = 'https://www.goodreads.com/book/show/214138402';
+
 export const PRESET_COURSE_BANNERS = [
   {
     id: 'grammar-books',

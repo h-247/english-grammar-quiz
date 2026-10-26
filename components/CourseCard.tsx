@@ -6,18 +6,19 @@ import {
   ExternalLink,
   RefreshCw,
   Trash2,
-  Play,
-  BookOpen,
   ArrowRight,
   HardDrive,
+  Star,
+  Bookmark,
+  BookOpen,
+  CheckCircle2,
   Clock,
-  Sparkles,
-  Pencil,
-  Bot,
 } from "lucide-react";
-import { CourseSummary, QuizSummary } from "@/types/quiz";
-import { DEFAULT_COURSE_BANNER, DEFAULT_PROMPT_CHAT_URL } from "@/lib/course-manifest";
+import { CourseSummary, QuizSummary, ChapterStatus } from "@/types/quiz";
 import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
+import { SharedPromptLinkSettings } from "@/components/SharedPromptLinkSettings";
+import { ChatGPTLinkActions } from "@/components/ChatGPTLinkActions";
+import { updateChapterStatus } from "@/lib/api";
 import { formatDateOnly } from "@/lib/utils";
 
 interface CourseCardProps {
@@ -26,7 +27,7 @@ interface CourseCardProps {
   onSyncDrive: (courseId: string) => Promise<void>;
   onDeleteCourse: (course: CourseSummary) => void;
   onEditCourse?: (course: CourseSummary) => void;
-  onStartQuiz: (quiz: QuizSummary, mode: "timed" | "practice") => void;
+  onStartQuiz?: (quiz: QuizSummary, mode: "timed" | "practice") => void;
 }
 
 export const CourseCard = memo(function CourseCard({
@@ -34,28 +35,49 @@ export const CourseCard = memo(function CourseCard({
   quizzes = [],
   onSyncDrive,
   onDeleteCourse,
-  onEditCourse,
-  onStartQuiz,
 }: CourseCardProps) {
   const [isSyncing, setIsSyncing] = useState(false);
-  const [promptChatUrl, setPromptChatUrl] = useState<string>(DEFAULT_PROMPT_CHAT_URL);
 
-  useEffect(() => {
-    const cached = localStorage.getItem("prompt_chat_url");
-    if (cached) setPromptChatUrl(cached);
-  }, []);
+  const totalChapters = course.total_chapters || course.total_quizzes || quizzes.length;
+  const doneChapters = course.done_chapters || course.completed_quizzes || 0;
+  const doingChapters = course.doing_chapters || 0;
+  const todoChapters = course.todo_chapters || Math.max(0, totalChapters - doneChapters - doingChapters);
 
-  // Compute learning progress
+  // Compute reading progress
   const progressPercent =
-    course.total_quizzes > 0
-      ? Math.round((course.completed_quizzes / course.total_quizzes) * 100)
-      : 0;
+    totalChapters > 0 ? Math.round((doneChapters / totalChapters) * 100) : 0;
 
-  // Find next playable quiz or first quiz
-  const nextQuiz =
-    quizzes.find((q) => q.status === "ready" && q.question_count > 0) ||
+  // Find next chapter to read
+  const nextChapter =
+    quizzes.find((q) => q.status === "Doing") ||
+    quizzes.find((q) => q.status === "To do") ||
     quizzes[0] ||
     null;
+
+  const [chapterStatus, setChapterStatus] = useState<ChapterStatus>(
+    (nextChapter?.status as ChapterStatus) || "To do"
+  );
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+  useEffect(() => {
+    if (nextChapter?.status) {
+      setChapterStatus(nextChapter.status as ChapterStatus);
+    }
+  }, [nextChapter?.status]);
+
+  const handleStatusChange = async (newStatus: ChapterStatus) => {
+    if (!nextChapter) return;
+    setIsUpdatingStatus(true);
+    try {
+      await updateChapterStatus(nextChapter.id, newStatus);
+      setChapterStatus(newStatus);
+      nextChapter.status = newStatus;
+    } catch (err) {
+      console.error("Failed to update status", err);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
 
   const handleSync = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -74,34 +96,75 @@ export const CourseCard = memo(function CourseCard({
     onDeleteCourse(course);
   };
 
-  const bannerImg = course.banner_url || DEFAULT_COURSE_BANNER;
+  const bookStatus: ChapterStatus =
+    course.status ||
+    (totalChapters > 0 && doneChapters >= totalChapters
+      ? "Done"
+      : doneChapters > 0 || doingChapters > 0
+      ? "Doing"
+      : "To do");
+
   const syncDate = formatDateOnly(course.updated_at);
 
   return (
     <div className="group rounded-2xl bg-[#1c1c1c] border border-[#2e2e2e] hover:border-[#444444] transition-all duration-200 overflow-hidden flex flex-col justify-between shadow-xl shadow-black/40">
-      <div>
-        {/* Top Banner Cover */}
-        <div className="relative h-44 w-full overflow-hidden bg-[#141414]">
-          <img
-            src={bannerImg}
-            alt={course.title}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#1c1c1c] via-transparent to-black/30" />
-          
-          {/* Drive Connected badge on cover */}
-          {course.drive_folder_id && (
-            <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-black/70 backdrop-blur-md text-gray-200 border border-white/10">
-              <HardDrive className="w-3 h-3 text-blue-400" />
-              <span>Drive Linked</span>
+      <div className="p-5">
+        {/* Top Badges: Book Status, Drive Linked, Goodreads, Rating */}
+        <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Book Reading Status Badge */}
+            <span
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${
+                bookStatus === "Done"
+                  ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                  : bookStatus === "Doing"
+                  ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                  : "bg-[#252525] text-neutral-300 border-[#383838]"
+              }`}
+            >
+              {bookStatus === "Done" ? (
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              ) : bookStatus === "Doing" ? (
+                <Clock className="w-3.5 h-3.5 text-amber-300" />
+              ) : (
+                <BookOpen className="w-3.5 h-3.5 text-neutral-400" />
+              )}
+              <span>{bookStatus}</span>
+            </span>
+
+            {course.drive_folder_id && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#242424] text-gray-200 border border-white/10">
+                <HardDrive className="w-3 h-3 text-blue-400" />
+                <span>Drive Linked</span>
+              </div>
+            )}
+
+            {course.goodreads_url && (
+              <a
+                href={course.goodreads_url}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-950/40 text-amber-300 border border-amber-500/30 hover:bg-amber-900/50 transition-colors"
+                title="Open Goodreads Page"
+              >
+                <Bookmark className="w-3 h-3" />
+                <span>Goodreads</span>
+                <ExternalLink className="w-2.5 h-2.5" />
+              </a>
+            )}
+          </div>
+
+          {/* Rating Badge */}
+          {course.rating && (
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+              <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
+              <span>{course.rating.toFixed(2)}</span>
             </div>
           )}
         </div>
-
-        {/* Card Body */}
-        <div className="p-5">
-          {/* Title & Drive Link */}
-          <div className="flex items-start justify-between gap-2 mb-1.5">
+          {/* Title & Author */}
+          <div className="flex items-start justify-between gap-2 mb-1">
             <Link
               href={`/courses/${course.id}`}
               className="text-lg font-bold text-white hover:text-blue-400 transition-colors line-clamp-1"
@@ -128,17 +191,25 @@ export const CourseCard = memo(function CourseCard({
             )}
           </div>
 
-          <p className="text-xs text-[#9CA3AF] line-clamp-1 mb-4">
-            {course.description || "Comprehensive English Grammar curriculum"}
+          {course.author && (
+            <p className="text-xs font-medium text-amber-400/90 mb-2">
+              by {course.author}
+            </p>
+          )}
+
+          <p className="text-xs text-[#9CA3AF] line-clamp-2 mb-4">
+            {course.description || "Interactive book chapters and reading management."}
           </p>
 
-          {/* Learning Progress Section */}
+          {/* Reading Progress */}
           <div className="mb-4">
             <div className="flex items-center justify-between text-xs text-[#9CA3AF] mb-1.5">
-              <span>Learning Progress</span>
-              <span className="font-semibold text-white">{progressPercent}%</span>
+              <span>Chapter Progress</span>
+              <span className="font-semibold text-white">
+                {doneChapters} / {totalChapters} chapters ({progressPercent}%)
+              </span>
             </div>
-            <div className="w-full bg-[#2a2a2a] h-1.5 rounded-full overflow-hidden">
+            <div className="w-full bg-[#2a2a2a] h-2 rounded-full overflow-hidden">
               <div
                 className="bg-emerald-500 h-full rounded-full transition-all duration-500"
                 style={{ width: `${progressPercent}%` }}
@@ -146,184 +217,157 @@ export const CourseCard = memo(function CourseCard({
             </div>
           </div>
 
-          {/* Stat Badges Row */}
-          <div className="flex items-center gap-2 flex-wrap mb-4">
+          {/* Chapter Status Breakdown Badges */}
+          <div className="flex items-center gap-1.5 flex-wrap mb-4">
             <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-[#242424] text-[#ececec] border border-[#333333]">
-              {course.total_quizzes} Units
+              {totalChapters} Chapters
             </span>
-            <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-[#1e2a1e] text-emerald-400 border border-emerald-900/40">
-              {course.ready_quizzes} Ready
+            <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-[#222222] text-gray-300 border border-gray-700">
+              {todoChapters} To do
             </span>
-            <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-[#2a2418] text-amber-400 border border-amber-900/40">
-              {course.pending_quizzes} Pending
-            </span>
-            {course.completed_quizzes > 0 && (
-              <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-[#241e2a] text-purple-400 border border-purple-900/40">
-                {course.completed_quizzes} Completed
+            {doingChapters > 0 && (
+              <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                {doingChapters} Doing
               </span>
             )}
+            <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+              {doneChapters} Done
+            </span>
           </div>
 
-          {/* Next Unit / Next Quiz Highlight Box (Matching Image 1) */}
-          {nextQuiz && (
+          {/* Next Chapter Highlight */}
+          {nextChapter && (
             <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-3.5 mb-2">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-xs font-semibold text-amber-400 flex items-center gap-1">
-                  ⚡ Next Unit
+                  📖 Next Chapter
                 </span>
                 <span
                   className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase ${
-                    nextQuiz.status === "ready"
+                    nextChapter.status === "Done"
                       ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                      : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                      : nextChapter.status === "Doing"
+                      ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                      : "bg-neutral-800 text-neutral-300 border border-neutral-700"
                   }`}
                 >
-                  {nextQuiz.status === "ready" ? "Ready" : "To do"}
+                  {nextChapter.status || "To do"}
                 </span>
               </div>
 
               <h4 className="text-sm font-semibold text-[#ececec] line-clamp-1 mb-1">
-                {nextQuiz.unit_number ? `${nextQuiz.unit_number}. ` : ""}
-                {nextQuiz.unit_title || nextQuiz.title}
+                {nextChapter.unit_number != null ? `Ch. ${nextChapter.unit_number}: ` : ""}
+                {nextChapter.unit_title || nextChapter.title}
               </h4>
 
-              <div className="text-[11px] text-[#888888] flex items-center gap-2 mb-3">
-                <Clock className="w-3 h-3 text-gray-400" />
-                <span>
-                  {nextQuiz.question_count > 0
-                    ? `${nextQuiz.question_count} Questions • ${nextQuiz.blank_count} Blanks`
-                    : "Awaiting JSON upload"}
-                </span>
-              </div>
+              {nextChapter.instructions && (
+                <div className="text-[11px] text-[#888888] flex items-center gap-2 mb-3">
+                  <span>{nextChapter.instructions}</span>
+                </div>
+              )}
 
-              {/* Action Buttons in Box */}
-              <div className="flex items-center gap-2">
-                {nextQuiz.status === "ready" && nextQuiz.question_count > 0 ? (
-                  <>
-                    <button
-                      onClick={() => onStartQuiz(nextQuiz, "timed")}
-                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-black hover:bg-neutral-200 transition-colors cursor-pointer"
-                    >
-                      <Play className="w-3 h-3 fill-black text-black" />
-                      <span>Play Exam</span>
-                    </button>
-                    <button
-                      onClick={() => onStartQuiz(nextQuiz, "practice")}
-                      className="flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#252525] hover:bg-[#303030] text-[#ececec] border border-[#3a3a3a] transition-colors cursor-pointer"
-                    >
-                      <BookOpen className="w-3 h-3" />
-                      <span>Practice</span>
-                    </button>
-                  </>
-                ) : (
+              {/* Action Buttons in Next Chapter Box */}
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    aria-label="Chapter status"
+                    disabled={isUpdatingStatus}
+                    value={chapterStatus}
+                    onChange={(e) => handleStatusChange(e.target.value as ChapterStatus)}
+                    onClick={(e) => e.stopPropagation()}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold border cursor-pointer outline-none transition-colors ${
+                      chapterStatus === "Done"
+                        ? "bg-emerald-950/40 text-emerald-300 border-emerald-500/40"
+                        : chapterStatus === "Doing"
+                        ? "bg-amber-950/40 text-amber-300 border-amber-500/40"
+                        : "bg-[#262626] text-[#ECECEC] border-[#444444]"
+                    }`}
+                  >
+                    <option value="To do" className="bg-[#212121] text-white">To do</option>
+                    <option value="Doing" className="bg-[#212121] text-amber-300">Doing</option>
+                    <option value="Done" className="bg-[#212121] text-emerald-300">Done</option>
+                  </select>
+
+                  {nextChapter.drive_file_id && (
+                    <div className="flex items-center rounded-lg bg-[#222222] border border-blue-900/30 p-0.5">
+                      <a
+                        href={`https://drive.google.com/file/d/${nextChapter.drive_file_id}/view`}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="View PDF in Google Drive"
+                        className="flex items-center justify-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
+                      >
+                        <HardDrive className="w-3 h-3" />
+                        <span>Drive</span>
+                      </a>
+                      <CopyDriveLinkButton
+                        fileId={nextChapter.drive_file_id}
+                        title="Copy Drive PDF link"
+                        className="p-1 border-l border-blue-900/40 text-blue-400/80 hover:text-blue-200"
+                      />
+                    </div>
+                  )}
+
                   <Link
                     href={`/courses/${course.id}`}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#252525] hover:bg-[#303030] text-gray-300 border border-[#3a3a3a] transition-colors"
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-black hover:bg-neutral-200 transition-colors cursor-pointer"
                   >
-                    <span>View Units & Import</span>
+                    <BookOpen className="w-3 h-3 text-black" />
+                    <span>Read</span>
                   </Link>
-                )}
 
-                {nextQuiz.drive_file_id && (
-                  <div className="flex items-center rounded-lg bg-[#222222] border border-blue-900/30 p-0.5">
-                    <a
-                      href={`https://drive.google.com/file/d/${nextQuiz.drive_file_id}/view`}
-                      target="_blank"
-                      rel="noreferrer"
-                      title="View Source PDF on Google Drive"
-                      className="flex items-center justify-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
-                    >
-                      <HardDrive className="w-3 h-3" />
-                      <span>Drive</span>
-                    </a>
-                    <CopyDriveLinkButton
-                      fileId={nextQuiz.drive_file_id}
-                      title="Copy Drive PDF link"
-                      className="p-1 border-l border-blue-900/40 text-blue-400/80 hover:text-blue-200"
-                    />
-                  </div>
-                )}
+                  <SharedPromptLinkSettings compact canEdit={false} />
+                </div>
 
-                {/* Link Prompt Chat - immediately to the right of Google Drive link */}
-                <a
-                  href={promptChatUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  title="Open Prompt Chat"
-                  className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-[#1a291e] hover:bg-[#223627] text-emerald-400 border border-emerald-900/40 transition-colors"
-                >
-                  <Sparkles className="w-3 h-3" />
-                  <span>Prompt</span>
-                </a>
-
-                {/* Dedicated Quiz ChatGPT link if configured */}
-                {nextQuiz.chatgpt_url && (
-                  <a
-                    href={nextQuiz.chatgpt_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    title={`Open Quiz ChatGPT Link: ${nextQuiz.chatgpt_url}`}
-                    className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-[#142338] hover:bg-[#1a2c47] text-blue-400 border border-blue-900/40 transition-colors"
-                  >
-                    <Bot className="w-3 h-3" />
-                    <span>Chat 2</span>
-                  </a>
-                )}
+                {/* ChatGPT Conversation Pill */}
+                <div className="flex items-center gap-2">
+                  <ChatGPTLinkActions
+                    url={nextChapter.chatgpt_url}
+                    chapterId={nextChapter.id}
+                    chapterTitle={nextChapter.unit_title || nextChapter.title}
+                    onSaved={(newUrl) => {
+                      nextChapter.chatgpt_url = newUrl;
+                    }}
+                  />
+                </div>
               </div>
             </div>
           )}
         </div>
-      </div>
 
-      {/* Card Footer */}
-      <div className="px-5 py-3.5 border-t border-[#2a2a2a] bg-[#181818]/80 flex items-center justify-between">
-        <span className="text-[11px] text-[#777777]">Synced: {syncDate}</span>
+        {/* Card Footer */}
+      <div className="px-5 py-3 border-t border-[#262626] bg-[#171717] flex items-center justify-between text-xs text-gray-400">
+        <span className="text-[11px] text-gray-500">Updated: {syncDate}</span>
 
-        <div className="flex items-center gap-2">
-          {/* Re-sync Drive button */}
+        <div className="flex items-center gap-1">
           <button
             onClick={handleSync}
             disabled={isSyncing}
-            title="Re-sync with Google Drive"
-            className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-[#2c2c2c] transition-colors cursor-pointer disabled:opacity-50"
+            title="Sync chapters with Google Drive"
+            className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-[#252525] transition-colors cursor-pointer disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-blue-400" : ""}`} />
           </button>
 
-          {/* Edit Course button */}
-          {onEditCourse && (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onEditCourse(course);
-              }}
-              title="Edit Course Name & Info"
-              className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-[#2c2c2c] transition-colors cursor-pointer"
-            >
-              <Pencil className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <Link
+            href={`/courses/${course.id}`}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-200 hover:text-white bg-[#252525] hover:bg-[#303030] transition-colors"
+          >
+            <span>Open Book</span>
+            <ArrowRight className="w-3 h-3" />
+          </Link>
 
-          {/* Delete Course button */}
           <button
             onClick={handleDelete}
-            title="Delete Course"
-            className="p-1.5 text-gray-400 hover:text-red-400 rounded-lg hover:bg-red-950/30 transition-colors cursor-pointer"
+            title="Delete Book"
+            className="p-1.5 text-gray-400 hover:text-red-400 rounded-lg hover:bg-red-950/20 transition-colors cursor-pointer"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
-
-          {/* View Course Content button */}
-          <Link
-            href={`/courses/${course.id}`}
-            className="flex items-center gap-1 ml-1 px-3 py-1 rounded-lg text-xs font-semibold text-white hover:text-blue-400 transition-colors"
-          >
-            <span>View Content</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
         </div>
       </div>
     </div>
   );
 });
+
+export const BookCard = CourseCard;

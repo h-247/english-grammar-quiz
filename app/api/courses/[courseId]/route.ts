@@ -33,7 +33,7 @@ export async function GET(
 
     if (!course) {
       return NextResponse.json(
-        { detail: `Course with ID ${courseId} not found.` },
+        { detail: `Book with ID ${courseId} not found.` },
         { status: 404 }
       );
     }
@@ -44,7 +44,7 @@ export async function GET(
       course.userId !== user.userId
     ) {
       return NextResponse.json(
-        { detail: `Course with ID ${courseId} not found.` },
+        { detail: `Book with ID ${courseId} not found.` },
         { status: 404 }
       );
     }
@@ -57,35 +57,67 @@ export async function GET(
       .orderBy(asc(quizzes.unitNumber))
       .all();
 
-    const quizSummaries = courseQuizzes.map((q) => ({
-      id: q.id,
-      title: q.title,
-      unit_number: q.unitNumber,
-      unit_title: q.unitTitle,
-      instructions: q.instructions,
-      placeholder_syntax: q.placeholderSyntax,
-      question_count: q.questionCount,
-      blank_count: q.blankCount,
-      topics: (q.topics as any) || [],
-      course_id: q.courseId,
-      course_title: course.title,
-      drive_file_id: q.driveFileId,
-      source_filename: q.sourceFilename,
-      chatgpt_url: q.chatgptUrl || null,
-      status: q.status,
-      created_at: q.createdAt,
-    }));
+    const quizSummaries = courseQuizzes.map((q) => {
+      // Normalize status to 'To do' | 'Doing' | 'Done' if needed
+      let displayStatus = q.status;
+      if (displayStatus === 'ready' || displayStatus === 'pending_import' || !displayStatus) {
+        displayStatus = 'To do';
+      }
+
+      return {
+        id: q.id,
+        title: q.title,
+        unit_number: q.unitNumber,
+        unit_title: q.unitTitle,
+        instructions: q.instructions,
+        placeholder_syntax: q.placeholderSyntax,
+        question_count: q.questionCount,
+        blank_count: q.blankCount,
+        topics: (q.topics as any) || [],
+        course_id: q.courseId,
+        course_title: course.title,
+        book_id: q.courseId,
+        book_title: course.title,
+        drive_file_id: q.driveFileId,
+        source_filename: q.sourceFilename,
+        chatgpt_url: q.chatgptUrl || null,
+        status: displayStatus,
+        reading_status: q.readingStatus || displayStatus,
+        start_page: q.startPage,
+        end_page: q.endPage,
+        created_at: q.createdAt,
+      };
+    });
 
     return NextResponse.json({
       id: course.id,
       title: course.title,
       description: course.description,
+      author: course.author,
+      goodreads_url: course.goodreadsUrl,
+      cover_url: course.coverUrl || course.bannerUrl,
+      rating: course.rating,
+      rating_count: course.ratingCount,
+      page_count: course.pageCount,
+      isbn: course.isbn,
+      published_year: course.publishedYear,
+      genres: course.genres,
       drive_folder_id: course.driveFolderId,
       drive_folder_url: course.driveFolderUrl,
       banner_url:
         course.bannerUrl && course.bannerUrl.startsWith('http')
           ? course.bannerUrl
-          : DEFAULT_COURSE_BANNER,
+          : course.coverUrl || DEFAULT_COURSE_BANNER,
+      total_chapters: stats.total_chapters,
+      todo_chapters: stats.todo_chapters,
+      doing_chapters: stats.doing_chapters,
+      done_chapters: stats.done_chapters,
+      status:
+        stats.total_chapters > 0 && stats.done_chapters >= stats.total_chapters
+          ? 'Done'
+          : stats.done_chapters > 0 || stats.doing_chapters > 0
+          ? 'Doing'
+          : 'To do',
       total_quizzes: stats.total_quizzes,
       ready_quizzes: stats.ready_quizzes,
       pending_quizzes: stats.pending_quizzes,
@@ -93,6 +125,7 @@ export async function GET(
       created_at: course.createdAt,
       updated_at: course.updatedAt,
       quizzes: quizSummaries,
+      chapters: quizSummaries,
     });
   } catch (err: any) {
     return NextResponse.json({ detail: err.message }, { status: 500 });
@@ -117,7 +150,7 @@ export async function DELETE(
 
     if (!course) {
       return NextResponse.json(
-        { detail: `Course with ID ${courseId} not found.` },
+        { detail: `Book with ID ${courseId} not found.` },
         { status: 404 }
       );
     }
@@ -128,12 +161,12 @@ export async function DELETE(
       course.userId !== user.userId
     ) {
       return NextResponse.json(
-        { detail: 'You do not have permission to delete this course.' },
+        { detail: 'You do not have permission to delete this book.' },
         { status: 403 }
       );
     }
 
-    // 1. Fetch all quiz IDs belonging to this course
+    // 1. Fetch all quiz/chapter IDs belonging to this book
     const courseQuizzes = await db
       .select({ id: quizzes.id })
       .from(quizzes)
@@ -143,7 +176,6 @@ export async function DELETE(
     const quizIds = courseQuizzes.map((q) => q.id);
 
     if (quizIds.length > 0) {
-      // Delete attempts, responses, and results
       const attempts = await db
         .select({ id: quizAttempts.id })
         .from(quizAttempts)
@@ -157,7 +189,6 @@ export async function DELETE(
         await db.delete(quizAttempts).where(inArray(quizAttempts.id, attemptIds));
       }
 
-      // Delete blanks and questions
       const quizQuestions = await db
         .select({ id: questions.id })
         .from(questions)
@@ -170,16 +201,16 @@ export async function DELETE(
         await db.delete(questions).where(inArray(questions.id, qIds));
       }
 
-      // Delete quizzes
       await db.delete(quizzes).where(inArray(quizzes.id, quizIds));
     }
 
-    // 2. Delete the course itself
+    // 2. Delete the course / book itself
     await db.delete(courses).where(eq(courses.id, courseId));
 
     return NextResponse.json({
-      message: `Course '${course.title}' and all its quizzes were permanently deleted.`,
+      message: `Book '${course.title}' and all its chapters were permanently deleted.`,
       course_id: courseId,
+      book_id: courseId,
     });
   } catch (err: any) {
     return NextResponse.json({ detail: err.message }, { status: 500 });
@@ -204,7 +235,7 @@ export async function PATCH(
 
     if (!course) {
       return NextResponse.json(
-        { detail: `Course with ID ${courseId} not found.` },
+        { detail: `Book with ID ${courseId} not found.` },
         { status: 404 }
       );
     }
@@ -215,7 +246,7 @@ export async function PATCH(
       course.userId !== user.userId
     ) {
       return NextResponse.json(
-        { detail: 'You do not have permission to modify this course.' },
+        { detail: 'You do not have permission to modify this book.' },
         { status: 403 }
       );
     }
@@ -226,7 +257,7 @@ export async function PATCH(
 
     if (trimmedTitle !== undefined && trimmedTitle.length === 0) {
       return NextResponse.json(
-        { detail: 'Course title cannot be empty.' },
+        { detail: 'Book title cannot be empty.' },
         { status: 422 }
       );
     }
@@ -240,8 +271,24 @@ export async function PATCH(
     if (body.description !== undefined) {
       updateData.description = body.description ? String(body.description).trim() : null;
     }
+    if (body.author !== undefined) {
+      updateData.author = body.author ? String(body.author).trim() : null;
+    }
+    if (body.goodreads_url !== undefined) {
+      updateData.goodreadsUrl = body.goodreads_url ? String(body.goodreads_url).trim() : null;
+    }
+    if (body.cover_url !== undefined) {
+      updateData.coverUrl = body.cover_url ? String(body.cover_url).trim() : null;
+      updateData.bannerUrl = updateData.coverUrl;
+    }
     if (body.banner_url !== undefined && body.banner_url) {
       updateData.bannerUrl = String(body.banner_url);
+    }
+    if (body.rating !== undefined) {
+      updateData.rating = body.rating != null ? Number(body.rating) : null;
+    }
+    if (body.page_count !== undefined) {
+      updateData.pageCount = body.page_count != null ? Number(body.page_count) : null;
     }
 
     await db.update(courses).set(updateData).where(eq(courses.id, courseId));
@@ -258,12 +305,27 @@ export async function PATCH(
       id: updated!.id,
       title: updated!.title,
       description: updated!.description,
+      author: updated!.author,
+      goodreads_url: updated!.goodreadsUrl,
+      cover_url: updated!.coverUrl || updated!.bannerUrl,
+      rating: updated!.rating,
+      page_count: updated!.pageCount,
       drive_folder_id: updated!.driveFolderId,
       drive_folder_url: updated!.driveFolderUrl,
       banner_url:
         updated!.bannerUrl && updated!.bannerUrl.startsWith('http')
           ? updated!.bannerUrl
-          : DEFAULT_COURSE_BANNER,
+          : updated!.coverUrl || DEFAULT_COURSE_BANNER,
+      total_chapters: stats.total_chapters,
+      todo_chapters: stats.todo_chapters,
+      doing_chapters: stats.doing_chapters,
+      done_chapters: stats.done_chapters,
+      status:
+        stats.total_chapters > 0 && stats.done_chapters >= stats.total_chapters
+          ? 'Done'
+          : stats.done_chapters > 0 || stats.doing_chapters > 0
+          ? 'Doing'
+          : 'To do',
       total_quizzes: stats.total_quizzes,
       ready_quizzes: stats.ready_quizzes,
       pending_quizzes: stats.pending_quizzes,

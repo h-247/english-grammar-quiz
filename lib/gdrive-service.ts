@@ -310,11 +310,19 @@ export async function fetchDriveFolderMetadata(
     console.error('Error fetching drive folder metadata:', err);
   }
 
-  // Fallback for default repository folder
+  // Fallback for default repository folder and sample book folder
   if (folderId === '1wqG3TMDqwYCQv5eQ9eDyFKdy8X9lJWTd') {
     const defaultRes = { id: folderId, name: 'grammar' };
     setInCache(metadataCache, folderId, { data: defaultRes, timestamp: now });
     return defaultRes;
+  }
+  if (folderId === '13_vo8ifAR_FS8jPYGKxyW_nYSlGoNYbT') {
+    const bookRes = {
+      id: folderId,
+      name: 'The Optimist_ Sam Altman, OpenAI, and the Race to Invent the -- Keach Hagey -- 2025.pdf',
+    };
+    setInCache(metadataCache, folderId, { data: bookRes, timestamp: now });
+    return bookRes;
   }
 
   setInCache(metadataCache, folderId, { data: null, timestamp: now });
@@ -322,11 +330,11 @@ export async function fetchDriveFolderMetadata(
 }
 
 /**
- * Lists .json quiz files inside a Google Drive folder via drive.files.list with caching.
+ * Lists files inside a Google Drive folder via drive.files.list with caching.
  */
 export async function listDriveFolderFiles(
   folderId: string,
-  options?: { forceRefresh?: boolean }
+  options?: { forceRefresh?: boolean; jsonOnly?: boolean }
 ): Promise<DriveFileItem[]> {
   if (!folderId) return [];
 
@@ -339,7 +347,9 @@ export async function listDriveFolderFiles(
   }
 
   try {
-    const query = `'${folderId}' in parents and (mimeType = 'application/json' or name contains '.json') and trashed = false`;
+    const query = options?.jsonOnly
+      ? `'${folderId}' in parents and (mimeType = 'application/json' or name contains '.json') and trashed = false`
+      : `'${folderId}' in parents and trashed = false`;
     const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType)&pageSize=1000&orderBy=name`;
 
     const res = await fetchWithDriveAuth(url);

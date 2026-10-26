@@ -6,6 +6,15 @@ export const courses = sqliteTable(
     id: text('id').primaryKey(),
     title: text('title').notNull(),
     description: text('description'),
+    author: text('author'),
+    goodreadsUrl: text('goodreads_url'),
+    coverUrl: text('cover_url'),
+    rating: real('rating'),
+    ratingCount: integer('rating_count'),
+    pageCount: integer('page_count'),
+    isbn: text('isbn'),
+    publishedYear: text('published_year'),
+    genres: text('genres', { mode: 'json' }),
     driveFolderId: text('drive_folder_id'),
     driveFolderUrl: text('drive_folder_url'),
     bannerUrl: text('banner_url'),
@@ -44,7 +53,10 @@ export const quizzes = sqliteTable(
     driveFileId: text('drive_file_id'),
     sourceFilename: text('source_filename'),
     chatgptUrl: text('chatgpt_url'),
-    status: text('status').notNull().default('ready'),
+    status: text('status').notNull().default('To do'),
+    readingStatus: text('reading_status').default('To do'),
+    startPage: integer('start_page'),
+    endPage: integer('end_page'),
     createdAt: text('created_at').notNull(),
   },
   (table) => [
@@ -53,6 +65,10 @@ export const quizzes = sqliteTable(
     index('quizzes_unit_number_idx').on(table.unitNumber),
   ]
 );
+
+// Domain aliases for Books & Chapters
+export const books = courses;
+export const chapters = quizzes;
 
 export const questions = sqliteTable(
   'questions',

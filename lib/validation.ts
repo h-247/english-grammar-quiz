@@ -80,10 +80,21 @@ export const SubmitAttemptSchema = z.object({
   answers: z.record(z.string(), z.record(z.string(), z.string())).optional(),
 });
 
-export const CourseCreateSchema = z.object({
+export const BookCreateSchema = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
+  author: z.string().optional(),
+  goodreads_url: z.string().optional(),
+  cover_url: z.string().optional(),
+  rating: z.number().optional(),
+  rating_count: z.number().optional(),
+  page_count: z.number().optional(),
+  isbn: z.string().optional(),
+  published_year: z.string().optional(),
+  genres: z.array(z.string()).optional(),
   drive_folder_id: z.string().optional(),
   drive_folder_url: z.string().optional(),
   banner_url: z.string().optional(),
 });
+
+export const CourseCreateSchema = BookCreateSchema;

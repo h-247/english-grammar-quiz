@@ -4,27 +4,24 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  GraduationCap,
+  BookOpen,
   History,
   Plus,
   HardDrive,
   LogOut,
   User,
-  ClipboardPaste,
-  Sparkles,
-  ExternalLink,
-  Pencil,
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DEFAULT_PROMPT_CHAT_URL } from "@/lib/course-manifest";
 import { EditPromptChatModal } from "@/components/EditPromptChatModal";
 import { SettingsModal } from "@/components/SettingsModal";
+import { SharedPromptLinkSettings } from "@/components/SharedPromptLinkSettings";
 import { getSettings } from "@/lib/api";
 
 interface NavbarProps {
   onOpenImportCourse?: () => void;
-  onOpenImportQuiz?: () => void;
+  onOpenImportBook?: () => void;
   userEmail?: string;
   driveConnected?: boolean;
   promptChatUrl?: string;
@@ -33,7 +30,7 @@ interface NavbarProps {
 
 function NavLinks({
   onOpenImportCourse,
-  onOpenImportQuiz,
+  onOpenImportBook,
   userEmail: propUserEmail,
   driveConnected = true,
   promptChatUrl: propPromptChatUrl,
@@ -48,6 +45,8 @@ function NavLinks({
   );
   const [isEditPromptOpen, setIsEditPromptOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const handleOpenImport = onOpenImportBook || onOpenImportCourse;
 
   // Sync user email or fetch from /api/auth/me
   useEffect(() => {
@@ -101,32 +100,7 @@ function NavLinks({
 
   return (
     <div className="flex items-center gap-2.5 sm:gap-3" suppressHydrationWarning>
-      {/* Prompt Chat Link with Edit Button (For all courses) */}
-      <div className="flex items-center rounded-xl bg-[#1a291e] border border-emerald-900/40 p-0.5 shadow-sm">
-        <a
-          href={activePromptChatUrl}
-          target="_blank"
-          rel="noreferrer"
-          title="Open ChatGPT Prompt Chat (for all courses)"
-          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-          <span className="inline">Prompt Chat</span>
-          <ExternalLink className="w-3 h-3 text-emerald-500/70" />
-        </a>
-
-        {/* Edit Prompt Chat Link Button */}
-        <button
-          type="button"
-          onClick={() => setIsEditPromptOpen(true)}
-          title="Edit Prompt Chat URL"
-          className="p-1.5 text-emerald-500/70 hover:text-emerald-300 hover:bg-[#223627] rounded-lg transition-colors cursor-pointer border-l border-emerald-900/40"
-        >
-          <Pencil className="w-3 h-3" />
-        </button>
-      </div>
-
-      {/* Drive Status Indicator (Clickable to configure) */}
+      {/* Drive Status Indicator */}
       <button
         type="button"
         onClick={() => setIsSettingsOpen(true)}
@@ -140,6 +114,9 @@ function NavLinks({
           {driveConnected ? "Connected" : "Offline"}
         </span>
       </button>
+
+      {/* Shared Prompt Link Settings Pill (Editable in Navbar) */}
+      <SharedPromptLinkSettings compact canEdit={true} />
 
       {/* History Link */}
       <Link
@@ -155,25 +132,14 @@ function NavLinks({
         <span className="hidden md:inline">History</span>
       </Link>
 
-      {/* Optional Paste Quiz Button */}
-      {onOpenImportQuiz && (
+      {/* + Import Book (White prominent button) */}
+      {handleOpenImport && (
         <button
-          onClick={onOpenImportQuiz}
-          className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#2a2a2a] text-[#ECECEC] border border-[#3a3a3a] hover:bg-[#333333] transition-colors cursor-pointer"
-        >
-          <ClipboardPaste className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Paste Quiz</span>
-        </button>
-      )}
-
-      {/* + Import Course (White prominent button) */}
-      {onOpenImportCourse && (
-        <button
-          onClick={onOpenImportCourse}
+          onClick={handleOpenImport}
           className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold bg-white text-black hover:bg-neutral-200 transition-all shadow-sm cursor-pointer active:scale-95"
         >
           <Plus className="w-4 h-4 text-black stroke-[2.5]" />
-          <span>Import Course</span>
+          <span>Import Book</span>
         </button>
       )}
 
@@ -237,14 +203,14 @@ export function Navbar(props: NavbarProps) {
         {/* Brand */}
         <Link href="/" className="flex items-center gap-3 group">
           <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center text-black shadow-md transition-transform group-hover:scale-105">
-            <GraduationCap className="w-5 h-5 text-black" />
+            <BookOpen className="w-5 h-5 text-black" />
           </div>
           <div className="flex items-center gap-2">
             <span className="font-bold text-base tracking-tight text-[#ECECEC] block">
-              English Grammar Quiz
+              Book Manager
             </span>
             <span className="text-[10px] text-neutral-400 bg-[#262626] px-2 py-0.5 rounded-full border border-neutral-700/60 font-medium">
-              Personal Edition
+              Goodreads & Drive
             </span>
           </div>
         </Link>

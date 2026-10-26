@@ -26,3 +26,5 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 pgdata/
+
+*.lnk
