@@ -261,6 +261,13 @@ export async function PATCH(
       updateData.chatgptUrl = trimmed || null;
     }
 
+    if (body.learning_status !== undefined) {
+      const validStatuses = ['to_do', 'doing', 'done'];
+      if (validStatuses.includes(body.learning_status)) {
+        updateData.learningStatus = body.learning_status;
+      }
+    }
+
     if (Object.keys(updateData).length > 0) {
       await db.update(quizzes).set(updateData).where(eq(quizzes.id, quizId));
     }

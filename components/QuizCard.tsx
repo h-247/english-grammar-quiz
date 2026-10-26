@@ -20,6 +20,7 @@ interface QuizCardProps {
   onStart: (quiz: QuizSummary) => void;
   onDelete?: (quiz: QuizSummary) => void;
   onUploadJson?: (quiz: QuizSummary) => void;
+  onViewHistory?: (quiz: QuizSummary) => void;
 }
 
 export const QuizCard = memo(function QuizCard({ quiz, onStart, onDelete }: QuizCardProps) {

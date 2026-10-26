@@ -12,7 +12,7 @@ import {
 import { ensureDatabaseInitialized } from '@/lib/db-init';
 import { calculateCourseStats } from '@/lib/course-service';
 import { DEFAULT_COURSE_BANNER } from '@/lib/course-manifest';
-import { eq, asc, inArray } from 'drizzle-orm';
+import { eq, asc, inArray, and } from 'drizzle-orm';
 import { getAuthenticatedUserOrLocal } from '@/app/chatgpt-auth';
 
 export async function GET(
@@ -184,9 +184,12 @@ export async function DELETE(
 
       if (attempts.length > 0) {
         const attemptIds = attempts.map((a) => a.id);
-        await db.delete(attemptResults).where(inArray(attemptResults.attemptId, attemptIds));
-        await db.delete(userResponses).where(inArray(userResponses.attemptId, attemptIds));
-        await db.delete(quizAttempts).where(inArray(quizAttempts.id, attemptIds));
+        for (let i = 0; i < attemptIds.length; i += IN_ARRAY_CHUNK_SIZE) {
+          const chunk = attemptIds.slice(i, i + IN_ARRAY_CHUNK_SIZE);
+          await db.delete(attemptResults).where(inArray(attemptResults.attemptId, chunk));
+          await db.delete(userResponses).where(inArray(userResponses.attemptId, chunk));
+          await db.delete(quizAttempts).where(inArray(quizAttempts.id, chunk));
+        }
       }
 
       const quizQuestions = await db
@@ -197,8 +200,11 @@ export async function DELETE(
 
       if (quizQuestions.length > 0) {
         const qIds = quizQuestions.map((q) => q.id);
-        await db.delete(blanks).where(inArray(blanks.questionId, qIds));
-        await db.delete(questions).where(inArray(questions.id, qIds));
+        for (let i = 0; i < qIds.length; i += IN_ARRAY_CHUNK_SIZE) {
+          const chunk = qIds.slice(i, i + IN_ARRAY_CHUNK_SIZE);
+          await db.delete(blanks).where(inArray(blanks.questionId, chunk));
+          await db.delete(questions).where(inArray(questions.id, chunk));
+        }
       }
 
       await db.delete(quizzes).where(inArray(quizzes.id, quizIds));

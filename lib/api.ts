@@ -1,6 +1,7 @@
 import {
   QuizSummary,
   QuizDetail,
+  LearningStatus,
   CourseSummary,
   CourseDetail,
   CourseCreatePayload,
@@ -13,6 +14,7 @@ import {
   QuestionCheckFeedback,
   TopicMasteryResponse,
   AppSettingsResponse,
+  QuizHistoryResponse,
 } from "@/types/quiz";
 
 export function getApiBase(): string {

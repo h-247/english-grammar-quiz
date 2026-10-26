@@ -663,6 +663,7 @@ export default function BookDetailPage() {
                     onClick={() => {
                       setSearchQuery("");
                       setSelectedStatus("all");
+                      setSelectedLearningStatus("all");
                     }}
                     className="mt-2 text-xs text-blue-400 hover:underline cursor-pointer"
                   >
@@ -703,6 +704,9 @@ export default function BookDetailPage() {
                                   • {quiz.question_count} Questions
                                 </span>
                               )}
+
+                              {/* Highest Score Badge: Directly viewable without clicking buttons */}
+                              <QuizScoreBadge score={quiz.highest_score} size="sm" />
 
                               {quiz.source_filename && (
                                 <span className="hidden sm:inline truncate max-w-xs text-gray-500">

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Bot, ExternalLink, RotateCcw, Check, Loader2, Trash2 } from "lucide-react";
+import { X, MessageSquare, ExternalLink, RotateCcw, Check, Loader2, Trash2 } from "lucide-react";
 import { updateQuiz } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { QuizSummary } from "@/types/quiz";
@@ -117,8 +117,8 @@ export function EditQuizChatModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#2e2e2e] bg-[#242424]">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
-              <Bot className="w-5 h-5" />
+            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <MessageSquare className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-base font-bold text-white">

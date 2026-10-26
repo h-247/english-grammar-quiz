@@ -18,8 +18,8 @@ describe('Auth & Multi-User Isolation Defaults', () => {
     expect(chatGPTSignInPath('/courses/123')).toBe(
       '/signin-with-chatgpt?return_to=%2Fcourses%2F123'
     );
-    expect(chatGPTSignOutPath('/history')).toBe(
-      '/signout-with-chatgpt?return_to=%2Fhistory'
+    expect(chatGPTSignOutPath('/courses')).toBe(
+      '/signout-with-chatgpt?return_to=%2Fcourses'
     );
     // Disallows external redirects (open redirect protection)
     expect(chatGPTSignInPath('https://malicious.com')).toBe(

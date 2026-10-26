@@ -12,6 +12,7 @@ import {
   Check,
   Loader2,
   BookOpen,
+  ExternalLink,
 } from "lucide-react";
 import { getAttemptResults, practiceMistakesForAttempt } from "@/lib/api";
 import {
@@ -66,9 +67,19 @@ export function AttemptReviewModal({
     }
   }, [isOpen, attemptId, showToast]);
 
-  if (!isOpen || !mounted || !attemptId) return null;
+  // Handle ESC key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
-  // Calculate topic breakdown for this attempt
+  // Calculate topic breakdown for this attempt (must run before any early return)
   const topicMastery: TopicMasteryItem[] = React.useMemo(() => {
     if (!results?.questions) return [];
     const stats = new Map<string, { total: number; correct: number }>();
@@ -99,6 +110,8 @@ export function AttemptReviewModal({
     return list.sort((a, b) => a.percentage - b.percentage);
   }, [results]);
 
+  if (!isOpen || !mounted || !attemptId) return null;
+
   const handleStartMistakesPractice = async () => {
     if (!attemptId) return;
     setIsPracticingMistakes(true);
@@ -124,7 +137,12 @@ export function AttemptReviewModal({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
     >
       <div
         className="relative w-full max-w-4xl bg-[#1e1e1e] border border-[#383838] rounded-2xl shadow-2xl flex flex-col overflow-hidden max-h-[92vh]"
@@ -433,13 +451,28 @@ export function AttemptReviewModal({
           <span className="text-xs text-[#9CA3AF]">
             Review mode • Read-only inspection
           </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-1.5 text-xs font-semibold bg-white text-black hover:bg-neutral-200 rounded-lg transition-colors cursor-pointer"
-          >
-            Close
-          </button>
+          <div className="flex items-center gap-2">
+            {results && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  router.push(`/quiz/${results.quiz_id}/attempt/${results.attempt_id}/results`);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-300 hover:text-white bg-[#303030] hover:bg-[#3d3d3d] rounded-lg transition-colors border border-[#444] cursor-pointer"
+              >
+                <ExternalLink className="w-3 h-3 text-blue-400" />
+                <span>Full Results</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-1.5 text-xs font-semibold bg-white text-black hover:bg-neutral-200 rounded-lg transition-colors cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>,

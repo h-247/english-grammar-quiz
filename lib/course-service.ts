@@ -1,5 +1,5 @@
-import { eq, and, sql, inArray } from 'drizzle-orm';
-import { courses, quizzes, quizAttempts, appSettings } from '@/db/schema';
+import { eq, sql } from 'drizzle-orm';
+import { courses, quizzes, appSettings } from '@/db/schema';
 import {
   DEFAULT_COURSE_TITLE,
   DEFAULT_COURSE_DESC,
@@ -583,7 +583,7 @@ export async function syncCourseDriveQuizzes(
 export async function calculateCourseStats(
   courseId: string,
   db: DbInstance,
-  userId?: string
+  _userId?: string
 ) {
   const courseQuizzes = await db
     .select()
@@ -597,7 +597,7 @@ export async function calculateCourseStats(
   let doneCount = 0;
   let ready = 0;
   let pending = 0;
-  const quizIds: string[] = [];
+  let completed = 0;
 
   for (let i = 0; i < courseQuizzes.length; i++) {
     const q = courseQuizzes[i];

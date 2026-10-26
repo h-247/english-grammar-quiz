@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import {
   BookOpen,
   History,
@@ -36,7 +35,6 @@ function NavLinks({
   promptChatUrl: propPromptChatUrl,
   onPromptChatUrlChange,
 }: NavbarProps) {
-  const pathname = usePathname();
   const [currentUserEmail, setCurrentUserEmail] = useState<string>(
     propUserEmail || "local-user"
   );
@@ -98,6 +96,13 @@ function NavLinks({
     onPromptChatUrlChange?.(newUrl);
   };
 
+  const isCustomPrompt = Boolean(
+    activePromptChatUrl &&
+      activePromptChatUrl.trim() !== "" &&
+      activePromptChatUrl !== DEFAULT_PROMPT_CHAT_URL &&
+      activePromptChatUrl !== "https://chatgpt.com"
+  );
+
   return (
     <div className="flex items-center gap-2.5 sm:gap-3" suppressHydrationWarning>
       {/* Drive Status Indicator */}
@@ -157,7 +162,7 @@ function NavLinks({
       <div className="flex items-center gap-2 pl-2 border-l border-[#333333]">
         <div className="flex items-center gap-1.5 text-xs text-[#9CA3AF] hover:text-[#ECECEC] transition-colors py-1 px-1.5 rounded-md">
           <User className="w-3.5 h-3.5 text-gray-400" />
-          <span className="hidden xl:inline font-mono">{currentUserEmail}</span>
+          <span className="hidden xl:inline font-mono" suppressHydrationWarning>{currentUserEmail}</span>
           <a
             href="/signout-with-chatgpt"
             title="Sign out"

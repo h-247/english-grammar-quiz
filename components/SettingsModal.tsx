@@ -10,7 +10,7 @@ import {
   AlertCircle,
   Loader2,
   KeyRound,
-  Sparkles,
+  Link2,
   ClipboardPaste,
   Trash2,
 } from "lucide-react";
@@ -393,7 +393,7 @@ export function SettingsModal({
               {/* Prompt Chat Link */}
               <div className="space-y-2 pt-2 border-t border-[#333333]">
                 <div className="flex items-center gap-2 text-xs font-semibold text-[#ECECEC]">
-                  <Sparkles className="w-4 h-4 text-emerald-400" />
+                  <Link2 className="w-4 h-4 text-emerald-400" />
                   <span>Prompt Chat URL (ChatGPT Integration)</span>
                 </div>
                 <input

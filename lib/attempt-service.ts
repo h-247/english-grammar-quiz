@@ -11,10 +11,22 @@ import {
 import { evaluateBlank, AnswerMatchingConfig } from './grading';
 import { calculateContentHash } from './hash';
 import type { drizzle } from 'drizzle-orm/d1';
+import type {
+  QuizHistoryResponse,
+  QuizAttemptHistoryItem,
+  QuizScoreStats,
+} from '@/types/quiz';
 
 type DbInstance = ReturnType<typeof drizzle>;
 
-const SQLITE_BATCH_CHUNK_SIZE = 50;
+// Cloudflare D1 has a hard limit of 100 bound parameters per query.
+// Questions table has 14 columns: 5 * 14 = 70 parameters (safely < 100).
+// Blanks table has 7 columns: 10 * 7 = 70 parameters (safely < 100).
+// User responses table has 6 columns: 10 * 6 = 60 parameters (safely < 100).
+const QUESTIONS_CHUNK_SIZE = 5;
+const BLANKS_CHUNK_SIZE = 10;
+const USER_RESPONSES_CHUNK_SIZE = 10;
+const IN_ARRAY_CHUNK_SIZE = 50;
 
 export interface BlankReviewItem {
   blank_identifier: string;
@@ -251,8 +263,8 @@ export async function saveAttemptAnswers(
   }
 
   // Batch insert new responses
-  for (let i = 0; i < rowsToInsert.length; i += SQLITE_BATCH_CHUNK_SIZE) {
-    const chunk = rowsToInsert.slice(i, i + SQLITE_BATCH_CHUNK_SIZE);
+  for (let i = 0; i < rowsToInsert.length; i += USER_RESPONSES_CHUNK_SIZE) {
+    const chunk = rowsToInsert.slice(i, i + USER_RESPONSES_CHUNK_SIZE);
     await db.insert(userResponses).values(chunk);
   }
 
@@ -564,6 +576,141 @@ export async function listAttemptHistory(
   });
 
   return { total, items };
+}
+
+export async function getQuizAttemptHistory(
+  quizId: string,
+  db: DbInstance,
+  userId?: string
+): Promise<QuizHistoryResponse> {
+  const quiz = await db.select().from(quizzes).where(eq(quizzes.id, quizId)).get();
+  if (!quiz) {
+    throw new Error(`Quiz with ID ${quizId} not found.`);
+  }
+
+  const isFilteredUser = userId && userId !== 'local-user';
+  const conditions = [eq(quizAttempts.quizId, quizId)];
+  if (isFilteredUser) {
+    conditions.push(eq(quizAttempts.userId, userId));
+  }
+
+  const attemptsList = await db
+    .select()
+    .from(quizAttempts)
+    .where(and(...conditions))
+    .orderBy(desc(quizAttempts.startedAt))
+    .all();
+
+  // Finalize any timed attempts whose deadline has passed so history reflects accurate completion
+  const now = new Date();
+  for (const att of attemptsList) {
+    if (
+      att.status === 'in_progress' &&
+      att.mode === 'timed' &&
+      att.deadlineAt &&
+      typeof db.update === 'function'
+    ) {
+      if (now >= new Date(att.deadlineAt)) {
+        try {
+          await finalizeTimeout(att, quiz, db);
+          att.status = 'timed_out';
+          att.submissionReason = 'timeout';
+        } catch {
+          // If already finalized or error, proceed
+        }
+      }
+    }
+  }
+
+  const attemptIds = attemptsList.map((a) => a.id);
+  const resultsList: (typeof attemptResults.$inferSelect)[] = [];
+
+  if (attemptIds.length > 0) {
+    for (let i = 0; i < attemptIds.length; i += IN_ARRAY_CHUNK_SIZE) {
+      const chunk = attemptIds.slice(i, i + IN_ARRAY_CHUNK_SIZE);
+      const chunkResults = await db
+        .select()
+        .from(attemptResults)
+        .where(inArray(attemptResults.attemptId, chunk))
+        .all();
+      resultsList.push(...chunkResults);
+    }
+  }
+
+  const resultMap = new Map<string, typeof attemptResults.$inferSelect>();
+  for (let i = 0; i < resultsList.length; i++) {
+    resultMap.set(resultsList[i].attemptId, resultsList[i]);
+  }
+
+  const items: QuizAttemptHistoryItem[] = attemptsList.map((att) => {
+    const res = resultMap.get(att.id);
+    return {
+      attempt_id: att.id,
+      quiz_id: att.quizId,
+      status: att.status,
+      mode: (att.mode as 'timed' | 'practice') || 'timed',
+      submission_reason: att.submissionReason || res?.submissionReason || null,
+      accuracy_percentage: res?.accuracyPercentage != null ? Math.round(res.accuracyPercentage) : null,
+      correct_blanks: res?.correctBlanks ?? null,
+      total_blanks: res?.totalBlanks ?? null,
+      fully_correct_questions: res?.fullyCorrectQuestions ?? null,
+      total_questions: res?.totalQuestions ?? null,
+      time_spent_seconds: res?.timeSpentSeconds ?? null,
+      duration_seconds: att.durationSeconds,
+      started_at: att.startedAt,
+      finalized_at: res?.finalizedAt ?? att.submittedAt ?? null,
+    };
+  });
+
+  const completedAttempts = items.filter(
+    (item) => item.status === 'completed' || item.accuracy_percentage != null
+  );
+
+  let highestScore = 0;
+  let latestScore: number | null = null;
+  let totalScore = 0;
+  let highestCorrectBlanks = 0;
+  let totalTimeSpent = 0;
+  let timeCount = 0;
+
+  for (let i = 0; i < completedAttempts.length; i++) {
+    const item = completedAttempts[i];
+    const score = item.accuracy_percentage ?? 0;
+    if (score > highestScore) highestScore = score;
+    if (i === 0) latestScore = score;
+    totalScore += score;
+    if ((item.correct_blanks ?? 0) > highestCorrectBlanks) {
+      highestCorrectBlanks = item.correct_blanks ?? 0;
+    }
+    if (item.time_spent_seconds != null && item.time_spent_seconds > 0) {
+      totalTimeSpent += item.time_spent_seconds;
+      timeCount++;
+    }
+  }
+
+  const averageScore =
+    completedAttempts.length > 0 ? Math.round(totalScore / completedAttempts.length) : 0;
+  const averageTimeSpent = timeCount > 0 ? Math.round(totalTimeSpent / timeCount) : 0;
+
+  const stats: QuizScoreStats = {
+    total_attempts: items.length,
+    completed_attempts: completedAttempts.length,
+    highest_score: highestScore,
+    latest_score: latestScore,
+    average_score: averageScore,
+    highest_correct_blanks: highestCorrectBlanks,
+    total_blanks: quiz.blankCount,
+    total_questions: quiz.questionCount,
+    average_time_spent_seconds: averageTimeSpent,
+  };
+
+  return {
+    quiz_id: quiz.id,
+    quiz_title: quiz.title,
+    unit_number: quiz.unitNumber,
+    stats,
+    attempts: items,
+  };
 }
 
 // --- Internal Helpers ---
@@ -1024,15 +1171,15 @@ async function replicateQuestionsToQuiz(
     }
   }
 
-  // Batch insert questions
-  for (let i = 0; i < newQuestionRows.length; i += SQLITE_BATCH_CHUNK_SIZE) {
-    const chunk = newQuestionRows.slice(i, i + SQLITE_BATCH_CHUNK_SIZE);
+  // Batch insert questions in chunks to respect Cloudflare D1's 100 bound parameter limit
+  for (let i = 0; i < newQuestionRows.length; i += QUESTIONS_CHUNK_SIZE) {
+    const chunk = newQuestionRows.slice(i, i + QUESTIONS_CHUNK_SIZE);
     await db.insert(questions).values(chunk);
   }
 
-  // Batch insert blanks
-  for (let i = 0; i < newBlankRows.length; i += SQLITE_BATCH_CHUNK_SIZE) {
-    const chunk = newBlankRows.slice(i, i + SQLITE_BATCH_CHUNK_SIZE);
+  // Batch insert blanks in chunks to respect Cloudflare D1's 100 bound parameter limit
+  for (let i = 0; i < newBlankRows.length; i += BLANKS_CHUNK_SIZE) {
+    const chunk = newBlankRows.slice(i, i + BLANKS_CHUNK_SIZE);
     await db.insert(blanks).values(chunk);
   }
 }
@@ -1068,19 +1215,23 @@ export async function createMistakesPracticeAttempt(
 
   const missedQIds = missedQuestions.map((q) => q.question_id);
 
-  // Batch fetch source questions and blanks in 2 queries
-  const origQuestions = await db
-    .select()
-    .from(questions)
-    .where(inArray(questions.id, missedQIds))
-    .all();
+  const origQuestions: (typeof questions.$inferSelect)[] = [];
+  const origBlanks: (typeof blanks.$inferSelect)[] = [];
 
-  const origBlanks = await db
-    .select()
-    .from(blanks)
-    .where(inArray(blanks.questionId, missedQIds))
-    .orderBy(asc(blanks.orderIndex))
-    .all();
+  for (let i = 0; i < missedQIds.length; i += IN_ARRAY_CHUNK_SIZE) {
+    const chunkIds = missedQIds.slice(i, i + IN_ARRAY_CHUNK_SIZE);
+    const [qChunk, bChunk] = await Promise.all([
+      db.select().from(questions).where(inArray(questions.id, chunkIds)).all(),
+      db
+        .select()
+        .from(blanks)
+        .where(inArray(blanks.questionId, chunkIds))
+        .orderBy(asc(blanks.orderIndex))
+        .all(),
+    ]);
+    origQuestions.push(...qChunk);
+    origBlanks.push(...bChunk);
+  }
 
   // Create dynamic practice quiz
   const dynamicQuizId = crypto.randomUUID();
@@ -1204,19 +1355,23 @@ export async function createCourseMistakesPracticeAttempt(
 
   const missedQIdArray = Array.from(missedQuestionIds);
 
-  // Batch fetch questions and blanks in 2 queries
-  const missedQList = await db
-    .select()
-    .from(questions)
-    .where(inArray(questions.id, missedQIdArray))
-    .all();
+  const missedQList: (typeof questions.$inferSelect)[] = [];
+  const missedBlanksList: (typeof blanks.$inferSelect)[] = [];
 
-  const missedBlanksList = await db
-    .select()
-    .from(blanks)
-    .where(inArray(blanks.questionId, missedQIdArray))
-    .orderBy(asc(blanks.orderIndex))
-    .all();
+  for (let i = 0; i < missedQIdArray.length; i += IN_ARRAY_CHUNK_SIZE) {
+    const chunkIds = missedQIdArray.slice(i, i + IN_ARRAY_CHUNK_SIZE);
+    const [qChunk, bChunk] = await Promise.all([
+      db.select().from(questions).where(inArray(questions.id, chunkIds)).all(),
+      db
+        .select()
+        .from(blanks)
+        .where(inArray(blanks.questionId, chunkIds))
+        .orderBy(asc(blanks.orderIndex))
+        .all(),
+    ]);
+    missedQList.push(...qChunk);
+    missedBlanksList.push(...bChunk);
+  }
 
   const dynamicQuizId = crypto.randomUUID();
   const hash = await calculateContentHash(
