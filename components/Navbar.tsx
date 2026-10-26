@@ -109,11 +109,12 @@ function NavLinks({
         type="button"
         onClick={() => setIsSettingsOpen(true)}
         title="Google Drive sync settings"
+        suppressHydrationWarning
         className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#1e1e1e] hover:bg-[#282828] text-[#a3a3a3] hover:text-white border border-[#333333] transition-colors cursor-pointer"
       >
         <HardDrive className="w-3.5 h-3.5 text-blue-400" />
         <span>Drive:</span>
-        <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+        <span className="flex items-center gap-1.5 text-emerald-400 font-semibold" suppressHydrationWarning>
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           {driveConnected ? "Connected" : "Offline"}
         </span>
@@ -121,6 +122,7 @@ function NavLinks({
 
       {/* Prompt Chat Link with Edit Button (Image 1: Green if custom, Image 2/3: Amber if default/unset) */}
       <div
+        suppressHydrationWarning
         className={cn(
           "flex items-center rounded-lg p-0.5 shadow-sm border",
           isCustomPrompt
@@ -132,6 +134,7 @@ function NavLinks({
           href={activePromptChatUrl}
           target="_blank"
           rel="noreferrer"
+          suppressHydrationWarning
           title={`Open Prompt Chat: ${activePromptChatUrl}`}
           className={cn(
             "p-1.5 rounded transition-colors flex items-center justify-center",
@@ -196,7 +199,7 @@ function NavLinks({
       <div className="flex items-center gap-2 pl-2 border-l border-[#333333]">
         <div className="flex items-center gap-1.5 text-xs text-[#9CA3AF] hover:text-[#ECECEC] transition-colors py-1 px-1.5 rounded-md">
           <User className="w-3.5 h-3.5 text-gray-400" />
-          <span className="hidden xl:inline font-mono">{currentUserEmail}</span>
+          <span className="hidden xl:inline font-mono" suppressHydrationWarning>{currentUserEmail}</span>
           <a
             href="/signout-with-chatgpt"
             title="Sign out"
