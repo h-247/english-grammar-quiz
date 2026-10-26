@@ -591,6 +591,14 @@ export default function CourseDetailPage() {
                           <BookOpen className="w-3.5 h-3.5" />
                           <span>Practice</span>
                         </button>
+                        <button
+                          onClick={() => handleOpenQuizHistory(nextQuiz)}
+                          title="View attempt history & score statistics"
+                          className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-medium bg-[#242424] hover:bg-[#303030] text-blue-400 hover:text-blue-300 border border-[#383838] transition-colors cursor-pointer"
+                        >
+                          <History className="w-3.5 h-3.5" />
+                          <span>History</span>
+                        </button>
                       </>
                     ) : (
                       <button

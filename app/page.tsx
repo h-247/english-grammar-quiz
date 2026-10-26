@@ -17,6 +17,7 @@ import { ImportCourseModal } from "@/components/ImportCourseModal";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { QuizConfigModal } from "@/components/QuizConfigModal";
 import { EditCourseModal } from "@/components/EditCourseModal";
+import { QuizHistoryModal } from "@/components/QuizHistoryModal";
 import {
   getCourses,
   getQuizzes,
@@ -52,6 +53,9 @@ export default function CoursesDashboardPage() {
   const [selectedQuizForStart, setSelectedQuizForStart] = useState<QuizSummary | null>(null);
   const [isQuizConfigOpen, setIsQuizConfigOpen] = useState<boolean>(false);
   const [isStartingQuiz, setIsStartingQuiz] = useState<boolean>(false);
+
+  // History modal state
+  const [historyQuiz, setHistoryQuiz] = useState<QuizSummary | null>(null);
 
   // Load all courses and quizzes
   const loadData = useCallback(async (isSilent = false) => {
@@ -304,6 +308,7 @@ export default function CoursesDashboardPage() {
                 onDeleteCourse={handleDeleteCourseClick}
                 onEditCourse={(c) => setCourseToEdit(c)}
                 onStartQuiz={handleStartQuiz}
+                onViewHistory={(q) => setHistoryQuiz(q)}
               />
             ))}
           </div>
@@ -358,6 +363,20 @@ export default function CoursesDashboardPage() {
           if (selectedQuizForStart) {
             executeStartQuiz(selectedQuizForStart, durationMinutes, mode);
           }
+        }}
+      />
+
+      {/* Quiz Attempt History Modal */}
+      <QuizHistoryModal
+        isOpen={Boolean(historyQuiz)}
+        onClose={() => setHistoryQuiz(null)}
+        quizId={historyQuiz?.id || null}
+        quizTitle={historyQuiz?.title}
+        onStartExam={() => {
+          if (historyQuiz) handleStartQuiz(historyQuiz, "timed");
+        }}
+        onStartPractice={() => {
+          if (historyQuiz) handleStartQuiz(historyQuiz, "practice");
         }}
       />
     </div>

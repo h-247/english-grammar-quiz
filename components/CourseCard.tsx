@@ -15,6 +15,7 @@ import {
   MessageSquareCheck,
   MessageSquarePlus,
   Pencil,
+  History,
 } from "lucide-react";
 import { CourseSummary, QuizSummary } from "@/types/quiz";
 import { DEFAULT_COURSE_BANNER, DEFAULT_PROMPT_CHAT_URL } from "@/lib/course-manifest";
@@ -29,6 +30,7 @@ interface CourseCardProps {
   onDeleteCourse: (course: CourseSummary) => void;
   onEditCourse?: (course: CourseSummary) => void;
   onStartQuiz: (quiz: QuizSummary, mode: "timed" | "practice") => void;
+  onViewHistory?: (quiz: QuizSummary) => void;
 }
 
 export const CourseCard = memo(function CourseCard({
@@ -38,6 +40,7 @@ export const CourseCard = memo(function CourseCard({
   onDeleteCourse,
   onEditCourse,
   onStartQuiz,
+  onViewHistory,
 }: CourseCardProps) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [promptChatUrl, setPromptChatUrl] = useState<string>(DEFAULT_PROMPT_CHAT_URL);
@@ -225,6 +228,17 @@ export const CourseCard = memo(function CourseCard({
                       <BookOpen className="w-3 h-3" />
                       <span>Practice</span>
                     </button>
+                    {onViewHistory && (
+                      <button
+                        type="button"
+                        onClick={() => onViewHistory(nextQuiz)}
+                        title="View attempt history & score statistics"
+                        className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-[#242424] hover:bg-[#303030] text-blue-400 hover:text-blue-300 border border-[#383838] transition-colors cursor-pointer"
+                      >
+                        <History className="w-3 h-3" />
+                        <span>History</span>
+                      </button>
+                    )}
                   </>
                 ) : (
                   <Link

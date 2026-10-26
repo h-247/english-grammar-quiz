@@ -601,6 +601,27 @@ export async function getQuizAttemptHistory(
     .orderBy(desc(quizAttempts.startedAt))
     .all();
 
+  // Finalize any timed attempts whose deadline has passed so history reflects accurate completion
+  const now = new Date();
+  for (const att of attemptsList) {
+    if (
+      att.status === 'in_progress' &&
+      att.mode === 'timed' &&
+      att.deadlineAt &&
+      typeof db.update === 'function'
+    ) {
+      if (now >= new Date(att.deadlineAt)) {
+        try {
+          await finalizeTimeout(att, quiz, db);
+          att.status = 'timed_out';
+          att.submissionReason = 'timeout';
+        } catch {
+          // If already finalized or error, proceed
+        }
+      }
+    }
+  }
+
   const attemptIds = attemptsList.map((a) => a.id);
   const resultsList: (typeof attemptResults.$inferSelect)[] = [];
 

@@ -210,4 +210,72 @@ describe('Per-Quiz Attempt History and Score Statistics', () => {
     const res = await getQuizAttemptHistory('quiz-1', mockDb as any);
     expect(res.stats.total_attempts).toBe(65);
   });
+
+  it('handles in-progress attempts without distorting completed score averages', async () => {
+    const mockAttempts = [
+      {
+        id: 'att-in-progress',
+        quizId: 'quiz-1',
+        userId: 'local-user',
+        durationSeconds: 0,
+        startedAt: '2026-10-26T16:00:00Z',
+        submittedAt: null,
+        status: 'in_progress',
+        submissionReason: null,
+        mode: 'practice',
+      },
+      {
+        id: 'att-completed',
+        quizId: 'quiz-1',
+        userId: 'local-user',
+        durationSeconds: 900,
+        startedAt: '2026-10-25T14:00:00Z',
+        submittedAt: '2026-10-25T14:10:00Z',
+        status: 'completed',
+        submissionReason: 'manual',
+        mode: 'timed',
+      },
+    ];
+
+    const mockResults = [
+      {
+        attemptId: 'att-completed',
+        totalQuestions: 10,
+        totalBlanks: 15,
+        correctBlanks: 15,
+        incorrectBlanks: 0,
+        unansweredBlanks: 0,
+        fullyCorrectQuestions: 10,
+        accuracyPercentage: 100,
+        timeSpentSeconds: 600,
+        submissionReason: 'manual',
+        finalizedAt: '2026-10-25T14:10:00Z',
+      },
+    ];
+
+    const mockDb = {
+      select: () => ({
+        from: (_table: any) => ({
+          where: () => ({
+            get: async () => mockQuiz,
+            orderBy: () => ({
+              all: async () => mockAttempts,
+            }),
+            all: async () => mockResults,
+          }),
+        }),
+      }),
+    };
+
+    const res = await getQuizAttemptHistory('quiz-1', mockDb as any);
+    expect(res.stats.total_attempts).toBe(2);
+    expect(res.stats.completed_attempts).toBe(1);
+    expect(res.stats.highest_score).toBe(100);
+    expect(res.stats.latest_score).toBe(100);
+    expect(res.stats.average_score).toBe(100);
+    expect(res.attempts[0].status).toBe('in_progress');
+    expect(res.attempts[0].accuracy_percentage).toBeNull();
+    expect(res.attempts[1].status).toBe('completed');
+    expect(res.attempts[1].accuracy_percentage).toBe(100);
+  });
 });

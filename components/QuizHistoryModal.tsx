@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import {
   X,
   History,
@@ -17,6 +18,7 @@ import {
   AlertCircle,
   RefreshCw,
   TrendingUp,
+  ExternalLink,
 } from "lucide-react";
 import { getQuizHistory } from "@/lib/api";
 import { QuizHistoryResponse } from "@/types/quiz";
@@ -40,6 +42,7 @@ export function QuizHistoryModal({
   onStartExam,
   onStartPractice,
 }: QuizHistoryModalProps) {
+  const router = useRouter();
   const [mounted, setMounted] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -344,7 +347,10 @@ export function QuizHistoryModal({
                 ) : (
                   <div className="space-y-2.5">
                     {attempts.map((att, idx) => {
-                      const isComplete = att.status === "completed" || att.accuracy_percentage != null;
+                      const isComplete =
+                        att.status === "completed" ||
+                        att.status === "timed_out" ||
+                        att.accuracy_percentage != null;
                       const isPractice = att.mode === "practice";
 
                       return (
@@ -389,7 +395,7 @@ export function QuizHistoryModal({
                                     ? "bg-emerald-950/50 text-emerald-400 border border-emerald-500/20"
                                     : att.status === "timed_out"
                                     ? "bg-amber-950/50 text-amber-400 border border-amber-500/20"
-                                    : "bg-gray-800 text-gray-400 border border-gray-700"
+                                    : "bg-blue-950/60 text-blue-400 border border-blue-500/30"
                                 )}
                               >
                                 {att.status === "completed"
@@ -404,31 +410,37 @@ export function QuizHistoryModal({
                               </span>
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
-                              <span>
-                                Blanks:{" "}
-                                <strong className="text-white font-semibold">
-                                  {att.correct_blanks ?? 0} / {att.total_blanks ?? stats.total_blanks}
-                                </strong>
-                              </span>
-                              <span>
-                                Fully Correct:{" "}
-                                <strong className="text-white font-semibold">
-                                  {att.fully_correct_questions ?? 0} / {att.total_questions ?? stats.total_questions}
-                                </strong>
-                              </span>
-                              {att.time_spent_seconds != null && att.time_spent_seconds > 0 && (
+                            {isComplete ? (
+                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
                                 <span>
-                                  Time Spent:{" "}
-                                  <strong className="text-gray-300">
-                                    {formatTime(att.time_spent_seconds)}
+                                  Blanks:{" "}
+                                  <strong className="text-white font-semibold">
+                                    {att.correct_blanks ?? 0} / {att.total_blanks ?? stats.total_blanks}
                                   </strong>
                                 </span>
-                              )}
-                            </div>
+                                <span>
+                                  Fully Correct:{" "}
+                                  <strong className="text-white font-semibold">
+                                    {att.fully_correct_questions ?? 0} / {att.total_questions ?? stats.total_questions}
+                                  </strong>
+                                </span>
+                                {att.time_spent_seconds != null && att.time_spent_seconds > 0 && (
+                                  <span>
+                                    Time Spent:{" "}
+                                    <strong className="text-gray-300">
+                                      {formatTime(att.time_spent_seconds)}
+                                    </strong>
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-xs text-amber-400/90 flex items-center gap-1.5">
+                                <span>Attempt is currently in progress. You can resume and finish it anytime.</span>
+                              </div>
+                            )}
                           </div>
 
-                          {/* Right: Score & Inspect Button */}
+                          {/* Right: Score & Actions */}
                           <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#303030]">
                             <div className="text-right">
                               <span
@@ -442,18 +454,45 @@ export function QuizHistoryModal({
                                   : "—"}
                               </span>
                               <span className="text-[10px] text-gray-400 uppercase tracking-wider block">
-                                Accuracy
+                                {isComplete ? "Accuracy" : "In Progress"}
                               </span>
                             </div>
 
-                            {isComplete && (
+                            {isComplete ? (
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenReview(att.attempt_id)}
+                                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-[#333333] hover:bg-[#404040] text-white border border-[#444] transition-colors cursor-pointer"
+                                  title="Inspect question details & explanations"
+                                >
+                                  <Eye className="w-3.5 h-3.5 text-blue-400" />
+                                  <span>Inspect</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onClose();
+                                    router.push(`/quiz/${att.quiz_id}/attempt/${att.attempt_id}/results`);
+                                  }}
+                                  title="Open full results page"
+                                  className="p-2 rounded-lg text-gray-400 hover:text-white bg-[#2c2c2c] hover:bg-[#383838] border border-[#404040] transition-colors cursor-pointer"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
                               <button
                                 type="button"
-                                onClick={() => handleOpenReview(att.attempt_id)}
-                                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-[#333333] hover:bg-[#404040] text-white border border-[#444] transition-colors cursor-pointer"
+                                onClick={() => {
+                                  onClose();
+                                  router.push(`/quiz/${att.quiz_id}/attempt/${att.attempt_id}`);
+                                }}
+                                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer shadow-sm"
+                                title="Resume this in-progress attempt"
                               >
-                                <Eye className="w-3.5 h-3.5 text-blue-400" />
-                                <span>Inspect</span>
+                                <Play className="w-3.5 h-3.5 fill-white text-white" />
+                                <span>Resume</span>
                               </button>
                             )}
                           </div>
