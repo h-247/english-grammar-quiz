@@ -55,9 +55,13 @@ export const CourseCard = memo(function CourseCard({
   }, []);
 
   // Compute learning progress
+  const doneCount =
+    quizzes.length > 0
+      ? quizzes.filter((q) => q.learning_status === "done").length
+      : course.completed_quizzes || 0;
   const progressPercent =
     course.total_quizzes > 0
-      ? Math.round((course.completed_quizzes / course.total_quizzes) * 100)
+      ? Math.round((doneCount / course.total_quizzes) * 100)
       : 0;
 
   // Find next playable quiz or first quiz
@@ -175,9 +179,9 @@ export const CourseCard = memo(function CourseCard({
             <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-[#2a2418] text-amber-400 border border-amber-900/40">
               {course.pending_quizzes} Pending
             </span>
-            {course.completed_quizzes > 0 && (
+            {doneCount > 0 && (
               <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-[#241e2a] text-purple-400 border border-purple-900/40">
-                {course.completed_quizzes} Completed
+                {doneCount} Completed
               </span>
             )}
           </div>

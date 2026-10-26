@@ -265,11 +265,14 @@ export default function CourseDetailPage() {
   const handleUpdateQuizStatus = async (quizId: string, newStatus: LearningStatus) => {
     setCourse((prev) => {
       if (!prev) return prev;
+      const updatedQuizzes = prev.quizzes.map((q) =>
+        q.id === quizId ? { ...q, learning_status: newStatus } : q
+      );
+      const newDoneCount = updatedQuizzes.filter((q) => q.learning_status === "done").length;
       return {
         ...prev,
-        quizzes: prev.quizzes.map((q) =>
-          q.id === quizId ? { ...q, learning_status: newStatus } : q
-        ),
+        quizzes: updatedQuizzes,
+        completed_quizzes: newDoneCount,
       };
     });
 
@@ -339,8 +342,7 @@ export default function CourseDetailPage() {
 
   const progressPercent = useMemo(() => {
     if (!course || course.total_quizzes === 0) return 0;
-    const effectiveDone = Math.max(doneCount, course.completed_quizzes || 0);
-    return Math.round((effectiveDone / course.total_quizzes) * 100);
+    return Math.round((doneCount / course.total_quizzes) * 100);
   }, [course, doneCount]);
 
   // Next up quiz for "CONTINUE LEARNING" highlight callout (Matching Image 2)
@@ -475,7 +477,7 @@ export default function CourseDetailPage() {
                 {/* Top Action Buttons (Matching Image 2) */}
                 <div className="flex items-center gap-2.5 flex-wrap shrink-0">
                   {/* Practice Mistakes for Course */}
-                  {course.completed_quizzes > 0 && (
+                  {(course.completed_quizzes > 0 || quizzes.some((q) => q.highest_score !== null && q.highest_score !== undefined)) && (
                     <button
                       type="button"
                       onClick={handlePracticeCourseMistakes}
@@ -579,7 +581,7 @@ export default function CourseDetailPage() {
                   </div>
                 </div>
                 <span className="text-[11px] text-gray-500">
-                  {Math.max(doneCount, course.completed_quizzes || 0)} of {course.total_quizzes} completed
+                  {doneCount} of {course.total_quizzes} completed
                 </span>
               </div>
             </div>

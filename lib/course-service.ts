@@ -1,5 +1,5 @@
-import { eq, and, sql, inArray } from 'drizzle-orm';
-import { courses, quizzes, quizAttempts, appSettings } from '@/db/schema';
+import { eq, sql } from 'drizzle-orm';
+import { courses, quizzes, appSettings } from '@/db/schema';
 import {
   DEFAULT_COURSE_TITLE,
   DEFAULT_COURSE_DESC,
@@ -395,7 +395,7 @@ export async function syncCourseDriveQuizzes(
 export async function calculateCourseStats(
   courseId: string,
   db: DbInstance,
-  userId?: string
+  _userId?: string
 ) {
   const courseQuizzes = await db
     .select()
@@ -406,50 +406,18 @@ export async function calculateCourseStats(
   const total = courseQuizzes.length;
   let ready = 0;
   let pending = 0;
-  const quizIds: string[] = [];
+  let completed = 0;
 
   for (let i = 0; i < courseQuizzes.length; i++) {
     const q = courseQuizzes[i];
-    quizIds.push(q.id);
     if (q.status === 'ready' && q.questionCount > 0) {
       ready++;
     } else if (q.status === 'pending_import' || q.questionCount === 0) {
       pending++;
     }
-  }
-
-  let completed = 0;
-
-  if (quizIds.length > 0) {
-    const isLocal = !userId || userId === 'local-user';
-    const whereConditions = [
-      eq(quizAttempts.status, 'completed'),
-      inArray(quizAttempts.quizId, quizIds),
-    ];
-
-    if (!isLocal) {
-      whereConditions.push(eq(quizAttempts.userId, userId));
+    if ((q as any).learningStatus === 'done') {
+      completed++;
     }
-
-    const completedAttempts = await db
-      .select({
-        quizId: quizAttempts.quizId,
-      })
-      .from(quizAttempts)
-      .where(and(...whereConditions))
-      .all();
-
-    const completedQuizIdSet = new Set<string>();
-    for (let i = 0; i < completedAttempts.length; i++) {
-      completedQuizIdSet.add(completedAttempts[i].quizId);
-    }
-    for (let i = 0; i < courseQuizzes.length; i++) {
-      const q = courseQuizzes[i];
-      if ((q as any).learningStatus === 'done') {
-        completedQuizIdSet.add(q.id);
-      }
-    }
-    completed = completedQuizIdSet.size;
   }
 
   return {
