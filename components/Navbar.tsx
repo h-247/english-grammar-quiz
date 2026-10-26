@@ -96,13 +96,7 @@ function NavLinks({
     onPromptChatUrlChange?.(newUrl);
   };
 
-  const isCustomPrompt = Boolean(
-    activePromptChatUrl &&
-      activePromptChatUrl.trim() !== "" &&
-      activePromptChatUrl !== DEFAULT_PROMPT_CHAT_URL &&
-      activePromptChatUrl !== "https://chatgpt.com"
-  );
-
+  
   return (
     <div className="flex items-center gap-2.5 sm:gap-3" suppressHydrationWarning>
       {/* Drive Status Indicator */}

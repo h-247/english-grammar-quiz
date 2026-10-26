@@ -12,7 +12,7 @@ import {
 import { ensureDatabaseInitialized } from '@/lib/db-init';
 import { calculateCourseStats } from '@/lib/course-service';
 import { DEFAULT_COURSE_BANNER } from '@/lib/course-manifest';
-import { eq, asc, inArray, and } from 'drizzle-orm';
+import { eq, asc, inArray } from 'drizzle-orm';
 import { getAuthenticatedUserOrLocal } from '@/app/chatgpt-auth';
 
 export async function GET(

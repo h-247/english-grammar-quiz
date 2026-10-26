@@ -1,7 +1,6 @@
 import {
   QuizSummary,
   QuizDetail,
-  LearningStatus,
   CourseSummary,
   CourseDetail,
   CourseCreatePayload,
@@ -347,3 +346,9 @@ export const getChapters = getQuizzes;
 export const getChapter = getQuiz;
 export const updateChapter = updateQuiz;
 export const deleteChapter = deleteQuiz;
+
+export async function getQuizHistory(quizId: string): Promise<QuizHistoryResponse> {
+  return fetchApi<QuizHistoryResponse>(`/quizzes/${quizId}/attempts`, {
+    cache: "no-store",
+  });
+}

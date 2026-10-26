@@ -597,7 +597,6 @@ export async function calculateCourseStats(
   let doneCount = 0;
   let ready = 0;
   let pending = 0;
-  let completed = 0;
 
   for (let i = 0; i < courseQuizzes.length; i++) {
     const q = courseQuizzes[i];

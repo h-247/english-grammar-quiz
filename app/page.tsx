@@ -17,7 +17,6 @@ import { ImportCourseModal } from "@/components/ImportCourseModal";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { QuizConfigModal } from "@/components/QuizConfigModal";
 import { EditCourseModal } from "@/components/EditCourseModal";
-import { QuizHistoryModal } from "@/components/QuizHistoryModal";
 import {
   getCourses,
   getQuizzes,
