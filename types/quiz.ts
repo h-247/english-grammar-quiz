@@ -68,6 +68,8 @@ export interface CourseCreatePayload {
   banner_url?: string;
 }
 
+export type LearningStatus = 'to_do' | 'doing' | 'done';
+
 export interface QuizSummary {
   id: string;
   title: string;
@@ -84,6 +86,9 @@ export interface QuizSummary {
   source_filename?: string | null;
   chatgpt_url?: string | null;
   status?: "ready" | "pending_import";
+  learning_status?: LearningStatus;
+  highest_score?: number | null;
+  completed_attempts?: number;
   created_at: string;
 }
 
@@ -103,6 +108,9 @@ export interface QuizDetail {
   source_filename?: string | null;
   chatgpt_url?: string | null;
   status?: "ready" | "pending_import";
+  learning_status?: LearningStatus;
+  highest_score?: number | null;
+  completed_attempts?: number;
   questions: QuestionPublic[];
 }
 

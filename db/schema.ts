@@ -45,6 +45,7 @@ export const quizzes = sqliteTable(
     sourceFilename: text('source_filename'),
     chatgptUrl: text('chatgpt_url'),
     status: text('status').notNull().default('ready'),
+    learningStatus: text('learning_status').notNull().default('to_do'),
     createdAt: text('created_at').notNull(),
   },
   (table) => [

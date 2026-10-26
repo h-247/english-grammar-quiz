@@ -25,6 +25,7 @@ import {
   Link2,
   MessageSquareCheck,
   MessageSquarePlus,
+  Circle,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { ImportModal } from "@/components/ImportModal";
@@ -34,7 +35,10 @@ import { EditCourseModal } from "@/components/EditCourseModal";
 import { EditQuizChatModal } from "@/components/EditQuizChatModal";
 import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
 import { QuizHistoryModal } from "@/components/QuizHistoryModal";
+import { QuizStatusSelector, QuizStatusBadge } from "@/components/QuizStatusSelector";
+import { QuizScoreBadge } from "@/components/QuizScoreBadge";
 import { DEFAULT_PROMPT_CHAT_URL } from "@/lib/course-manifest";
+import { LearningStatus } from "@/types/quiz";
 import { cn } from "@/lib/utils";
 import {
   getCourse,
@@ -43,6 +47,7 @@ import {
   deleteQuiz,
   startAttempt,
   practiceMistakesForCourse,
+  updateQuiz,
 } from "@/lib/api";
 import { CourseDetail, QuizSummary } from "@/types/quiz";
 import { useToast } from "@/components/Toast";
@@ -63,6 +68,7 @@ export default function CourseDetailPage() {
   // Search & Status filters (No topics!)
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<"all" | "ready" | "pending_import">("all");
+  const [selectedLearningStatus, setSelectedLearningStatus] = useState<"all" | LearningStatus>("all");
 
   // Prompt Chat URL state
   const [promptChatUrl, setPromptChatUrl] = useState<string>(DEFAULT_PROMPT_CHAT_URL);
@@ -255,6 +261,29 @@ export default function CourseDetailPage() {
     }
   };
 
+  // Handle Quiz Learning Status Update (To do, Doing, Done)
+  const handleUpdateQuizStatus = async (quizId: string, newStatus: LearningStatus) => {
+    setCourse((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        quizzes: prev.quizzes.map((q) =>
+          q.id === quizId ? { ...q, learning_status: newStatus } : q
+        ),
+      };
+    });
+
+    const label = newStatus === "to_do" ? "To do" : newStatus === "doing" ? "Doing" : "Done";
+    try {
+      await updateQuiz(quizId, { learning_status: newStatus });
+      showToast(`Quiz status updated to "${label}"`, "success", 2500);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to update quiz status.";
+      showToast(msg, "error", 4000);
+      await loadCourse(true);
+    }
+  };
+
   // Filtered Quizzes
   const quizzes = useMemo(() => course?.quizzes || [], [course]);
 
@@ -262,14 +291,20 @@ export default function CourseDetailPage() {
     const q = searchQuery.trim().toLowerCase();
 
     return quizzes.filter((quiz) => {
-      // 1. Status Filter
+      // 1. Content Readiness Filter
       if (selectedStatus === "ready") {
         if (quiz.status !== "ready" || quiz.question_count === 0) return false;
       } else if (selectedStatus === "pending_import") {
         if (quiz.status === "ready" && quiz.question_count > 0) return false;
       }
 
-      // 2. Search query filter
+      // 2. Learning Status Filter (To do, Doing, Done)
+      if (selectedLearningStatus !== "all") {
+        const st = quiz.learning_status || "to_do";
+        if (st !== selectedLearningStatus) return false;
+      }
+
+      // 3. Search query filter
       if (q) {
         const titleMatch = quiz.title?.toLowerCase().includes(q);
         const unitTitleMatch = quiz.unit_title?.toLowerCase().includes(q);
@@ -279,7 +314,7 @@ export default function CourseDetailPage() {
 
       return true;
     });
-  }, [quizzes, selectedStatus, searchQuery]);
+  }, [quizzes, selectedStatus, selectedLearningStatus, searchQuery]);
 
   // Counts
   const readyCount = useMemo(() => {
@@ -290,10 +325,23 @@ export default function CourseDetailPage() {
     return quizzes.filter((q) => q.status === "pending_import" || q.question_count === 0).length;
   }, [quizzes]);
 
+  const todoCount = useMemo(() => {
+    return quizzes.filter((q) => (q.learning_status || "to_do") === "to_do").length;
+  }, [quizzes]);
+
+  const doingCount = useMemo(() => {
+    return quizzes.filter((q) => q.learning_status === "doing").length;
+  }, [quizzes]);
+
+  const doneCount = useMemo(() => {
+    return quizzes.filter((q) => q.learning_status === "done").length;
+  }, [quizzes]);
+
   const progressPercent = useMemo(() => {
     if (!course || course.total_quizzes === 0) return 0;
-    return Math.round((course.completed_quizzes / course.total_quizzes) * 100);
-  }, [course]);
+    const effectiveDone = Math.max(doneCount, course.completed_quizzes || 0);
+    return Math.round((effectiveDone / course.total_quizzes) * 100);
+  }, [course, doneCount]);
 
   // Next up quiz for "CONTINUE LEARNING" highlight callout (Matching Image 2)
   const nextQuiz = useMemo(() => {
@@ -531,7 +579,7 @@ export default function CourseDetailPage() {
                   </div>
                 </div>
                 <span className="text-[11px] text-gray-500">
-                  {course.completed_quizzes} of {course.total_quizzes} completed
+                  {Math.max(doneCount, course.completed_quizzes || 0)} of {course.total_quizzes} completed
                 </span>
               </div>
             </div>
@@ -541,13 +589,15 @@ export default function CourseDetailPage() {
               <div className="p-5 rounded-2xl bg-gradient-to-r from-[#1c1c1c] to-[#252525] border border-amber-500/30 shadow-xl relative overflow-hidden">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/40">
                         ⚡ Continue Learning
                       </span>
                       <span className="text-xs font-semibold text-gray-400">
                         Unit {nextQuiz.unit_number || 1}
                       </span>
+                      {/* Learning Status Badge */}
+                      <QuizStatusBadge status={nextQuiz.learning_status || "to_do"} />
                     </div>
 
                     <h3 className="text-lg font-bold text-white">
@@ -555,7 +605,7 @@ export default function CourseDetailPage() {
                       {nextQuiz.unit_title || nextQuiz.title}
                     </h3>
 
-                    <div className="flex items-center gap-3 text-xs text-[#9CA3AF]">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#9CA3AF]">
                       <span>
                         {nextQuiz.question_count > 0
                           ? `${nextQuiz.question_count} Questions • ${nextQuiz.blank_count} Blanks`
@@ -570,11 +620,48 @@ export default function CourseDetailPage() {
                           <Clock className="w-3.5 h-3.5" /> Pending JSON
                         </span>
                       )}
+                      {/* Highest score visible without clicking buttons */}
+                      <QuizScoreBadge score={nextQuiz.highest_score} size="md" prefix="Highest Score:" />
                     </div>
                   </div>
 
                   {/* Highlight Box Actions */}
                   <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+                    {/* Learning Status Quick Toggles */}
+                    {nextQuiz.learning_status === "done" ? (
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateQuizStatus(nextQuiz.id, "to_do")}
+                        title="Mark unit as To do"
+                        className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-medium bg-[#292929] hover:bg-[#333333] text-gray-300 border border-[#3e3e3e] transition-colors cursor-pointer"
+                      >
+                        <Circle className="w-3.5 h-3.5" />
+                        <span>Mark as To do</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateQuizStatus(nextQuiz.id, "done")}
+                        title="Mark unit as Done"
+                        className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 transition-colors cursor-pointer shadow-sm"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Mark as Done</span>
+                      </button>
+                    )}
+
+                    {nextQuiz.learning_status !== "doing" && (
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateQuizStatus(nextQuiz.id, "doing")}
+                        title="Mark unit as Doing"
+                        className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-medium bg-amber-950/40 hover:bg-amber-950/60 text-amber-300 border border-amber-700/50 transition-colors cursor-pointer"
+                      >
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Mark as Doing</span>
+                      </button>
+                    )}
+
                     {nextQuiz.status === "ready" && nextQuiz.question_count > 0 ? (
                       <>
                         <button
@@ -699,50 +786,96 @@ export default function CourseDetailPage() {
             {/* Curriculum Units Section (Matching Image 2) */}
             <div className="rounded-2xl bg-[#1c1c1c] border border-[#2e2e2e] p-6 shadow-xl space-y-5">
               {/* Filter Tabs & Search Bar */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#2e2e2e]">
-                {/* Status Tabs */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedStatus("all")}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                      selectedStatus === "all"
-                        ? "bg-white text-black shadow-sm"
-                        : "bg-[#262626] text-gray-400 hover:text-white hover:bg-[#303030]"
-                    }`}
-                  >
-                    All Units ({quizzes.length})
-                  </button>
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[#2e2e2e]">
+                {/* Status Tabs: Readiness & Learning Status */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
+                  {/* Readiness Tabs */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStatus("all")}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        selectedStatus === "all"
+                          ? "bg-white text-black shadow-sm"
+                          : "bg-[#262626] text-gray-400 hover:text-white hover:bg-[#303030]"
+                      }`}
+                    >
+                      All Units ({quizzes.length})
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setSelectedStatus("ready")}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                      selectedStatus === "ready"
-                        ? "bg-emerald-500 text-white shadow-sm"
-                        : "bg-[#262626] text-emerald-400/90 hover:text-emerald-300 hover:bg-[#303030]"
-                    }`}
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Ready to Play ({readyCount})</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStatus("ready")}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        selectedStatus === "ready"
+                          ? "bg-emerald-500 text-white shadow-sm"
+                          : "bg-[#262626] text-emerald-400/90 hover:text-emerald-300 hover:bg-[#303030]"
+                      }`}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Ready ({readyCount})</span>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setSelectedStatus("pending_import")}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                      selectedStatus === "pending_import"
-                        ? "bg-amber-500 text-black shadow-sm"
-                        : "bg-[#262626] text-amber-400/90 hover:text-amber-300 hover:bg-[#303030]"
-                    }`}
-                  >
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>Awaiting JSON ({pendingCount})</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStatus("pending_import")}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        selectedStatus === "pending_import"
+                          ? "bg-amber-500 text-black shadow-sm"
+                          : "bg-[#262626] text-amber-400/90 hover:text-amber-300 hover:bg-[#303030]"
+                      }`}
+                    >
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Awaiting JSON ({pendingCount})</span>
+                    </button>
+                  </div>
+
+                  {/* Learning Status Filter Pills (To do, Doing, Done) */}
+                  <div className="flex items-center gap-1.5 flex-wrap pl-0 sm:pl-2 sm:border-l sm:border-[#333333]">
+                    {(["all", "to_do", "doing", "done"] as const).map((st) => {
+                      const count =
+                        st === "all"
+                          ? quizzes.length
+                          : st === "to_do"
+                          ? todoCount
+                          : st === "doing"
+                          ? doingCount
+                          : doneCount;
+                      const label =
+                        st === "all"
+                          ? "All Statuses"
+                          : st === "to_do"
+                          ? "To do"
+                          : st === "doing"
+                          ? "Doing"
+                          : "Done";
+
+                      return (
+                        <button
+                          key={st}
+                          type="button"
+                          onClick={() => setSelectedLearningStatus(st)}
+                          className={cn(
+                            "inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer",
+                            selectedLearningStatus === st
+                              ? st === "done"
+                                ? "bg-emerald-600 text-white font-bold shadow-sm"
+                                : st === "doing"
+                                ? "bg-amber-600 text-white font-bold shadow-sm"
+                                : "bg-neutral-200 text-black font-bold shadow-sm"
+                              : "bg-[#242424] text-gray-400 hover:text-white hover:bg-[#2e2e2e]"
+                          )}
+                        >
+                          <span>{label}</span>
+                          <span className="text-[10px] opacity-75">({count})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Unit Search Bar */}
-                <div className="relative w-full md:w-72">
+                <div className="relative w-full md:w-72 shrink-0">
                   <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
@@ -770,6 +903,7 @@ export default function CourseDetailPage() {
                     onClick={() => {
                       setSearchQuery("");
                       setSelectedStatus("all");
+                      setSelectedLearningStatus("all");
                     }}
                     className="mt-2 text-xs text-blue-400 hover:underline cursor-pointer"
                   >
@@ -797,7 +931,7 @@ export default function CourseDetailPage() {
                               {quiz.unit_title || quiz.title}
                             </h4>
 
-                            <div className="flex items-center gap-3 text-xs text-[#888888] mt-0.5">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#888888] mt-0.5">
                               {isReady ? (
                                 <span className="text-emerald-400 font-medium">
                                   {quiz.question_count} Questions • {quiz.blank_count} Blanks
@@ -808,6 +942,9 @@ export default function CourseDetailPage() {
                                 </span>
                               )}
 
+                              {/* Highest Score Badge: Directly viewable without clicking buttons */}
+                              <QuizScoreBadge score={quiz.highest_score} size="sm" />
+
                               {quiz.source_filename && (
                                 <span className="hidden sm:inline truncate max-w-xs text-gray-500">
                                   • {quiz.source_filename}
@@ -817,8 +954,14 @@ export default function CourseDetailPage() {
                           </div>
                         </div>
 
-                        {/* Status Badge */}
+                        {/* Status Column: Interactive Learning Status Selector & Readiness Badge */}
                         <div className="flex items-center gap-2 shrink-0">
+                          <QuizStatusSelector
+                            quizId={quiz.id}
+                            status={quiz.learning_status || "to_do"}
+                            onChange={(st) => handleUpdateQuizStatus(quiz.id, st)}
+                          />
+
                           <span
                             className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
                               isReady

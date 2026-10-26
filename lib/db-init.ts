@@ -49,6 +49,7 @@ export async function ensureDatabaseInitialized(): Promise<void> {
             source_filename TEXT,
             chatgpt_url TEXT,
             status TEXT NOT NULL DEFAULT 'ready',
+            learning_status TEXT NOT NULL DEFAULT 'to_do',
             created_at TEXT NOT NULL
           );
         `),
@@ -132,6 +133,12 @@ export async function ensureDatabaseInitialized(): Promise<void> {
           );
         `),
       ]);
+
+      try {
+        await db.run(sql`ALTER TABLE quizzes ADD COLUMN learning_status TEXT NOT NULL DEFAULT 'to_do'`);
+      } catch {
+        // Column may already exist
+      }
 
       tablesChecked = true;
     })();

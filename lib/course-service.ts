@@ -443,6 +443,12 @@ export async function calculateCourseStats(
     for (let i = 0; i < completedAttempts.length; i++) {
       completedQuizIdSet.add(completedAttempts[i].quizId);
     }
+    for (let i = 0; i < courseQuizzes.length; i++) {
+      const q = courseQuizzes[i];
+      if ((q as any).learningStatus === 'done') {
+        completedQuizIdSet.add(q.id);
+      }
+    }
     completed = completedQuizIdSet.size;
   }
 

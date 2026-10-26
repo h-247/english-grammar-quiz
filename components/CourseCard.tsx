@@ -17,10 +17,12 @@ import {
   Pencil,
   History,
 } from "lucide-react";
-import { CourseSummary, QuizSummary } from "@/types/quiz";
+import { CourseSummary, QuizSummary, LearningStatus } from "@/types/quiz";
 import { DEFAULT_COURSE_BANNER, DEFAULT_PROMPT_CHAT_URL } from "@/lib/course-manifest";
 import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
 import { EditQuizChatModal } from "@/components/EditQuizChatModal";
+import { QuizStatusSelector } from "@/components/QuizStatusSelector";
+import { QuizScoreBadge } from "@/components/QuizScoreBadge";
 import { formatDateOnly, cn } from "@/lib/utils";
 
 interface CourseCardProps {
@@ -31,6 +33,7 @@ interface CourseCardProps {
   onEditCourse?: (course: CourseSummary) => void;
   onStartQuiz: (quiz: QuizSummary, mode: "timed" | "practice") => void;
   onViewHistory?: (quiz: QuizSummary) => void;
+  onStatusChange?: (quizId: string, newStatus: LearningStatus) => void;
 }
 
 export const CourseCard = memo(function CourseCard({
@@ -41,6 +44,7 @@ export const CourseCard = memo(function CourseCard({
   onEditCourse,
   onStartQuiz,
   onViewHistory,
+  onStatusChange,
 }: CourseCardProps) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [promptChatUrl, setPromptChatUrl] = useState<string>(DEFAULT_PROMPT_CHAT_URL);
@@ -181,19 +185,18 @@ export const CourseCard = memo(function CourseCard({
           {/* Next Unit / Next Quiz Highlight Box (Matching Image 1) */}
           {nextQuiz && (
             <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-3.5 mb-2">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-semibold text-amber-400 flex items-center gap-1">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-xs font-semibold text-amber-400 flex items-center gap-1 shrink-0">
                   ⚡ Next Unit
                 </span>
-                <span
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase ${
-                    nextQuiz.status === "ready"
-                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                      : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                  }`}
-                >
-                  {nextQuiz.status === "ready" ? "Ready" : "To do"}
-                </span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <QuizStatusSelector
+                    quizId={nextQuiz.id}
+                    status={nextQuiz.learning_status || "to_do"}
+                    onChange={(st) => onStatusChange?.(nextQuiz.id, st)}
+                  />
+                  <QuizScoreBadge score={nextQuiz.highest_score} size="sm" />
+                </div>
               </div>
 
               <h4 className="text-sm font-semibold text-[#ececec] line-clamp-1 mb-1">

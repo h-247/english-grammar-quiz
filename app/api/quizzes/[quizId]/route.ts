@@ -113,6 +113,7 @@ export async function GET(
       source_filename: q.sourceFilename,
       chatgpt_url: q.chatgptUrl || null,
       status: q.status,
+      learning_status: (q as any).learningStatus || 'to_do',
       questions: publicQuestions,
     });
   } catch (err: any) {
@@ -260,6 +261,13 @@ export async function PATCH(
       updateData.chatgptUrl = trimmed || null;
     }
 
+    if (body.learning_status !== undefined) {
+      const validStatuses = ['to_do', 'doing', 'done'];
+      if (validStatuses.includes(body.learning_status)) {
+        updateData.learningStatus = body.learning_status;
+      }
+    }
+
     if (Object.keys(updateData).length > 0) {
       await db.update(quizzes).set(updateData).where(eq(quizzes.id, quizId));
     }
@@ -276,7 +284,8 @@ export async function PATCH(
       unit_number: updated!.unitNumber,
       unit_title: updated!.unitTitle,
       chatgpt_url: updated!.chatgptUrl || null,
-      message: 'Quiz ChatGPT link updated successfully.',
+      learning_status: (updated as any)!.learningStatus || 'to_do',
+      message: 'Quiz updated successfully.',
     });
   } catch (err: any) {
     return NextResponse.json({ detail: err.message }, { status: 500 });
