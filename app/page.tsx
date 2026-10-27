@@ -25,7 +25,7 @@ import {
   syncCourseDrive,
   startAttempt,
 } from "@/lib/api";
-import { CourseSummary, QuizSummary, LearningStatus } from "@/types/quiz";
+import { CourseSummary, QuizSummary } from "@/types/quiz";
 import { useToast } from "@/components/Toast";
 
 export default function BooksDashboardPage() {
@@ -222,12 +222,6 @@ export default function BooksDashboardPage() {
     }
   };
 
-  const handleQuizStatusChange = (quizId: string, newStatus: LearningStatus) => {
-    setQuizzes((prev) =>
-      prev.map((q) => (q.id === quizId ? { ...q, learning_status: newStatus } : q))
-    );
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-[#212121] text-[#ececec]" suppressHydrationWarning>
       {/* Top Navigation */}
@@ -383,8 +377,6 @@ export default function BooksDashboardPage() {
                 onDeleteCourse={handleDeleteCourseClick}
                 onEditCourse={(c) => setCourseToEdit(c)}
                 onStartQuiz={handleStartQuiz}
-                onViewHistory={(q) => setHistoryQuiz(q)}
-                onStatusChange={handleQuizStatusChange}
               />
             ))}
           </div>

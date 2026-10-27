@@ -287,3 +287,42 @@ export interface GoodreadsBookDetails {
   publishedYear?: string;
   goodreadsUrl?: string;
 }
+
+export type LearningStatus = 'to_do' | 'doing' | 'done';
+
+export interface QuizAttemptHistoryItem {
+  attempt_id: string;
+  quiz_id: string;
+  status: string;
+  mode?: "timed" | "practice";
+  submission_reason?: string | null;
+  accuracy_percentage?: number | null;
+  correct_blanks?: number | null;
+  total_blanks?: number | null;
+  fully_correct_questions?: number | null;
+  total_questions?: number | null;
+  time_spent_seconds?: number | null;
+  duration_seconds: number;
+  started_at: string;
+  finalized_at?: string | null;
+}
+
+export interface QuizScoreStats {
+  total_attempts: number;
+  completed_attempts: number;
+  highest_score: number;
+  latest_score: number | null;
+  average_score: number;
+  highest_correct_blanks: number;
+  total_blanks: number;
+  total_questions: number;
+  average_time_spent_seconds: number;
+}
+
+export interface QuizHistoryResponse {
+  quiz_id: string;
+  quiz_title: string;
+  unit_number?: number | null;
+  stats: QuizScoreStats;
+  attempts: QuizAttemptHistoryItem[];
+}

@@ -1,3 +1,4 @@
+const IN_ARRAY_CHUNK_SIZE = 50;
 import { NextResponse } from 'next/server';
 import { getDb } from '@/db';
 import {

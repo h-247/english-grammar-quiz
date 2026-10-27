@@ -600,12 +600,11 @@ export async function calculateCourseStats(
 
   for (let i = 0; i < courseQuizzes.length; i++) {
     const q = courseQuizzes[i];
-    quizIds.push(q.id);
-
     const st = q.status;
-    if (st === 'Done') {
+    const learningSt = (q as any).learningStatus;
+    if (st === 'Done' || learningSt === 'done') {
       doneCount++;
-    } else if (st === 'Doing') {
+    } else if (st === 'Doing' || learningSt === 'doing') {
       doingCount++;
     } else {
       todoCount++;
@@ -618,30 +617,6 @@ export async function calculateCourseStats(
     }
   }
 
-  let completedAttemptsCount = 0;
-  if (quizIds.length > 0) {
-    const isLocal = !userId || userId === 'local-user';
-    const whereConditions = [
-      eq(quizAttempts.status, 'completed'),
-      inArray(quizAttempts.quizId, quizIds),
-    ];
-    if (!isLocal) {
-      whereConditions.push(eq(quizAttempts.userId, userId));
-    }
-
-    const completedAttempts = await db
-      .select({ quizId: quizAttempts.quizId })
-      .from(quizAttempts)
-      .where(and(...whereConditions))
-      .all();
-
-    const completedQuizIdSet = new Set<string>();
-    for (let i = 0; i < completedAttempts.length; i++) {
-      completedQuizIdSet.add(completedAttempts[i].quizId);
-    }
-    completedAttemptsCount = completedQuizIdSet.size;
-  }
-
   return {
     total_chapters: total,
     todo_chapters: todoCount,
@@ -651,6 +626,6 @@ export async function calculateCourseStats(
     total_quizzes: total,
     ready_quizzes: ready,
     pending_quizzes: pending,
-    completed_quizzes: doneCount > 0 ? doneCount : completedAttemptsCount,
+    completed_quizzes: doneCount,
   };
 }
