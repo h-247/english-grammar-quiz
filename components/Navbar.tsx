@@ -4,14 +4,12 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   BookOpen,
-  History,
   Plus,
   HardDrive,
   LogOut,
   User,
   Settings,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { DEFAULT_PROMPT_CHAT_URL } from "@/lib/course-manifest";
 import { EditPromptChatModal } from "@/components/EditPromptChatModal";
 import { SettingsModal } from "@/components/SettingsModal";
@@ -116,20 +114,6 @@ function NavLinks({
 
       {/* Shared Prompt Link Settings Pill (Editable in Navbar) */}
       <SharedPromptLinkSettings compact canEdit={true} />
-
-      {/* History Link */}
-      <Link
-        href="/history"
-        className={cn(
-          "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-          pathname === "/history"
-            ? "bg-[#2b2b2b] text-[#ECECEC] border border-[#3e3e3e]"
-            : "text-[#9CA3AF] hover:text-[#ECECEC] hover:bg-[#262626]/70"
-        )}
-      >
-        <History className="w-4 h-4" />
-        <span className="hidden md:inline">History</span>
-      </Link>
 
       {/* + Import Book (White prominent button) */}
       {handleOpenImport && (
