@@ -128,13 +128,27 @@ export function getBookMainTypes(book: {
 
   const rawGenres: string[] = [];
 
-  // Gather genres from book.genres (authoritative order from Goodreads)
+  // Gather genres from book.genres (authoritative order from Goodreads, robust to string or array)
+  let parsedGenresList: string[] = [];
   if (Array.isArray(book.genres)) {
-    for (const g of book.genres) {
-      const cleanG = typeof g === 'string' ? g.trim() : '';
-      if (cleanG && !rawGenres.includes(cleanG)) {
-        rawGenres.push(cleanG);
-      }
+    parsedGenresList = book.genres;
+  } else if (typeof book.genres === 'string') {
+    const trimmed = (book.genres as string).trim();
+    if (trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) parsedGenresList = parsed;
+      } catch {}
+    }
+    if (parsedGenresList.length === 0) {
+      parsedGenresList = trimmed.split(/[,&/]/).map((s) => s.trim()).filter(Boolean);
+    }
+  }
+
+  for (const g of parsedGenresList) {
+    const cleanG = typeof g === 'string' ? g.trim() : '';
+    if (cleanG && !rawGenres.includes(cleanG)) {
+      rawGenres.push(cleanG);
     }
   }
 

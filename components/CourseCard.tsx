@@ -7,9 +7,6 @@ import {
   RefreshCw,
   Trash2,
   ArrowRight,
-  HardDrive,
-  Star,
-  Bookmark,
   BookOpen,
   CheckCircle2,
   Clock,
@@ -29,6 +26,7 @@ interface CourseCardProps {
   onDeleteCourse: (course: CourseSummary) => void;
   onEditCourse?: (course: CourseSummary) => void;
   onStartQuiz?: (quiz: QuizSummary, mode: "timed" | "practice") => void;
+  selectedType?: string;
   onSelectType?: (type: string) => void;
 }
 
@@ -37,6 +35,7 @@ export const CourseCard = memo(function CourseCard({
   quizzes = [],
   onSyncDrive,
   onDeleteCourse,
+  selectedType,
   onSelectType,
 }: CourseCardProps) {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -149,51 +148,29 @@ export const CourseCard = memo(function CourseCard({
             </span>
 
             {/* 2 Main Types */}
-            {mainTypes.map((t, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelectType?.(t);
-                }}
-                title={`Filter books by "${t}"`}
-                className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 hover:border-purple-400 transition-colors cursor-pointer"
-              >
-                {t}
-              </button>
-            ))}
-
-            {hasValidDriveFolder && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#242424] text-gray-200 border border-white/10">
-                <HardDrive className="w-3 h-3 text-blue-400" />
-                <span>Drive Linked</span>
-              </div>
-            )}
-
-            {course.goodreads_url && (
-              <a
-                href={course.goodreads_url}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-950/40 text-amber-300 border border-amber-500/30 hover:bg-amber-900/50 transition-colors"
-                title="Open Goodreads Page"
-              >
-                <Bookmark className="w-3 h-3" />
-                <span>Goodreads</span>
-                <ExternalLink className="w-2.5 h-2.5" />
-              </a>
-            )}
+            {mainTypes.map((t, idx) => {
+              const isSelected =
+                selectedType && selectedType.toLowerCase() === t.toLowerCase();
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectType?.(isSelected ? "all" : t);
+                  }}
+                  title={`Filter books by "${t}"`}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
+                    isSelected
+                      ? "bg-purple-600 text-white border border-purple-400 shadow-sm"
+                      : "bg-purple-500/15 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 hover:border-purple-400"
+                  }`}
+                >
+                  {t}
+                </button>
+              );
+            })}
           </div>
-
-          {/* Rating Badge */}
-          {course.rating && (
-            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30">
-              <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
-              <span>{course.rating.toFixed(2)}</span>
-            </div>
-          )}
         </div>
           {/* Title & Author */}
           <div className="flex items-start justify-between gap-2 mb-1">

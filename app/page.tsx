@@ -143,31 +143,37 @@ export default function BooksDashboardPage() {
   // Selected Type filter
   const [selectedType, setSelectedType] = useState<string>("all");
 
-  // Available unique types across all books
+  // Available unique types across all books (the 2 main types of books)
   const availableTypes = useMemo(() => {
-    const set = new Set<string>();
+    const typesSet = new Set<string>();
+    let hasNonfiction = false;
+    let hasFiction = false;
+
     courses.forEach((c) => {
       const [t1, t2] = getBookMainTypes(c);
-      if (t1) set.add(t1);
-      if (t2) set.add(t2);
-      if (Array.isArray(c.genres)) {
-        c.genres.forEach((g) => {
-          if (g && typeof g === "string" && g.length < 25) set.add(g.trim());
-        });
+      if (t1) {
+        typesSet.add(t1);
+        if (t1.toLowerCase() === "nonfiction") hasNonfiction = true;
+        if (t1.toLowerCase() === "fiction") hasFiction = true;
+      }
+      if (t2) {
+        typesSet.add(t2);
+        if (t2.toLowerCase() === "nonfiction") hasNonfiction = true;
+        if (t2.toLowerCase() === "fiction") hasFiction = true;
       }
     });
 
-    const list = Array.from(set).filter(Boolean);
-    const priority = ["Nonfiction", "Fiction", "Biography", "Science Fiction", "Grammar", "Reference"];
-    list.sort((a, b) => {
-      const pa = priority.indexOf(a);
-      const pb = priority.indexOf(b);
-      if (pa !== -1 && pb !== -1) return pa - pb;
-      if (pa !== -1) return -1;
-      if (pb !== -1) return 1;
-      return a.localeCompare(b);
-    });
-    return list;
+    const specificTypes = Array.from(typesSet).filter(
+      (t) => t.toLowerCase() !== "nonfiction" && t.toLowerCase() !== "fiction"
+    );
+    specificTypes.sort((a, b) => a.localeCompare(b));
+
+    const result: string[] = [];
+    if (hasNonfiction) result.push("Nonfiction");
+    if (hasFiction) result.push("Fiction");
+    result.push(...specificTypes);
+
+    return result;
   }, [courses]);
 
   // Type counts for each filter tab
@@ -176,14 +182,6 @@ export default function BooksDashboardPage() {
     courses.forEach((c) => {
       const [t1, t2] = getBookMainTypes(c);
       const bookTypes = new Set<string>([t1.toLowerCase(), t2.toLowerCase()]);
-      if (Array.isArray(c.genres)) {
-        c.genres.forEach((g) => {
-          if (g && typeof g === "string") bookTypes.add(g.trim().toLowerCase());
-        });
-      }
-      if (c.main_type) {
-        c.main_type.split(/[&/,+]/).forEach((s) => bookTypes.add(s.trim().toLowerCase()));
-      }
 
       availableTypes.forEach((t) => {
         if (bookTypes.has(t.toLowerCase())) {
@@ -209,15 +207,6 @@ export default function BooksDashboardPage() {
 
       const [t1, t2] = getBookMainTypes(c);
       const bookTypes = new Set<string>([t1.toLowerCase(), t2.toLowerCase()]);
-      if (Array.isArray(c.genres)) {
-        c.genres.forEach((g) => {
-          if (g && typeof g === "string") bookTypes.add(g.trim().toLowerCase());
-        });
-      }
-      if (c.main_type) {
-        c.main_type.split(/[&/,+]/).forEach((s) => bookTypes.add(s.trim().toLowerCase()));
-      }
-
       const typeMatch =
         selectedType === "all" || bookTypes.has(selectedType.toLowerCase());
 
@@ -422,7 +411,7 @@ export default function BooksDashboardPage() {
                 {availableTypes.map((type) => (
                   <button
                     key={type}
-                    onClick={() => setSelectedType(type)}
+                    onClick={() => setSelectedType(selectedType === type ? "all" : type)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
                       selectedType === type
                         ? "bg-purple-600 text-white shadow-sm"
@@ -511,6 +500,7 @@ export default function BooksDashboardPage() {
                 onDeleteCourse={handleDeleteCourseClick}
                 onEditCourse={(c) => setCourseToEdit(c)}
                 onStartQuiz={handleStartQuiz}
+                selectedType={selectedType}
                 onSelectType={(t) => setSelectedType(t)}
               />
             ))}
