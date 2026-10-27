@@ -32,7 +32,6 @@ import { EditCourseModal } from "@/components/EditCourseModal";
 import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
 import { SharedPromptLinkSettings } from "@/components/SharedPromptLinkSettings";
 import { ChatGPTLinkActions } from "@/components/ChatGPTLinkActions";
-import { DEFAULT_COURSE_BANNER } from "@/lib/course-manifest";
 import {
   getCourse,
   syncCourseDrive,
@@ -326,105 +325,96 @@ export default function BookDetailPage() {
         ) : (
           <div className="space-y-6">
             {/* Book Hero Card */}
-            <div className="rounded-2xl bg-[#1c1c1c] border border-[#2e2e2e] overflow-hidden shadow-2xl">
-              <div className="relative h-56 md:h-64 w-full bg-[#141414]">
-                <img
-                  src={course.cover_url || course.banner_url || DEFAULT_COURSE_BANNER}
-                  alt={course.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#1c1c1c] via-[#1c1c1c]/70 to-transparent" />
-
-                <div className="absolute bottom-6 left-6 right-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
-                  <div className="space-y-1.5 max-w-3xl">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/20 backdrop-blur-md text-white border border-white/20">
-                        Book
+            <div className="rounded-2xl bg-[#1c1c1c] border border-[#2e2e2e] p-6 shadow-2xl">
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-5">
+                <div className="space-y-2 max-w-3xl">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/10 text-white border border-white/15">
+                      Book
+                    </span>
+                    <span
+                      className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                        bookStatus === "Done"
+                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                          : bookStatus === "Doing"
+                          ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                          : "bg-neutral-800 text-neutral-300 border-neutral-700"
+                      }`}
+                    >
+                      {bookStatus === "Done" ? (
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                      ) : bookStatus === "Doing" ? (
+                        <Clock className="w-3 h-3 text-amber-400" />
+                      ) : (
+                        <BookOpen className="w-3 h-3 text-neutral-400" />
+                      )}
+                      <span>{bookStatus}</span>
+                    </span>
+                    {course.rating && (
+                      <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                        <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
+                        <span>{course.rating.toFixed(2)}</span>
+                        {course.rating_count ? (
+                          <span className="text-gray-400 text-[10px]">({course.rating_count.toLocaleString()})</span>
+                        ) : null}
                       </span>
-                      <span
-                        className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold backdrop-blur-md border ${
-                          bookStatus === "Done"
-                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                            : bookStatus === "Doing"
-                            ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                            : "bg-neutral-800/80 text-neutral-300 border-neutral-700"
-                        }`}
-                      >
-                        {bookStatus === "Done" ? (
-                          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                        ) : bookStatus === "Doing" ? (
-                          <Clock className="w-3 h-3 text-amber-400" />
-                        ) : (
-                          <BookOpen className="w-3 h-3 text-neutral-400" />
-                        )}
-                        <span>{bookStatus}</span>
-                      </span>
-                      {course.rating && (
-                        <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-black/70 backdrop-blur-md text-amber-300 border border-amber-500/40">
-                          <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
-                          <span>{course.rating.toFixed(2)}</span>
-                          {course.rating_count ? (
-                            <span className="text-gray-400 text-[10px]">({course.rating_count.toLocaleString()})</span>
-                          ) : null}
-                        </span>
-                      )}
-                      {course.page_count && (
-                        <span className="text-xs text-gray-300 bg-black/60 backdrop-blur-md px-2.5 py-0.5 rounded-full border border-white/10">
-                          {course.page_count} pages
-                        </span>
-                      )}
-                      {course.drive_folder_id && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-950/80 backdrop-blur-md text-blue-300 border border-blue-500/30">
-                          <HardDrive className="w-3 h-3 text-blue-400" />
-                          <span>Drive Folder Linked</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-tight">
-                      {course.title}
-                    </h1>
-
-                    {course.author && (
-                      <p className="text-sm font-semibold text-amber-300">
-                        by {course.author}
-                      </p>
                     )}
-
-                    {course.description && (
-                      <p className="text-xs sm:text-sm text-gray-300 line-clamp-2 max-w-2xl leading-relaxed">
-                        {course.description}
-                      </p>
+                    {course.page_count && (
+                      <span className="text-xs text-gray-300 bg-[#252525] px-2.5 py-0.5 rounded-full border border-white/10">
+                        {course.page_count} pages
+                      </span>
+                    )}
+                    {course.drive_folder_id && (
+                      <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-950/60 text-blue-300 border border-blue-500/30">
+                        <HardDrive className="w-3 h-3 text-blue-400" />
+                        <span>Drive Folder Linked</span>
+                      </div>
                     )}
                   </div>
 
-                  {/* Actions Header */}
-                  <div className="flex items-center gap-2 flex-wrap shrink-0">
-                    <button
-                      onClick={() => setIsEditCourseOpen(true)}
-                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#282828] hover:bg-[#323232] text-gray-200 border border-[#3e3e3e] transition-all cursor-pointer"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                      <span>Edit Book</span>
-                    </button>
+                  <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-tight">
+                    {course.title}
+                  </h1>
 
-                    <button
-                      onClick={handleSyncDrive}
-                      disabled={isSyncing}
-                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#262626] hover:bg-[#303030] text-gray-200 border border-[#383838] transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-blue-400" : ""}`} />
-                      <span>{isSyncing ? "Syncing..." : "Sync Drive Chapters"}</span>
-                    </button>
+                  {course.author && (
+                    <p className="text-sm font-semibold text-amber-300">
+                      by {course.author}
+                    </p>
+                  )}
 
-                    <button
-                      onClick={() => setIsDeleteCourseOpen(true)}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-950/30 border border-red-900/40 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Delete Book</span>
-                    </button>
-                  </div>
+                  {course.description && (
+                    <p className="text-xs sm:text-sm text-gray-300 line-clamp-3 max-w-2xl leading-relaxed">
+                      {course.description}
+                    </p>
+                  )}
+                </div>
+
+                {/* Actions Header */}
+                <div className="flex items-center gap-2 flex-wrap shrink-0">
+                  <button
+                    onClick={() => setIsEditCourseOpen(true)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#282828] hover:bg-[#323232] text-gray-200 border border-[#3e3e3e] transition-all cursor-pointer"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>Edit Book</span>
+                  </button>
+
+                  <button
+                    onClick={handleSyncDrive}
+                    disabled={isSyncing}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#262626] hover:bg-[#303030] text-gray-200 border border-[#383838] transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-blue-400" : ""}`} />
+                    <span>{isSyncing ? "Syncing..." : "Sync Drive Chapters"}</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsDeleteCourseOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-950/30 border border-red-900/40 transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Book</span>
+                  </button>
                 </div>
               </div>
             </div>
