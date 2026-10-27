@@ -26,6 +26,8 @@ export async function ensureDatabaseInitialized(): Promise<void> {
             isbn TEXT,
             published_year TEXT,
             genres TEXT,
+            main_type TEXT,
+            author_goodreads_url TEXT,
             drive_folder_id TEXT,
             drive_folder_url TEXT,
             banner_url TEXT,
@@ -156,6 +158,8 @@ export async function ensureDatabaseInitialized(): Promise<void> {
         'isbn TEXT',
         'published_year TEXT',
         'genres TEXT',
+        'main_type TEXT',
+        'author_goodreads_url TEXT',
       ];
       for (const col of courseColumns) {
         try {
@@ -173,6 +177,19 @@ export async function ensureDatabaseInitialized(): Promise<void> {
           await db.run(sql.raw(`ALTER TABLE quizzes ADD COLUMN ${col}`));
         } catch {}
       }
+
+      // Backfill existing grammar courses with default types and author links if missing
+      try {
+        await db.run(sql.raw(`
+          UPDATE courses
+          SET main_type = 'Grammar & Reference',
+              genres = '["Grammar","Reference"]',
+              goodreads_url = COALESCE(NULLIF(goodreads_url, ''), 'https://www.goodreads.com/book/show/1598466.Destination_B1'),
+              author = COALESCE(NULLIF(author, ''), 'Malcolm Mann & Steve Taylore-Knowles'),
+              author_goodreads_url = COALESCE(NULLIF(author_goodreads_url, ''), 'https://www.goodreads.com/search?q=Malcolm+Mann')
+          WHERE lower(title) LIKE '%grammar%' AND (main_type IS NULL OR main_type = '')
+        `));
+      } catch {}
 
       tablesChecked = true;
     })();

@@ -253,6 +253,10 @@ export default function BookDetailPage() {
       ? "Doing"
       : "To do";
 
+  const mainTypes = getBookMainTypes(course);
+  const bookGoodreadsUrl = getBookGoodreadsUrl(course);
+  const authorGoodreadsUrl = getAuthorGoodreadsUrl(course);
+
   const progressPercent = totalChapters > 0 ? Math.round((doneCount / totalChapters) * 100) : 0;
 
   // Filtered chapters
@@ -332,6 +336,14 @@ export default function BookDetailPage() {
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/10 text-white border border-white/15">
                       Book
                     </span>
+                    {mainTypes.map((t, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/40"
+                      >
+                        {t}
+                      </span>
+                    ))}
                     <span
                       className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
                         bookStatus === "Done"
@@ -373,12 +385,34 @@ export default function BookDetailPage() {
                   </div>
 
                   <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-tight">
-                    {course.title}
+                    <a
+                      href={bookGoodreadsUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={`Open "${course.title}" on Goodreads`}
+                      className="hover:text-amber-300 transition-colors inline-flex items-center gap-2 group/title"
+                    >
+                      <span className="group-hover/title:underline">{course.title}</span>
+                      <ExternalLink className="w-5 h-5 text-amber-400 opacity-60 group-hover/title:opacity-100 transition-opacity shrink-0" />
+                    </a>
                   </h1>
 
                   {course.author && (
-                    <p className="text-sm font-semibold text-amber-300">
-                      by {course.author}
+                    <p className="text-sm font-semibold text-gray-400">
+                      by{" "}
+                      {authorGoodreadsUrl ? (
+                        <a
+                          href={authorGoodreadsUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={`View "${course.author}" on Goodreads`}
+                          className="text-amber-300 hover:text-amber-200 hover:underline transition-colors cursor-pointer"
+                        >
+                          {course.author}
+                        </a>
+                      ) : (
+                        <span className="text-gray-300">{course.author}</span>
+                      )}
                     </p>
                   )}
 

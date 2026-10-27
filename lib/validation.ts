@@ -92,6 +92,8 @@ export const BookCreateSchema = z.object({
   isbn: z.string().optional(),
   published_year: z.string().optional(),
   genres: z.array(z.string()).optional(),
+  main_type: z.string().optional(),
+  author_goodreads_url: z.string().optional(),
   drive_folder_id: z.string().optional(),
   drive_folder_url: z.string().optional(),
   banner_url: z.string().optional(),

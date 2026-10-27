@@ -103,6 +103,8 @@ export async function GET(
       isbn: course.isbn,
       published_year: course.publishedYear,
       genres: course.genres,
+      main_type: (course as any).mainType || (course.genres && Array.isArray(course.genres) ? course.genres[0] : null) || null,
+      author_goodreads_url: (course as any).authorGoodreadsUrl || (course.author ? `https://www.goodreads.com/search?q=${encodeURIComponent(course.author)}` : null),
       drive_folder_id: course.driveFolderId,
       drive_folder_url: course.driveFolderUrl,
       banner_url:
@@ -297,6 +299,15 @@ export async function PATCH(
     if (body.page_count !== undefined) {
       updateData.pageCount = body.page_count != null ? Number(body.page_count) : null;
     }
+    if (body.main_type !== undefined) {
+      updateData.mainType = body.main_type ? String(body.main_type).trim() : null;
+    }
+    if (body.genres !== undefined) {
+      updateData.genres = Array.isArray(body.genres) ? body.genres : null;
+    }
+    if (body.author_goodreads_url !== undefined) {
+      updateData.authorGoodreadsUrl = body.author_goodreads_url ? String(body.author_goodreads_url).trim() : null;
+    }
 
     await db.update(courses).set(updateData).where(eq(courses.id, courseId));
 
@@ -317,6 +328,9 @@ export async function PATCH(
       cover_url: updated!.coverUrl || updated!.bannerUrl,
       rating: updated!.rating,
       page_count: updated!.pageCount,
+      genres: updated!.genres,
+      main_type: (updated as any).mainType || (updated!.genres && Array.isArray(updated!.genres) ? updated!.genres[0] : null) || null,
+      author_goodreads_url: (updated as any).authorGoodreadsUrl || (updated!.author ? `https://www.goodreads.com/search?q=${encodeURIComponent(updated!.author)}` : null),
       drive_folder_id: updated!.driveFolderId,
       drive_folder_url: updated!.driveFolderUrl,
       banner_url:

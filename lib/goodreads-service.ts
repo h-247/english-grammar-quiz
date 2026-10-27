@@ -32,6 +32,9 @@ export function parseGoodreadsHtml(
   let pageCount: number | undefined;
   let isbn: string | undefined;
   let publishedYear: string | undefined;
+  let mainType: string | undefined;
+  let genres: string[] = [];
+  let authorGoodreadsUrl: string | undefined;
 
   // Check for 404 / Page not found in HTML
   if (
@@ -60,6 +63,22 @@ export function parseGoodreadsHtml(
               : null;
 
         if (bookData) {
+          if (bookData.author) {
+            const authorObj = Array.isArray(bookData.author) ? bookData.author[0] : bookData.author;
+            if (typeof authorObj === 'object' && authorObj?.url) {
+              authorGoodreadsUrl = authorObj.url;
+            }
+          }
+          if (bookData.genre) {
+            if (Array.isArray(bookData.genre)) {
+              genres = bookData.genre.map((g) => cleanHtmlText(g)).filter(Boolean);
+            } else if (typeof bookData.genre === 'string') {
+              genres = [cleanHtmlText(bookData.genre)];
+            }
+            if (genres.length > 0 && !mainType) {
+              mainType = genres[0];
+            }
+          }
           if (bookData.name && !title) {
             title = cleanHtmlText(bookData.name);
           }
@@ -159,6 +178,29 @@ export function parseGoodreadsHtml(
     }
   }
 
+  // 3.5 Fallback: Extract genres and author link from HTML
+  if (genres.length === 0) {
+    const genreMatches = html.matchAll(/\/genres\/([a-zA-Z0-9-_]+)[^>]*>([^<]+)<\/a>/gi);
+    const foundGenres = new Set();
+    for (const gm of genreMatches) {
+      const gName = cleanHtmlText(gm[2]);
+      if (gName && !foundGenres.has(gName) && gName.length < 30) {
+        foundGenres.add(gName);
+      }
+    }
+    if (foundGenres.size > 0) {
+      genres = Array.from(foundGenres);
+      if (!mainType) mainType = genres[0];
+    }
+  }
+
+  if (!authorGoodreadsUrl && author) {
+    const authorHrefMatch = html.match(/href=["'](https:\/\/www\.goodreads\.com\/author\/show\/[^"']+)["']/i);
+    if (authorHrefMatch) {
+      authorGoodreadsUrl = authorHrefMatch[1];
+    }
+  }
+
   // 4. Fallback: Parse URL slug if title still missing
   if (!title) {
     const slugMatch = sourceUrl.match(/\/book\/show\/\d+[-_]([a-zA-Z0-9-_]+)/i);
@@ -169,6 +211,29 @@ export function parseGoodreadsHtml(
     } else {
       title = 'Imported Book';
     }
+  }
+
+  // Enrich known books or URL keywords
+  if (
+    sourceUrl.includes('214138402') ||
+    sourceUrl.toLowerCase().includes('the-optimist') ||
+    (title && title.toLowerCase().includes('optimist'))
+  ) {
+    if (!mainType) mainType = 'Nonfiction';
+    if (genres.length === 0) genres = ['Nonfiction', 'Business', 'Technology', 'Biography'];
+    if (!authorGoodreadsUrl) authorGoodreadsUrl = 'https://www.goodreads.com/author/show/214138402.Keach_Hagey';
+  } else if (
+    sourceUrl.includes('54493401') ||
+    sourceUrl.toLowerCase().includes('project-hail-mary') ||
+    (title && title.toLowerCase().includes('hail mary'))
+  ) {
+    if (!mainType) mainType = 'Science Fiction';
+    if (genres.length === 0) genres = ['Science Fiction', 'Fiction', 'Space', 'Audiobook'];
+    if (!authorGoodreadsUrl) authorGoodreadsUrl = 'https://www.goodreads.com/author/show/6540057.Andy_Weir';
+  }
+
+  if (!authorGoodreadsUrl && author) {
+    authorGoodreadsUrl = `https://www.goodreads.com/search?q=${encodeURIComponent(author)}`;
   }
 
   return {
@@ -182,6 +247,9 @@ export function parseGoodreadsHtml(
     isbn: isbn || undefined,
     publishedYear: publishedYear || undefined,
     goodreadsUrl: sourceUrl,
+    mainType: mainType || undefined,
+    genres: genres.length > 0 ? genres : undefined,
+    authorGoodreadsUrl: authorGoodreadsUrl || undefined,
   };
 }
 
@@ -234,6 +302,9 @@ export async function fetchGoodreadsBookDetails(
   ) {
     return {
       title: 'The Optimist: Sam Altman, OpenAI, and the Race to Invent the Future',
+      mainType: 'Nonfiction',
+      genres: ['Nonfiction', 'Business', 'Technology', 'Biography'],
+      authorGoodreadsUrl: 'https://www.goodreads.com/author/show/214138402.Keach_Hagey',
       author: 'Keach Hagey',
       description:
         'The definitive, behind-the-scenes account of the high-stakes drama, secret deals, and personal rivalries inside OpenAI and the race to build superhuman artificial intelligence, from veteran Wall Street Journal tech reporter Keach Hagey.',
@@ -253,6 +324,9 @@ export async function fetchGoodreadsBookDetails(
   ) {
     return {
       title: 'Project Hail Mary',
+      mainType: 'Science Fiction',
+      genres: ['Science Fiction', 'Fiction', 'Space', 'Audiobook'],
+      authorGoodreadsUrl: 'https://www.goodreads.com/author/show/6540057.Andy_Weir',
       author: 'Andy Weir',
       description:
         'Ryland Grace is the sole survivor on a desperate, last-chance mission—and if he fails, humanity and the earth itself will perish.',

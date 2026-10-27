@@ -10,6 +10,7 @@ import {
 import { CourseSummary } from "@/types/quiz";
 import { DEFAULT_COURSE_BANNER } from "@/lib/course-manifest";
 import { updateCourse } from "@/lib/api";
+import { getBookMainTypes } from "@/lib/utils";
 import { useToast } from "@/components/Toast";
 
 interface EditCourseModalProps {
@@ -31,6 +32,8 @@ export function EditCourseModal({
   const [mounted, setMounted] = useState(false);
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
+  const [mainType1, setMainType1] = useState("");
+  const [mainType2, setMainType2] = useState("");
   const [description, setDescription] = useState("");
   const [goodreadsUrl, setGoodreadsUrl] = useState("");
   const [selectedBanner, setSelectedBanner] = useState(DEFAULT_COURSE_BANNER);
@@ -45,6 +48,9 @@ export function EditCourseModal({
     if (course && isOpen) {
       setTitle(course.title || "");
       setAuthor(course.author || "");
+      const [t1, t2] = getBookMainTypes(course);
+      setMainType1(t1 || "");
+      setMainType2(t2 || "");
       setDescription(course.description || "");
       setGoodreadsUrl(course.goodreads_url || "");
       setSelectedBanner(course.cover_url || course.banner_url || DEFAULT_COURSE_BANNER);
@@ -85,6 +91,8 @@ export function EditCourseModal({
       const updated = await updateCourse(course.id, {
         title: trimmedTitle,
         author: author.trim() || undefined,
+        main_type: [mainType1.trim(), mainType2.trim()].filter(Boolean).join(" & ") || undefined,
+        genres: [mainType1.trim(), mainType2.trim()].filter(Boolean).length > 0 ? [mainType1.trim(), mainType2.trim()].filter(Boolean) : undefined,
         description: description.trim() || undefined,
         goodreads_url: goodreadsUrl.trim() || undefined,
         cover_url: selectedBanner,
@@ -161,6 +169,20 @@ export function EditCourseModal({
             />
           </div>
 
+          {/* Main Type / Genre */}
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] block mb-1.5">
+              Main Type / Genre
+            </label>
+            <input
+              type="text"
+              value={mainType}
+              onChange={(e) => setMainType(e.target.value)}
+              placeholder="e.g. Nonfiction, Business, Science Fiction"
+              className="w-full bg-[#161616] border border-[#333333] rounded-xl px-3.5 py-2.5 text-sm text-[#ececec] placeholder-gray-500 focus:outline-none focus:border-white transition-colors"
+            />
+          </div>
+
           {/* Author Field */}
           <div>
             <label className="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] block mb-1.5">
@@ -173,6 +195,34 @@ export function EditCourseModal({
               placeholder="e.g. Keach Hagey"
               className="w-full bg-[#161616] border border-[#333333] rounded-xl px-3.5 py-2.5 text-sm text-[#ececec] placeholder-gray-500 focus:outline-none focus:border-white transition-colors"
             />
+          </div>
+
+          {/* 2 Main Types */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] block mb-1.5">
+                Main Type 1
+              </label>
+              <input
+                type="text"
+                value={mainType1}
+                onChange={(e) => setMainType1(e.target.value)}
+                placeholder="e.g. Nonfiction"
+                className="w-full bg-[#161616] border border-[#333333] rounded-xl px-3.5 py-2 text-sm text-[#ececec] placeholder-gray-500 focus:outline-none focus:border-white transition-colors"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] block mb-1.5">
+                Main Type 2
+              </label>
+              <input
+                type="text"
+                value={mainType2}
+                onChange={(e) => setMainType2(e.target.value)}
+                placeholder="e.g. Business"
+                className="w-full bg-[#161616] border border-[#333333] rounded-xl px-3.5 py-2 text-sm text-[#ececec] placeholder-gray-500 focus:outline-none focus:border-white transition-colors"
+              />
+            </div>
           </div>
 
           {/* Goodreads URL */}

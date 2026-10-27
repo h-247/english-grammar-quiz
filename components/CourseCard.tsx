@@ -19,7 +19,7 @@ import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
 import { SharedPromptLinkSettings } from "@/components/SharedPromptLinkSettings";
 import { ChatGPTLinkActions } from "@/components/ChatGPTLinkActions";
 import { updateChapterStatus } from "@/lib/api";
-import { formatDateOnly } from "@/lib/utils";
+import { formatDateOnly, getBookGoodreadsUrl, getAuthorGoodreadsUrl, getBookMainTypes } from "@/lib/utils";
 
 interface CourseCardProps {
   course: CourseSummary;
@@ -104,6 +104,10 @@ export const CourseCard = memo(function CourseCard({
       ? "Doing"
       : "To do");
 
+  const mainTypes = getBookMainTypes(course);
+  const bookGoodreadsUrl = getBookGoodreadsUrl(course);
+  const authorGoodreadsUrl = getAuthorGoodreadsUrl(course);
+
   const syncDate = formatDateOnly(course.updated_at);
 
   return (
@@ -131,6 +135,16 @@ export const CourseCard = memo(function CourseCard({
               )}
               <span>{bookStatus}</span>
             </span>
+
+            {/* 2 Main Types */}
+            {mainTypes.map((t, idx) => (
+              <span
+                key={idx}
+                className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30"
+              >
+                {t}
+              </span>
+            ))}
 
             {course.drive_folder_id && (
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#242424] text-gray-200 border border-white/10">
@@ -165,12 +179,17 @@ export const CourseCard = memo(function CourseCard({
         </div>
           {/* Title & Author */}
           <div className="flex items-start justify-between gap-2 mb-1">
-            <Link
-              href={`/courses/${course.id}`}
-              className="text-lg font-bold text-white hover:text-blue-400 transition-colors line-clamp-1"
+            <a
+              href={bookGoodreadsUrl}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              title={`Open "${course.title}" on Goodreads`}
+              className="text-lg font-bold text-white hover:text-amber-300 transition-colors line-clamp-1 inline-flex items-center gap-1.5 group/title cursor-pointer"
             >
-              {course.title}
-            </Link>
+              <span className="group-hover/title:underline">{course.title}</span>
+              <ExternalLink className="w-3.5 h-3.5 opacity-60 group-hover/title:opacity-100 text-amber-400 shrink-0 transition-opacity" />
+            </a>
             {course.drive_folder_url && (
               <div className="flex items-center gap-0.5 shrink-0">
                 <CopyDriveLinkButton
@@ -192,8 +211,22 @@ export const CourseCard = memo(function CourseCard({
           </div>
 
           {course.author && (
-            <p className="text-xs font-medium text-amber-400/90 mb-2">
-              by {course.author}
+            <p className="text-xs font-medium text-gray-400 mb-2">
+              by{" "}
+              {authorGoodreadsUrl ? (
+                <a
+                  href={authorGoodreadsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  title={`View "${course.author}" on Goodreads`}
+                  className="text-amber-400/90 hover:text-amber-300 hover:underline transition-colors cursor-pointer"
+                >
+                  {course.author}
+                </a>
+              ) : (
+                <span className="text-gray-300">{course.author}</span>
+              )}
             </p>
           )}
 

@@ -55,6 +55,8 @@ export interface BookSummary {
   isbn?: string | null;
   published_year?: string | null;
   genres?: string[] | null;
+  main_type?: string | null;
+  author_goodreads_url?: string | null;
   drive_folder_id?: string | null;
   drive_folder_url?: string | null;
   banner_url?: string | null;
@@ -137,6 +139,8 @@ export interface BookCreatePayload {
   drive_folder_id?: string;
   drive_folder_url?: string;
   banner_url?: string;
+  main_type?: string;
+  author_goodreads_url?: string;
 }
 
 export type CourseCreatePayload = BookCreatePayload;
@@ -285,6 +289,8 @@ export interface GoodreadsBookDetails {
   pageCount?: number;
   isbn?: string;
   publishedYear?: string;
+  mainType?: string;
+  authorGoodreadsUrl?: string;
   goodreadsUrl?: string;
 }
 

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { parseGoodreadsHtml, fetchGoodreadsBookDetails } from '@/lib/goodreads-service';
 import { SAMPLE_BOOK_MANIFEST } from '@/lib/course-service';
 import { extractDriveFolderId } from '@/lib/course-manifest';
+import { getBookMainTypes, getBookGoodreadsUrl, getAuthorGoodreadsUrl } from '@/lib/utils';
 
 describe('Goodreads Scraping & Metadata Extraction', () => {
   it('correctly parses JSON-LD metadata from Goodreads book HTML', () => {
@@ -66,6 +67,9 @@ describe('Goodreads Scraping & Metadata Extraction', () => {
     const result = parseGoodreadsHtml(sampleHtml, 'https://www.goodreads.com/book/show/214138402-the-optimist');
     expect(result.title).toBe('The Optimist');
     expect(result.author).toBe('Keach Hagey');
+    expect(result.mainType).toBe('Nonfiction');
+    expect(result.genres).toContain('Business');
+    expect(result.authorGoodreadsUrl).toContain('Keach_Hagey');
     expect(result.description).toBe('A book about Sam Altman and OpenAI.');
     expect(result.coverUrl).toBe('https://images.sample.com/cover.jpg');
   });
@@ -119,5 +123,61 @@ describe('Google Drive Chapter Import & Folder Resolution', () => {
     validStatuses.forEach((status) => {
       expect(['To do', 'Doing', 'Done']).toContain(status);
     });
+  });
+});
+
+describe('Book 2 Main Types and Goodreads Navigation', () => {
+  it('correctly provides 2 main types for books', () => {
+    // With explicit main_type and genres
+    const book1 = {
+      title: 'The Optimist',
+      main_type: 'Nonfiction',
+      genres: ['Nonfiction', 'Business', 'Technology'],
+    };
+    expect(getBookMainTypes(book1)).toEqual(['Nonfiction', 'Business']);
+
+    // Grammar book fallback
+    const book2 = {
+      title: 'Destination B1: English Grammar',
+      main_type: 'Grammar & Reference',
+    };
+    expect(getBookMainTypes(book2)).toEqual(['Grammar', 'Reference']);
+
+    // Science fiction book
+    const book3 = {
+      title: 'Project Hail Mary',
+      main_type: 'Science Fiction',
+      genres: ['Science Fiction', 'Fiction', 'Space'],
+    };
+    expect(getBookMainTypes(book3)).toEqual(['Science Fiction', 'Fiction']);
+  });
+
+  it('correctly generates Goodreads link for book title and author', () => {
+    // Book with explicit goodreads_url
+    const book1 = {
+      title: 'The Optimist',
+      author: 'Keach Hagey',
+      goodreads_url: 'https://www.goodreads.com/book/show/214138402',
+      author_goodreads_url: 'https://www.goodreads.com/author/show/214138402.Keach_Hagey',
+    };
+    expect(getBookGoodreadsUrl(book1)).toBe('https://www.goodreads.com/book/show/214138402');
+    expect(getAuthorGoodreadsUrl(book1)).toBe('https://www.goodreads.com/author/show/214138402.Keach_Hagey');
+
+    // Book without goodreads_url, falls back to goodreads search
+    const book2 = {
+      title: 'Project Hail Mary',
+      author: 'Andy Weir',
+    };
+    expect(getBookGoodreadsUrl(book2)).toBe('https://www.goodreads.com/search?q=Project%20Hail%20Mary');
+    expect(getAuthorGoodreadsUrl(book2)).toBe('https://www.goodreads.com/search?q=Andy%20Weir');
+
+    // Book with bare URL without protocol
+    const book3 = {
+      title: 'Sample',
+      goodreads_url: 'www.goodreads.com/book/show/123',
+      author_goodreads_url: 'www.goodreads.com/author/show/456',
+    };
+    expect(getBookGoodreadsUrl(book3)).toBe('https://www.goodreads.com/book/show/123');
+    expect(getAuthorGoodreadsUrl(book3)).toBe('https://www.goodreads.com/author/show/456');
   });
 });

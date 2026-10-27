@@ -51,6 +51,8 @@ export function ImportCourseModal({
   const [driveUrl, setDriveUrl] = useState("");
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
+  const [mainType1, setMainType1] = useState("");
+  const [mainType2, setMainType2] = useState("");
   const [description, setDescription] = useState("");
   const [coverUrl, setCoverUrl] = useState(DEFAULT_COURSE_BANNER);
   const [rating, setRating] = useState<number | undefined>();
@@ -151,6 +153,23 @@ export function ImportCourseModal({
       const data: GoodreadsBookDetails = await fetchGoodreadsInfo(targetUrl);
       if (data.title) setTitle(data.title);
       if (data.author) setAuthor(data.author);
+      const extractedTypes: string[] = [];
+      if (data.mainType) extractedTypes.push(data.mainType);
+      if (Array.isArray(data.genres)) {
+        for (const g of data.genres) {
+          if (g && !extractedTypes.includes(g)) extractedTypes.push(g);
+        }
+      }
+      if (extractedTypes.length >= 2) {
+        setMainType1(extractedTypes[0]);
+        setMainType2(extractedTypes[1]);
+      } else if (extractedTypes.length === 1) {
+        setMainType1(extractedTypes[0]);
+        setMainType2("Literature");
+      } else {
+        setMainType1("Nonfiction");
+        setMainType2("Literature");
+      }
       if (data.description) setDescription(data.description);
       if (data.coverUrl) setCoverUrl(data.coverUrl);
       if (data.rating) setRating(data.rating);
@@ -173,6 +192,8 @@ export function ImportCourseModal({
     setGoodreadsUrl("https://www.goodreads.com/book/show/214138402");
     setTitle("The Optimist: Sam Altman, OpenAI, and the Race to Invent the Future");
     setAuthor("Keach Hagey");
+    setMainType1("Nonfiction");
+    setMainType2("Business");
     setDescription(
       "The definitive, behind-the-scenes account of the high-stakes drama, secret deals, and personal rivalries inside OpenAI and the race to build superhuman artificial intelligence, from veteran Wall Street Journal tech reporter Keach Hagey."
     );
@@ -207,6 +228,8 @@ export function ImportCourseModal({
       const newBook = await onCreateCourse({
         title: trimmedTitle,
         author: author.trim() || undefined,
+        main_type: [mainType1.trim(), mainType2.trim()].filter(Boolean).join(" & ") || undefined,
+        genres: [mainType1.trim(), mainType2.trim()].filter(Boolean).length > 0 ? [mainType1.trim(), mainType2.trim()].filter(Boolean) : undefined,
         description: description.trim() || undefined,
         goodreads_url: goodreadsUrl.trim() || undefined,
         cover_url: coverUrl,
@@ -428,6 +451,30 @@ export function ImportCourseModal({
                   placeholder="e.g. Andy Weir"
                   className="w-full bg-[#1b1b1b] border border-[#333333] rounded-xl px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-white transition-colors"
                 />
+              </div>
+
+              {/* 2 Main Types */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-gray-300 block mb-1">Main Type 1</label>
+                  <input
+                    type="text"
+                    value={mainType1}
+                    onChange={(e) => setMainType1(e.target.value)}
+                    placeholder="e.g. Nonfiction"
+                    className="w-full bg-[#1b1b1b] border border-[#333333] rounded-xl px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-white transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-300 block mb-1">Main Type 2</label>
+                  <input
+                    type="text"
+                    value={mainType2}
+                    onChange={(e) => setMainType2(e.target.value)}
+                    placeholder="e.g. Business"
+                    className="w-full bg-[#1b1b1b] border border-[#333333] rounded-xl px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-white transition-colors"
+                  />
+                </div>
               </div>
 
               <div>

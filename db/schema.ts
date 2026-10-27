@@ -15,6 +15,8 @@ export const courses = sqliteTable(
     isbn: text('isbn'),
     publishedYear: text('published_year'),
     genres: text('genres', { mode: 'json' }),
+    mainType: text('main_type'),
+    authorGoodreadsUrl: text('author_goodreads_url'),
     driveFolderId: text('drive_folder_id'),
     driveFolderUrl: text('drive_folder_url'),
     bannerUrl: text('banner_url'),
