@@ -204,7 +204,7 @@ export function EditCourseModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] block mb-1.5">
-                Main Type 1
+                Main Type 1 (Nonfiction / Fiction)
               </label>
               <input
                 type="text"
@@ -216,7 +216,7 @@ export function EditCourseModal({
             </div>
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] block mb-1.5">
-                Main Type 2
+                Main Type 2 (Goodreads Genre)
               </label>
               <input
                 type="text"

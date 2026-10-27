@@ -122,53 +122,97 @@ export function getBookMainTypes(book: {
   title?: string | null;
   main_type?: string | null;
   genres?: string[] | null;
+  description?: string | null;
 } | null | undefined): [string, string] {
-  if (!book) return ['Biography', 'Artificial Intelligence'];
+  if (!book) return ['Nonfiction', 'Biography'];
 
-  const types: string[] = [];
-  const title = (book.title || '').toLowerCase();
+  const rawGenres: string[] = [];
 
-  // For The Optimist (Sam Altman / OpenAI), Goodreads lists Biography as first genre
-  if (title.includes('optimist') || title.includes('sam altman') || title.includes('openai')) {
-    types.push('Biography', 'Artificial Intelligence');
-  }
-
-  if (book.main_type) {
-    const split = book.main_type.split(/[&/,+]/).map((s) => s.trim()).filter(Boolean);
-    for (const s of split) {
-      if (!types.includes(s)) types.push(s);
-    }
-  }
-
+  // Gather genres from book.genres (authoritative order from Goodreads)
   if (Array.isArray(book.genres)) {
     for (const g of book.genres) {
       const cleanG = typeof g === 'string' ? g.trim() : '';
-      if (cleanG && !types.includes(cleanG)) {
-        types.push(cleanG);
+      if (cleanG && !rawGenres.includes(cleanG)) {
+        rawGenres.push(cleanG);
       }
     }
   }
 
-  if (types.length < 2) {
-    if (title.includes('grammar') || title.includes('english') || title.includes('destination')) {
-      if (!types.includes('Grammar')) types.push('Grammar');
-      if (!types.includes('Reference')) types.push('Reference');
-    } else if (title.includes('optimist') || title.includes('openai') || title.includes('altman')) {
-      if (!types.includes('Biography')) types.push('Biography');
-      if (!types.includes('Artificial Intelligence')) types.push('Artificial Intelligence');
-    } else if (title.includes('hail mary') || title.includes('space') || title.includes('weir')) {
-      if (!types.includes('Science Fiction')) types.push('Science Fiction');
-      if (!types.includes('Fiction')) types.push('Fiction');
-    } else if (types.length === 1) {
-      if (types[0] === 'Biography') types.push('Artificial Intelligence');
-      else if (types[0] === 'Nonfiction') types.push('Business');
-      else if (types[0] === 'Science Fiction') types.push('Fiction');
-      else if (types[0] === 'Fiction') types.push('Literature');
-      else types.push('Literature');
-    } else {
-      types.push('Biography', 'Artificial Intelligence');
+  // Also include any types from book.main_type if not yet in rawGenres
+  if (book.main_type) {
+    const split = book.main_type.split(/[&/,+]/).map((s) => s.trim()).filter(Boolean);
+    for (const s of split) {
+      if (!rawGenres.includes(s)) {
+        rawGenres.push(s);
+      }
     }
   }
 
-  return [types[0], types[1]];
+  const title = (book.title || '').toLowerCase();
+
+  // 1. Determine broad category: 'Nonfiction' or 'Fiction'
+  let broadType: 'Fiction' | 'Nonfiction' = 'Nonfiction';
+
+  const hasExplicitNonfiction = rawGenres.some(
+    (g) => g.toLowerCase() === 'nonfiction' || g.toLowerCase() === 'non-fiction'
+  );
+  const hasExplicitFiction = rawGenres.some(
+    (g) => g.toLowerCase() === 'fiction'
+  );
+
+  if (hasExplicitNonfiction) {
+    broadType = 'Nonfiction';
+  } else if (hasExplicitFiction) {
+    broadType = 'Fiction';
+  } else if (
+    title.includes('hail mary') ||
+    title.includes('novel') ||
+    rawGenres.some((g) =>
+      ['science fiction', 'fantasy', 'romance', 'thriller', 'mystery', 'horror'].includes(g.toLowerCase())
+    )
+  ) {
+    broadType = 'Fiction';
+  } else {
+    broadType = 'Nonfiction';
+  }
+
+  // Specific canonical overrides
+  if (
+    title.includes('optimist') ||
+    title.includes('openai') ||
+    title.includes('sam altman') ||
+    title.includes('grammar') ||
+    title.includes('destination')
+  ) {
+    broadType = 'Nonfiction';
+  } else if (title.includes('hail mary') || title.includes('weir')) {
+    broadType = 'Fiction';
+  }
+
+  // 2. Determine first genre: type xuất hiện đầu tiên trong genres trên Goodreads
+  let firstGenre = '';
+
+  for (const g of rawGenres) {
+    const lower = g.toLowerCase();
+    // Skip if identical to broadType ('fiction' or 'nonfiction' or 'non-fiction')
+    if (lower !== 'fiction' && lower !== 'nonfiction' && lower !== 'non-fiction') {
+      firstGenre = g;
+      break;
+    }
+  }
+
+  // Fallbacks if firstGenre is still empty
+  if (!firstGenre) {
+    if (title.includes('optimist') || title.includes('openai') || title.includes('sam altman')) {
+      firstGenre = 'Biography';
+    } else if (title.includes('grammar') || title.includes('destination') || title.includes('english')) {
+      firstGenre = 'Grammar';
+    } else if (title.includes('hail mary') || title.includes('space') || title.includes('weir')) {
+      firstGenre = 'Science Fiction';
+    } else {
+      firstGenre = broadType === 'Fiction' ? 'Literature' : 'Reference';
+    }
+  }
+
+  return [broadType, firstGenre];
 }

@@ -191,11 +191,11 @@ export async function ensureDatabaseInitialized(): Promise<void> {
         `));
       } catch {}
 
-      // Backfill and fix The Optimist (Biography & AI, Keach Hagey author URL, and remove any bad Goodreads drive URLs)
+      // Backfill and fix The Optimist (Nonfiction & Biography, Keach Hagey author URL, and remove any bad Goodreads drive URLs)
       try {
         await db.run(sql.raw(`
           UPDATE courses
-          SET main_type = 'Biography & Artificial Intelligence',
+          SET main_type = 'Nonfiction & Biography',
               genres = '["Biography","Artificial Intelligence","Nonfiction","Business","Technology","Audiobook","Science","Biography Memoir","History","Politics"]',
               goodreads_url = 'https://www.goodreads.com/book/show/223400731-the-optimist',
               author = 'Keach Hagey',

@@ -155,23 +155,13 @@ export function ImportCourseModal({
       if (data.title) setTitle(data.title);
       if (data.author) setAuthor(data.author);
       if (data.authorGoodreadsUrl) setAuthorGoodreadsUrl(data.authorGoodreadsUrl);
-      const extractedTypes: string[] = [];
-      if (data.mainType) extractedTypes.push(data.mainType);
-      if (Array.isArray(data.genres)) {
-        for (const g of data.genres) {
-          if (g && !extractedTypes.includes(g)) extractedTypes.push(g);
-        }
-      }
-      if (extractedTypes.length >= 2) {
-        setMainType1(extractedTypes[0]);
-        setMainType2(extractedTypes[1]);
-      } else if (extractedTypes.length === 1) {
-        setMainType1(extractedTypes[0]);
-        setMainType2("Literature");
-      } else {
-        setMainType1("Nonfiction");
-        setMainType2("Literature");
-      }
+      const [broadType, firstGenre] = getBookMainTypes({
+        title: data.title,
+        genres: data.genres,
+        main_type: data.mainType,
+      });
+      setMainType1(broadType);
+      setMainType2(firstGenre);
       if (data.description) setDescription(data.description);
       if (data.coverUrl) setCoverUrl(data.coverUrl);
       if (data.rating) setRating(data.rating);
@@ -195,8 +185,8 @@ export function ImportCourseModal({
     setTitle("The Optimist: Sam Altman, OpenAI, and the Race to Invent the Future");
     setAuthor("Keach Hagey");
     setAuthorGoodreadsUrl("https://www.goodreads.com/author/show/16995547.Keach_Hagey");
-    setMainType1("Biography");
-    setMainType2("Artificial Intelligence");
+    setMainType1("Nonfiction");
+    setMainType2("Biography");
     setDescription(
       "The definitive, behind-the-scenes account of the high-stakes drama, secret deals, and personal rivalries inside OpenAI and the race to build superhuman artificial intelligence, from veteran Wall Street Journal tech reporter Keach Hagey."
     );
@@ -458,7 +448,7 @@ export function ImportCourseModal({
               {/* 2 Main Types */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-gray-300 block mb-1">Main Type 1</label>
+                  <label className="text-xs font-semibold text-gray-300 block mb-1">Main Type 1 (Nonfiction / Fiction)</label>
                   <input
                     type="text"
                     value={mainType1}
@@ -468,7 +458,7 @@ export function ImportCourseModal({
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-300 block mb-1">Main Type 2</label>
+                  <label className="text-xs font-semibold text-gray-300 block mb-1">Main Type 2 (Goodreads Genre)</label>
                   <input
                     type="text"
                     value={mainType2}

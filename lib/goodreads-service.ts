@@ -220,7 +220,7 @@ export function parseGoodreadsHtml(
     sourceUrl.toLowerCase().includes('the-optimist') ||
     (title && title.toLowerCase().includes('optimist'))
   ) {
-    if (!mainType) mainType = 'Biography';
+    if (!mainType) mainType = 'Nonfiction & Biography';
     if (genres.length === 0) {
       genres = [
         'Biography',
@@ -318,7 +318,7 @@ export async function fetchGoodreadsBookDetails(
   ) {
     return {
       title: 'The Optimist: Sam Altman, OpenAI, and the Race to Invent the Future',
-      mainType: 'Biography',
+      mainType: 'Nonfiction & Biography',
       genres: [
         'Biography',
         'Artificial Intelligence',
