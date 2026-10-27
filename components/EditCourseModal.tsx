@@ -172,20 +172,6 @@ export function EditCourseModal({
             />
           </div>
 
-          {/* Main Type / Genre */}
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] block mb-1.5">
-              Main Type / Genre
-            </label>
-            <input
-              type="text"
-              value={mainType}
-              onChange={(e) => setMainType(e.target.value)}
-              placeholder="e.g. Nonfiction, Business, Science Fiction"
-              className="w-full bg-[#161616] border border-[#333333] rounded-xl px-3.5 py-2.5 text-sm text-[#ececec] placeholder-gray-500 focus:outline-none focus:border-white transition-colors"
-            />
-          </div>
-
           {/* Author Field */}
           <div>
             <label className="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] block mb-1.5">
