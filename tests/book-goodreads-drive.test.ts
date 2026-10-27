@@ -67,7 +67,8 @@ describe('Goodreads Scraping & Metadata Extraction', () => {
     const result = parseGoodreadsHtml(sampleHtml, 'https://www.goodreads.com/book/show/214138402-the-optimist');
     expect(result.title).toBe('The Optimist');
     expect(result.author).toBe('Keach Hagey');
-    expect(result.mainType).toBe('Nonfiction');
+    expect(result.mainType).toBe('Biography');
+    expect(result.genres).toContain('Biography');
     expect(result.genres).toContain('Business');
     expect(result.authorGoodreadsUrl).toContain('Keach_Hagey');
     expect(result.description).toBe('A book about Sam Altman and OpenAI.');
@@ -75,20 +76,27 @@ describe('Goodreads Scraping & Metadata Extraction', () => {
   });
 
   it('returns structured fallback for the sample The Optimist book link', async () => {
-    const url = 'https://www.goodreads.com/book/show/214138402';
+    const url = 'https://www.goodreads.com/book/show/223400731';
     const result = await fetchGoodreadsBookDetails(url);
     expect(result.title).toContain('The Optimist');
     expect(result.author).toBe('Keach Hagey');
-    expect(result.pageCount).toBe(354);
-    expect(result.rating).toBeGreaterThan(4);
+    expect(result.mainType).toBe('Biography');
+    expect(result.genres?.[0]).toBe('Biography');
+    expect(result.pageCount).toBe(384);
+    expect(result.rating).toBe(3.79);
+    expect(result.authorGoodreadsUrl).toBe('https://www.goodreads.com/author/show/16995547.Keach_Hagey');
   });
 });
 
 describe('Google Drive Chapter Import & Folder Resolution', () => {
-  it('correctly extracts folder ID from sample Drive URL', () => {
+  it('correctly extracts folder ID from sample Drive URL and rejects Goodreads links', () => {
     const sampleUrl = 'https://drive.google.com/drive/folders/13_vo8ifAR_FS8jPYGKxyW_nYSlGoNYbT';
     const folderId = extractDriveFolderId(sampleUrl);
     expect(folderId).toBe('13_vo8ifAR_FS8jPYGKxyW_nYSlGoNYbT');
+
+    // Must reject Goodreads URLs accidentally pasted in Drive field
+    expect(extractDriveFolderId('https://www.goodreads.com/book/show/223400731-the-optimist')).toBe('');
+    expect(extractDriveFolderId('https://drive.google.com/drive/u/2/folders/https://www.goodreads.com/book/show/223400731-the-optimist')).toBe('');
   });
 
   it('contains authoritative manifest of 19 chapters for The Optimist sample folder', () => {
@@ -128,13 +136,12 @@ describe('Google Drive Chapter Import & Folder Resolution', () => {
 
 describe('Book 2 Main Types and Goodreads Navigation', () => {
   it('correctly provides 2 main types for books', () => {
-    // With explicit main_type and genres
+    // For The Optimist, Biography is the 1st main type
     const book1 = {
-      title: 'The Optimist',
-      main_type: 'Nonfiction',
-      genres: ['Nonfiction', 'Business', 'Technology'],
+      title: 'The Optimist: Sam Altman, OpenAI, and the Race to Invent the Future',
+      author: 'Keach Hagey',
     };
-    expect(getBookMainTypes(book1)).toEqual(['Nonfiction', 'Business']);
+    expect(getBookMainTypes(book1)).toEqual(['Biography', 'Artificial Intelligence']);
 
     // Grammar book fallback
     const book2 = {
@@ -158,18 +165,26 @@ describe('Book 2 Main Types and Goodreads Navigation', () => {
       title: 'The Optimist',
       author: 'Keach Hagey',
       goodreads_url: 'https://www.goodreads.com/book/show/214138402',
-      author_goodreads_url: 'https://www.goodreads.com/author/show/214138402.Keach_Hagey',
+      author_goodreads_url: 'https://www.goodreads.com/author/show/16995547.Keach_Hagey',
     };
     expect(getBookGoodreadsUrl(book1)).toBe('https://www.goodreads.com/book/show/214138402');
-    expect(getAuthorGoodreadsUrl(book1)).toBe('https://www.goodreads.com/author/show/214138402.Keach_Hagey');
+    expect(getAuthorGoodreadsUrl(book1)).toBe('https://www.goodreads.com/author/show/16995547.Keach_Hagey');
 
     // Book without goodreads_url, falls back to goodreads search
     const book2 = {
+      title: 'A Random Book Title',
+      author: 'Some Unknown Author',
+    };
+    expect(getBookGoodreadsUrl(book2)).toBe('https://www.goodreads.com/search?q=A%20Random%20Book%20Title');
+    expect(getAuthorGoodreadsUrl(book2)).toBe('https://www.goodreads.com/search?q=Some%20Unknown%20Author');
+
+    // Known book without goodreads_url resolves to canonical Goodreads book & author pages
+    const bookHailMary = {
       title: 'Project Hail Mary',
       author: 'Andy Weir',
     };
-    expect(getBookGoodreadsUrl(book2)).toBe('https://www.goodreads.com/search?q=Project%20Hail%20Mary');
-    expect(getAuthorGoodreadsUrl(book2)).toBe('https://www.goodreads.com/search?q=Andy%20Weir');
+    expect(getBookGoodreadsUrl(bookHailMary)).toBe('https://www.goodreads.com/book/show/54493401-project-hail-mary');
+    expect(getAuthorGoodreadsUrl(bookHailMary)).toBe('https://www.goodreads.com/author/show/6540057.Andy_Weir');
 
     // Book with bare URL without protocol
     const book3 = {

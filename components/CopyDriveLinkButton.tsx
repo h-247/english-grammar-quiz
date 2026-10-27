@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extractDriveFolderId } from "@/lib/course-manifest";
 import { useToast } from "@/components/Toast";
 
 interface CopyDriveLinkButtonProps {
@@ -31,18 +32,23 @@ export function CopyDriveLinkButton({
   const { showToast } = useToast();
   const [copied, setCopied] = useState(false);
 
-  // Compute final Drive URL
+  // Compute final Drive URL safely rejecting non-drive URLs
   const resolvedUrl = React.useMemo(() => {
     if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
+      if (!url.includes("drive.google.com") && !url.includes("docs.google.com")) {
+        return "";
+      }
       return url;
     }
-    if (folderId) {
-      return `https://drive.google.com/drive/folders/${folderId}`;
+    const cleanFolderId = folderId ? extractDriveFolderId(folderId) : "";
+    if (cleanFolderId) {
+      return `https://drive.google.com/drive/folders/${cleanFolderId}`;
     }
-    if (fileId) {
-      return `https://drive.google.com/file/d/${fileId}/view`;
+    const cleanFileId = fileId ? extractDriveFolderId(fileId) : "";
+    if (cleanFileId) {
+      return `https://drive.google.com/file/d/${cleanFileId}/view`;
     }
-    return url || "";
+    return "";
   }, [url, folderId, fileId]);
 
   if (!resolvedUrl) return null;

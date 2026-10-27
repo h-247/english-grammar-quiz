@@ -257,6 +257,15 @@ export default function BookDetailPage() {
   const bookGoodreadsUrl = getBookGoodreadsUrl(course);
   const authorGoodreadsUrl = getAuthorGoodreadsUrl(course);
 
+  const hasValidDriveFolder = Boolean(
+    course?.drive_folder_id &&
+    extractDriveFolderId(course.drive_folder_id) &&
+    !course.drive_folder_id.includes("goodreads")
+  );
+  const driveFolderUrl = hasValidDriveFolder
+    ? getDriveFolderUrl(course?.drive_folder_id || course?.drive_folder_url || "")
+    : null;
+
   const progressPercent = totalChapters > 0 ? Math.round((doneCount / totalChapters) * 100) : 0;
 
   // Filtered chapters
@@ -376,7 +385,7 @@ export default function BookDetailPage() {
                         {course.page_count} pages
                       </span>
                     )}
-                    {course.drive_folder_id && (
+                    {hasValidDriveFolder && (
                       <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-950/60 text-blue-300 border border-blue-500/30">
                         <HardDrive className="w-3 h-3 text-blue-400" />
                         <span>Drive Folder Linked</span>

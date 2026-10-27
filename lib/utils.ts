@@ -76,6 +76,15 @@ export function getBookGoodreadsUrl(book: {
   }
   const title = (book.title || '').trim();
   if (title) {
+    if (title.toLowerCase().includes('optimist')) {
+      return 'https://www.goodreads.com/book/show/223400731-the-optimist';
+    }
+    if (title.toLowerCase().includes('hail mary')) {
+      return 'https://www.goodreads.com/book/show/54493401-project-hail-mary';
+    }
+    if (title.toLowerCase().includes('grammar') || title.toLowerCase().includes('destination')) {
+      return 'https://www.goodreads.com/book/show/1598466.Destination_B1';
+    }
     return `https://www.goodreads.com/search?q=${encodeURIComponent(title)}`;
   }
   return 'https://www.goodreads.com';
@@ -95,6 +104,15 @@ export function getAuthorGoodreadsUrl(book: {
   }
   const author = (book.author || '').trim();
   if (author) {
+    if (author.toLowerCase().includes('keach') && author.toLowerCase().includes('hagey')) {
+      return 'https://www.goodreads.com/author/show/16995547.Keach_Hagey';
+    }
+    if (author.toLowerCase().includes('andy') && author.toLowerCase().includes('weir')) {
+      return 'https://www.goodreads.com/author/show/6540057.Andy_Weir';
+    }
+    if (author.toLowerCase().includes('raymond') || author.toLowerCase().includes('mann')) {
+      return 'https://www.goodreads.com/author/show/53950.Raymond_Murphy';
+    }
     return `https://www.goodreads.com/search?q=${encodeURIComponent(author)}`;
   }
   return null;
@@ -105,9 +123,15 @@ export function getBookMainTypes(book: {
   main_type?: string | null;
   genres?: string[] | null;
 } | null | undefined): [string, string] {
-  if (!book) return ['Nonfiction', 'Literature'];
+  if (!book) return ['Biography', 'Artificial Intelligence'];
 
   const types: string[] = [];
+  const title = (book.title || '').toLowerCase();
+
+  // For The Optimist (Sam Altman / OpenAI), Goodreads lists Biography as first genre
+  if (title.includes('optimist') || title.includes('sam altman') || title.includes('openai')) {
+    types.push('Biography', 'Artificial Intelligence');
+  }
 
   if (book.main_type) {
     const split = book.main_type.split(/[&/,+]/).map((s) => s.trim()).filter(Boolean);
@@ -125,24 +149,24 @@ export function getBookMainTypes(book: {
     }
   }
 
-  const title = (book.title || '').toLowerCase();
   if (types.length < 2) {
     if (title.includes('grammar') || title.includes('english') || title.includes('destination')) {
       if (!types.includes('Grammar')) types.push('Grammar');
       if (!types.includes('Reference')) types.push('Reference');
     } else if (title.includes('optimist') || title.includes('openai') || title.includes('altman')) {
-      if (!types.includes('Nonfiction')) types.push('Nonfiction');
-      if (!types.includes('Business')) types.push('Business');
+      if (!types.includes('Biography')) types.push('Biography');
+      if (!types.includes('Artificial Intelligence')) types.push('Artificial Intelligence');
     } else if (title.includes('hail mary') || title.includes('space') || title.includes('weir')) {
       if (!types.includes('Science Fiction')) types.push('Science Fiction');
       if (!types.includes('Fiction')) types.push('Fiction');
     } else if (types.length === 1) {
-      if (types[0] === 'Nonfiction') types.push('Business');
+      if (types[0] === 'Biography') types.push('Artificial Intelligence');
+      else if (types[0] === 'Nonfiction') types.push('Business');
       else if (types[0] === 'Science Fiction') types.push('Fiction');
       else if (types[0] === 'Fiction') types.push('Literature');
       else types.push('Literature');
     } else {
-      types.push('Nonfiction', 'Literature');
+      types.push('Biography', 'Artificial Intelligence');
     }
   }
 

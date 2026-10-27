@@ -21,7 +21,7 @@ export const SAMPLE_BOOK_DRIVE_URL = `https://drive.google.com/drive/folders/${S
 export const SAMPLE_BOOK_TITLE = 'The Optimist: Sam Altman, OpenAI, and the Race to Invent the Future';
 export const SAMPLE_BOOK_AUTHOR = 'Keach Hagey';
 export const SAMPLE_BOOK_BANNER = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=800&auto=format&fit=crop';
-export const SAMPLE_BOOK_GOODREADS_URL = 'https://www.goodreads.com/book/show/214138402';
+export const SAMPLE_BOOK_GOODREADS_URL = 'https://www.goodreads.com/book/show/223400731-the-optimist';
 
 export const PRESET_COURSE_BANNERS = [
   {
@@ -49,26 +49,40 @@ export const PRESET_COURSE_BANNERS = [
 export function extractDriveFolderId(input: string): string {
   if (!input) return '';
   const trimmed = input.trim();
+
+  // If input is an external URL not from Google Drive or Google Docs, it is NOT a drive folder
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    if (!trimmed.includes('drive.google.com') && !trimmed.includes('docs.google.com')) {
+      return '';
+    }
+  }
+
   const folderMatch = trimmed.match(/\/folders\/([a-zA-Z0-9_-]+)/);
-  if (folderMatch) return folderMatch[1];
+  if (folderMatch && folderMatch[1].length >= 15) return folderMatch[1];
   const idMatch = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  if (idMatch) return idMatch[1];
+  if (idMatch && idMatch[1].length >= 15) return idMatch[1];
   const fileMatch = trimmed.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  if (fileMatch) return fileMatch[1];
-  return trimmed;
+  if (fileMatch && fileMatch[1].length >= 15) return fileMatch[1];
+
+  // If it's a bare alphanumeric folder or file ID (Google Drive IDs are 15-65 characters)
+  if (/^[a-zA-Z0-9_-]{15,65}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  return '';
 }
 
 export function getDriveFolderUrl(idOrUrl: string): string {
   if (!idOrUrl) return '';
-  if (idOrUrl.startsWith('http://') || idOrUrl.startsWith('https://')) return idOrUrl;
   const folderId = extractDriveFolderId(idOrUrl);
+  if (!folderId) return '';
   return `https://drive.google.com/drive/folders/${folderId}`;
 }
 
 export function getDriveFileUrl(idOrUrl: string): string {
   if (!idOrUrl) return '';
-  if (idOrUrl.startsWith('http://') || idOrUrl.startsWith('https://')) return idOrUrl;
   const fileId = extractDriveFolderId(idOrUrl);
+  if (!fileId) return '';
   return `https://drive.google.com/file/d/${fileId}/view`;
 }
 

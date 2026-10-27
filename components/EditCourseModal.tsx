@@ -32,6 +32,7 @@ export function EditCourseModal({
   const [mounted, setMounted] = useState(false);
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
+  const [authorGoodreadsUrl, setAuthorGoodreadsUrl] = useState("");
   const [mainType1, setMainType1] = useState("");
   const [mainType2, setMainType2] = useState("");
   const [description, setDescription] = useState("");
@@ -48,6 +49,7 @@ export function EditCourseModal({
     if (course && isOpen) {
       setTitle(course.title || "");
       setAuthor(course.author || "");
+      setAuthorGoodreadsUrl((course as any).author_goodreads_url || (course.author && course.author.toLowerCase().includes('keach') ? 'https://www.goodreads.com/author/show/16995547.Keach_Hagey' : ''));
       const [t1, t2] = getBookMainTypes(course);
       setMainType1(t1 || "");
       setMainType2(t2 || "");
@@ -91,6 +93,7 @@ export function EditCourseModal({
       const updated = await updateCourse(course.id, {
         title: trimmedTitle,
         author: author.trim() || undefined,
+        author_goodreads_url: authorGoodreadsUrl.trim() || (author.trim().toLowerCase().includes('keach') ? 'https://www.goodreads.com/author/show/16995547.Keach_Hagey' : undefined),
         main_type: [mainType1.trim(), mainType2.trim()].filter(Boolean).join(" & ") || undefined,
         genres: [mainType1.trim(), mainType2.trim()].filter(Boolean).length > 0 ? [mainType1.trim(), mainType2.trim()].filter(Boolean) : undefined,
         description: description.trim() || undefined,

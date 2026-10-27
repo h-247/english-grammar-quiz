@@ -187,7 +187,38 @@ export async function ensureDatabaseInitialized(): Promise<void> {
               goodreads_url = COALESCE(NULLIF(goodreads_url, ''), 'https://www.goodreads.com/book/show/1598466.Destination_B1'),
               author = COALESCE(NULLIF(author, ''), 'Malcolm Mann & Steve Taylore-Knowles'),
               author_goodreads_url = COALESCE(NULLIF(author_goodreads_url, ''), 'https://www.goodreads.com/search?q=Malcolm+Mann')
-          WHERE lower(title) LIKE '%grammar%' AND (main_type IS NULL OR main_type = '')
+          WHERE lower(title) LIKE '%grammar%' AND (main_type IS NULL OR main_type = '');
+        `));
+      } catch {}
+
+      // Backfill and fix The Optimist (Biography & AI, Keach Hagey author URL, and remove any bad Goodreads drive URLs)
+      try {
+        await db.run(sql.raw(`
+          UPDATE courses
+          SET main_type = 'Biography & Artificial Intelligence',
+              genres = '["Biography","Artificial Intelligence","Nonfiction","Business","Technology","Audiobook","Science","Biography Memoir","History","Politics"]',
+              goodreads_url = 'https://www.goodreads.com/book/show/223400731-the-optimist',
+              author = 'Keach Hagey',
+              author_goodreads_url = 'https://www.goodreads.com/author/show/16995547.Keach_Hagey',
+              rating = 3.79,
+              rating_count = 1352,
+              page_count = 384
+          WHERE lower(title) LIKE '%optimist%' OR lower(author) LIKE '%keach%';
+        `));
+      } catch {}
+
+      // Clean up any drive_folder_id or drive_folder_url that was accidentally populated with Goodreads URL
+      try {
+        await db.run(sql.raw(`
+          UPDATE courses
+          SET drive_folder_id = '13_vo8ifAR_FS8jPYGKxyW_nYSlGoNYbT',
+              drive_folder_url = 'https://drive.google.com/drive/folders/13_vo8ifAR_FS8jPYGKxyW_nYSlGoNYbT'
+          WHERE lower(title) LIKE '%optimist%' AND (drive_folder_id LIKE '%goodreads%' OR drive_folder_url LIKE '%goodreads%');
+
+          UPDATE courses
+          SET drive_folder_id = NULL,
+              drive_folder_url = NULL
+          WHERE drive_folder_id LIKE '%goodreads%' OR drive_folder_url LIKE '%goodreads%';
         `));
       } catch {}
 

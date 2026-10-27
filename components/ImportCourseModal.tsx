@@ -51,6 +51,7 @@ export function ImportCourseModal({
   const [driveUrl, setDriveUrl] = useState("");
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
+  const [authorGoodreadsUrl, setAuthorGoodreadsUrl] = useState("");
   const [mainType1, setMainType1] = useState("");
   const [mainType2, setMainType2] = useState("");
   const [description, setDescription] = useState("");
@@ -153,6 +154,7 @@ export function ImportCourseModal({
       const data: GoodreadsBookDetails = await fetchGoodreadsInfo(targetUrl);
       if (data.title) setTitle(data.title);
       if (data.author) setAuthor(data.author);
+      if (data.authorGoodreadsUrl) setAuthorGoodreadsUrl(data.authorGoodreadsUrl);
       const extractedTypes: string[] = [];
       if (data.mainType) extractedTypes.push(data.mainType);
       if (Array.isArray(data.genres)) {
@@ -189,11 +191,12 @@ export function ImportCourseModal({
   const handleQuickFillOptimistSample = () => {
     const sampleDrive = SAMPLE_BOOK_DRIVE_URL;
     setDriveUrl(sampleDrive);
-    setGoodreadsUrl("https://www.goodreads.com/book/show/214138402");
+    setGoodreadsUrl("https://www.goodreads.com/book/show/223400731-the-optimist");
     setTitle("The Optimist: Sam Altman, OpenAI, and the Race to Invent the Future");
     setAuthor("Keach Hagey");
-    setMainType1("Nonfiction");
-    setMainType2("Business");
+    setAuthorGoodreadsUrl("https://www.goodreads.com/author/show/16995547.Keach_Hagey");
+    setMainType1("Biography");
+    setMainType2("Artificial Intelligence");
     setDescription(
       "The definitive, behind-the-scenes account of the high-stakes drama, secret deals, and personal rivalries inside OpenAI and the race to build superhuman artificial intelligence, from veteran Wall Street Journal tech reporter Keach Hagey."
     );
@@ -218,9 +221,7 @@ export function ImportCourseModal({
     const trimmedDrive = driveUrl.trim();
     const folderId = trimmedDrive ? extractDriveFolderId(trimmedDrive) : undefined;
     const finalDriveUrl = folderId
-      ? trimmedDrive.startsWith("http")
-        ? trimmedDrive
-        : `https://drive.google.com/drive/folders/${folderId}`
+      ? `https://drive.google.com/drive/folders/${folderId}`
       : undefined;
 
     setIsSubmitting(true);
@@ -228,6 +229,7 @@ export function ImportCourseModal({
       const newBook = await onCreateCourse({
         title: trimmedTitle,
         author: author.trim() || undefined,
+        author_goodreads_url: authorGoodreadsUrl.trim() || (author.trim().toLowerCase().includes('keach') ? 'https://www.goodreads.com/author/show/16995547.Keach_Hagey' : undefined),
         main_type: [mainType1.trim(), mainType2.trim()].filter(Boolean).join(" & ") || undefined,
         genres: [mainType1.trim(), mainType2.trim()].filter(Boolean).length > 0 ? [mainType1.trim(), mainType2.trim()].filter(Boolean) : undefined,
         description: description.trim() || undefined,

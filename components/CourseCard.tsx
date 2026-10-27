@@ -19,6 +19,7 @@ import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
 import { SharedPromptLinkSettings } from "@/components/SharedPromptLinkSettings";
 import { ChatGPTLinkActions } from "@/components/ChatGPTLinkActions";
 import { updateChapterStatus } from "@/lib/api";
+import { extractDriveFolderId, getDriveFolderUrl } from "@/lib/course-manifest";
 import { formatDateOnly, getBookGoodreadsUrl, getAuthorGoodreadsUrl, getBookMainTypes } from "@/lib/utils";
 
 interface CourseCardProps {
@@ -108,6 +109,15 @@ export const CourseCard = memo(function CourseCard({
   const bookGoodreadsUrl = getBookGoodreadsUrl(course);
   const authorGoodreadsUrl = getAuthorGoodreadsUrl(course);
 
+  const hasValidDriveFolder = Boolean(
+    course.drive_folder_id &&
+    extractDriveFolderId(course.drive_folder_id) &&
+    !course.drive_folder_id.includes("goodreads")
+  );
+  const driveFolderUrl = hasValidDriveFolder
+    ? getDriveFolderUrl(course.drive_folder_id || course.drive_folder_url || "")
+    : null;
+
   const syncDate = formatDateOnly(course.updated_at);
 
   return (
@@ -146,7 +156,7 @@ export const CourseCard = memo(function CourseCard({
               </span>
             ))}
 
-            {course.drive_folder_id && (
+            {hasValidDriveFolder && (
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#242424] text-gray-200 border border-white/10">
                 <HardDrive className="w-3 h-3 text-blue-400" />
                 <span>Drive Linked</span>
@@ -190,15 +200,15 @@ export const CourseCard = memo(function CourseCard({
               <span className="group-hover/title:underline">{course.title}</span>
               <ExternalLink className="w-3.5 h-3.5 opacity-60 group-hover/title:opacity-100 text-amber-400 shrink-0 transition-opacity" />
             </a>
-            {course.drive_folder_url && (
+            {hasValidDriveFolder && driveFolderUrl && (
               <div className="flex items-center gap-0.5 shrink-0">
                 <CopyDriveLinkButton
-                  url={course.drive_folder_url}
+                  url={driveFolderUrl}
                   folderId={course.drive_folder_id}
                   title="Copy Google Drive folder link"
                 />
                 <a
-                  href={course.drive_folder_url}
+                  href={driveFolderUrl}
                   target="_blank"
                   rel="noreferrer"
                   title="Open Folder on Google Drive"
