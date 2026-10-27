@@ -10,6 +10,8 @@ import {
   Loader2,
   AlertCircle,
   BookOpen,
+  Bookmark,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { CourseCard } from "@/components/CourseCard";
@@ -27,6 +29,7 @@ import {
 } from "@/lib/api";
 import { CourseSummary, QuizSummary } from "@/types/quiz";
 import { useToast } from "@/components/Toast";
+import { getBookMainTypes } from "@/lib/utils";
 
 export default function BooksDashboardPage() {
   const router = useRouter();
@@ -137,7 +140,61 @@ export default function BooksDashboardPage() {
     return { all: courses.length, todo, doing, done };
   }, [courses, getBookStatus]);
 
-  // Filtered books by search query and status filter
+  // Selected Type filter
+  const [selectedType, setSelectedType] = useState<string>("all");
+
+  // Available unique types across all books
+  const availableTypes = useMemo(() => {
+    const set = new Set<string>();
+    courses.forEach((c) => {
+      const [t1, t2] = getBookMainTypes(c);
+      if (t1) set.add(t1);
+      if (t2) set.add(t2);
+      if (Array.isArray(c.genres)) {
+        c.genres.forEach((g) => {
+          if (g && typeof g === "string" && g.length < 25) set.add(g.trim());
+        });
+      }
+    });
+
+    const list = Array.from(set).filter(Boolean);
+    const priority = ["Nonfiction", "Fiction", "Biography", "Science Fiction", "Grammar", "Reference"];
+    list.sort((a, b) => {
+      const pa = priority.indexOf(a);
+      const pb = priority.indexOf(b);
+      if (pa !== -1 && pb !== -1) return pa - pb;
+      if (pa !== -1) return -1;
+      if (pb !== -1) return 1;
+      return a.localeCompare(b);
+    });
+    return list;
+  }, [courses]);
+
+  // Type counts for each filter tab
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: courses.length };
+    courses.forEach((c) => {
+      const [t1, t2] = getBookMainTypes(c);
+      const bookTypes = new Set<string>([t1.toLowerCase(), t2.toLowerCase()]);
+      if (Array.isArray(c.genres)) {
+        c.genres.forEach((g) => {
+          if (g && typeof g === "string") bookTypes.add(g.trim().toLowerCase());
+        });
+      }
+      if (c.main_type) {
+        c.main_type.split(/[&/,+]/).forEach((s) => bookTypes.add(s.trim().toLowerCase()));
+      }
+
+      availableTypes.forEach((t) => {
+        if (bookTypes.has(t.toLowerCase())) {
+          counts[t] = (counts[t] || 0) + 1;
+        }
+      });
+    });
+    return counts;
+  }, [courses, availableTypes]);
+
+  // Filtered books by search query, status filter, and type filter
   const filteredCourses = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return courses.filter((c) => {
@@ -146,11 +203,27 @@ export default function BooksDashboardPage() {
         c.title.toLowerCase().includes(q) ||
         (c.description?.toLowerCase().includes(q) ?? false) ||
         (c.author?.toLowerCase().includes(q) ?? false);
+
       const statusMatch =
         selectedStatus === "all" || getBookStatus(c) === selectedStatus;
-      return titleMatch && statusMatch;
+
+      const [t1, t2] = getBookMainTypes(c);
+      const bookTypes = new Set<string>([t1.toLowerCase(), t2.toLowerCase()]);
+      if (Array.isArray(c.genres)) {
+        c.genres.forEach((g) => {
+          if (g && typeof g === "string") bookTypes.add(g.trim().toLowerCase());
+        });
+      }
+      if (c.main_type) {
+        c.main_type.split(/[&/,+]/).forEach((s) => bookTypes.add(s.trim().toLowerCase()));
+      }
+
+      const typeMatch =
+        selectedType === "all" || bookTypes.has(selectedType.toLowerCase());
+
+      return titleMatch && statusMatch && typeMatch;
     });
-  }, [courses, searchQuery, selectedStatus, getBookStatus]);
+  }, [courses, searchQuery, selectedStatus, selectedType, getBookStatus]);
 
   // Handle Sync Book with Drive
   const handleSyncDrive = async (courseId: string) => {
@@ -280,38 +353,96 @@ export default function BooksDashboardPage() {
           </div>
         </div>
 
-        {/* Book Status Filter Tabs */}
+        {/* Filters: Status & Type Filters */}
         {courses.length > 0 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 mb-6 scrollbar-none">
-            {(
-              [
-                { key: "all", label: "All Books", count: statusCounts.all },
-                { key: "To do", label: "To do", count: statusCounts.todo },
-                { key: "Doing", label: "Doing", count: statusCounts.doing },
-                { key: "Done", label: "Done", count: statusCounts.done },
-              ] as const
-            ).map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setSelectedStatus(tab.key)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
-                  selectedStatus === tab.key
-                    ? "bg-white text-black shadow-sm"
-                    : "bg-[#1b1b1b] text-gray-400 hover:text-white border border-[#303030]"
-                }`}
-              >
-                <span>{tab.label}</span>
-                <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+          <div className="space-y-3 mb-6 bg-[#181818] p-3.5 rounded-2xl border border-[#2a2a2a]">
+            {/* Status Filter Tabs */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-none">
+              <span className="text-xs font-semibold text-gray-400 shrink-0 min-w-[52px]">
+                Status:
+              </span>
+              {(
+                [
+                  { key: "all", label: "All Statuses", count: statusCounts.all },
+                  { key: "To do", label: "To do", count: statusCounts.todo },
+                  { key: "Doing", label: "Doing", count: statusCounts.doing },
+                  { key: "Done", label: "Done", count: statusCounts.done },
+                ] as const
+              ).map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setSelectedStatus(tab.key)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
                     selectedStatus === tab.key
-                      ? "bg-neutral-200 text-black"
-                      : "bg-[#252525] text-gray-400"
+                      ? "bg-white text-black shadow-sm"
+                      : "bg-[#222222] text-gray-400 hover:text-white border border-[#333333]"
                   }`}
                 >
-                  {tab.count}
+                  <span>{tab.label}</span>
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                      selectedStatus === tab.key
+                        ? "bg-neutral-200 text-black"
+                        : "bg-[#2c2c2c] text-gray-400"
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Type / Genre Filter Tabs */}
+            {availableTypes.length > 0 && (
+              <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-none border-t border-[#262626] pt-2.5">
+                <span className="text-xs font-semibold text-purple-300 flex items-center gap-1 shrink-0 min-w-[52px]">
+                  <Bookmark className="w-3.5 h-3.5 text-purple-400" />
+                  Type:
                 </span>
-              </button>
-            ))}
+                <button
+                  onClick={() => setSelectedType("all")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                    selectedType === "all"
+                      ? "bg-purple-600 text-white shadow-sm"
+                      : "bg-[#222222] text-purple-300 hover:text-white border border-purple-500/25 hover:border-purple-500/50"
+                  }`}
+                >
+                  <span>All Types</span>
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                      selectedType === "all"
+                        ? "bg-purple-700 text-white"
+                        : "bg-[#2a2a2a] text-purple-300"
+                    }`}
+                  >
+                    {typeCounts.all || courses.length}
+                  </span>
+                </button>
+
+                {availableTypes.map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => setSelectedType(type)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                      selectedType === type
+                        ? "bg-purple-600 text-white shadow-sm"
+                        : "bg-[#222222] text-purple-300 hover:text-white border border-purple-500/25 hover:border-purple-500/50"
+                    }`}
+                  >
+                    <span>{type}</span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                        selectedType === type
+                          ? "bg-purple-700 text-white"
+                          : "bg-[#2a2a2a] text-purple-300"
+                      }`}
+                    >
+                      {typeCounts[type] || 0}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -353,12 +484,15 @@ export default function BooksDashboardPage() {
             <BookOpen className="w-10 h-10 text-gray-500 mx-auto mb-3" />
             <h3 className="text-sm font-bold text-white mb-1">No Books Found</h3>
             <p className="text-xs text-gray-400 max-w-md mx-auto mb-4">
-              No books match the selected status &quot;{selectedStatus}&quot;
+              No books match the selected filters
+              {selectedStatus !== "all" ? ` (Status: "${selectedStatus}")` : ""}
+              {selectedType !== "all" ? ` (Type: "${selectedType}")` : ""}
               {searchQuery ? ` or search &quot;${searchQuery}&quot;` : ""}.
             </p>
             <button
               onClick={() => {
                 setSelectedStatus("all");
+                setSelectedType("all");
                 setSearchQuery("");
               }}
               className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[#2a2a2a] hover:bg-[#353535] text-white transition-colors cursor-pointer"
@@ -377,6 +511,7 @@ export default function BooksDashboardPage() {
                 onDeleteCourse={handleDeleteCourseClick}
                 onEditCourse={(c) => setCourseToEdit(c)}
                 onStartQuiz={handleStartQuiz}
+                onSelectType={(t) => setSelectedType(t)}
               />
             ))}
           </div>

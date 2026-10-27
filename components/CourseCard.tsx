@@ -29,6 +29,7 @@ interface CourseCardProps {
   onDeleteCourse: (course: CourseSummary) => void;
   onEditCourse?: (course: CourseSummary) => void;
   onStartQuiz?: (quiz: QuizSummary, mode: "timed" | "practice") => void;
+  onSelectType?: (type: string) => void;
 }
 
 export const CourseCard = memo(function CourseCard({
@@ -36,6 +37,7 @@ export const CourseCard = memo(function CourseCard({
   quizzes = [],
   onSyncDrive,
   onDeleteCourse,
+  onSelectType,
 }: CourseCardProps) {
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -148,12 +150,18 @@ export const CourseCard = memo(function CourseCard({
 
             {/* 2 Main Types */}
             {mainTypes.map((t, idx) => (
-              <span
+              <button
                 key={idx}
-                className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30"
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectType?.(t);
+                }}
+                title={`Filter books by "${t}"`}
+                className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 hover:border-purple-400 transition-colors cursor-pointer"
               >
                 {t}
-              </span>
+              </button>
             ))}
 
             {hasValidDriveFolder && (

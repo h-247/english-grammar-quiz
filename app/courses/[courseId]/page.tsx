@@ -42,6 +42,15 @@ import {
 } from "@/lib/api";
 import { CourseDetail, QuizSummary, ChapterStatus } from "@/types/quiz";
 import { useToast } from "@/components/Toast";
+import {
+  getBookMainTypes,
+  getBookGoodreadsUrl,
+  getAuthorGoodreadsUrl,
+} from "@/lib/utils";
+import {
+  extractDriveFolderId,
+  getDriveFolderUrl,
+} from "@/lib/course-manifest";
 
 export default function BookDetailPage() {
   const params = useParams();
