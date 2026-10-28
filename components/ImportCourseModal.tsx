@@ -19,6 +19,7 @@ import {
 } from "@/lib/course-manifest";
 import { getDriveFolderInfo, fetchGoodreadsInfo } from "@/lib/api";
 import { GoodreadsBookDetails } from "@/types/quiz";
+import { getBookMainTypes } from "@/lib/utils";
 
 interface ImportCourseModalProps {
   isOpen: boolean;

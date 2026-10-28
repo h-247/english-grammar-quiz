@@ -7,6 +7,7 @@ import {
   RefreshCw,
   Trash2,
   ArrowRight,
+  HardDrive,
   BookOpen,
   CheckCircle2,
   Clock,

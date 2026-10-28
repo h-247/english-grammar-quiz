@@ -290,6 +290,7 @@ export interface GoodreadsBookDetails {
   isbn?: string;
   publishedYear?: string;
   mainType?: string;
+  genres?: string[];
   authorGoodreadsUrl?: string;
   goodreadsUrl?: string;
 }

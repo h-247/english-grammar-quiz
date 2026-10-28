@@ -104,6 +104,9 @@ export async function updateCourse(
     banner_url?: string;
     rating?: number;
     page_count?: number;
+    author_goodreads_url?: string;
+    main_type?: string;
+    genres?: string[];
   }
 ): Promise<CourseSummary> {
   return fetchApi<CourseSummary>(`/courses/${courseId}`, {
