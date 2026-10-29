@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
   X,
   BookOpen,
   HardDrive,
-  Sparkles,
   Loader2,
   CheckCircle,
   Star,
@@ -19,7 +18,6 @@ import {
   Settings2,
 } from "lucide-react";
 import {
-  SAMPLE_BOOK_DRIVE_URL,
   DEFAULT_COURSE_BANNER,
   extractDriveFolderId,
 } from "@/lib/course-manifest";
@@ -105,6 +103,40 @@ export function ImportCourseModal({
     setMounted(true);
   }, []);
 
+  const resetForm = useCallback(() => {
+    setGoodreadsUrl("");
+    setDriveUrl("");
+    setTitle("");
+    setAuthor("");
+    setAuthorGoodreadsUrl("");
+    setSelectedTypes(repoTypes.length > 0 ? [repoTypes[0].name] : ["Biography"]);
+    setGoodreadsGenres([]);
+    setDescription("");
+    setCoverUrl(DEFAULT_COURSE_BANNER);
+    setRating(undefined);
+    setPageCount(undefined);
+    setPublishedYear(undefined);
+    setIsbn(undefined);
+    setGoodreadsSuccess(false);
+    setIsFetchingGoodreads(false);
+    setIsResolvingDrive(false);
+    setDetectedDriveName(null);
+    setError(null);
+  }, [repoTypes]);
+
+  const handleClose = useCallback(() => {
+    if (isSubmitting) return;
+    resetForm();
+    onClose();
+  }, [isSubmitting, onClose, resetForm]);
+
+  // Reset form whenever modal opens
+  useEffect(() => {
+    if (isOpen) {
+      resetForm();
+    }
+  }, [isOpen, resetForm]);
+
   // Helper to auto-select types of Goodreads book present in repo
   const autoSelectTypesFromGoodreads = (
     genresFromGoodreads: string[],
@@ -175,7 +207,7 @@ export function ImportCourseModal({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen && !isSubmitting) {
-        onClose();
+        handleClose();
       }
     };
     if (isOpen) {
@@ -184,7 +216,7 @@ export function ImportCourseModal({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, isSubmitting, onClose]);
+  }, [isOpen, isSubmitting, handleClose]);
 
   // Auto-resolve Google Drive folder name when user pastes Drive URL
   useEffect(() => {
@@ -262,39 +294,6 @@ export function ImportCourseModal({
     } finally {
       setIsFetchingGoodreads(false);
     }
-  };
-
-  // Quick fill sample book: The Optimist
-  const handleQuickFillOptimistSample = () => {
-    const sampleDrive = SAMPLE_BOOK_DRIVE_URL;
-    setDriveUrl(sampleDrive);
-    setGoodreadsUrl("https://www.goodreads.com/book/show/223400731-the-optimist");
-    const optTitle = "The Optimist: Sam Altman, OpenAI, and the Race to Invent the Future";
-    setTitle(optTitle);
-    setAuthor("Keach Hagey");
-    setAuthorGoodreadsUrl("https://www.goodreads.com/author/show/16995547.Keach_Hagey");
-    const optimistGenres = [
-      "Biography",
-      "Artificial Intelligence",
-      "Business",
-      "Technology",
-      "Audiobook",
-      "Science",
-      "Biography Memoir",
-      "History",
-      "Politics",
-    ];
-    setGoodreadsGenres(optimistGenres);
-    autoSelectTypesFromGoodreads(optimistGenres, repoTypes, optTitle);
-    setDescription(
-      "The definitive, behind-the-scenes account of the high-stakes drama, secret deals, and personal rivalries inside OpenAI and the race to build superhuman artificial intelligence, from veteran Wall Street Journal tech reporter Keach Hagey."
-    );
-    setCoverUrl("https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=800&auto=format&fit=crop");
-    setRating(4.25);
-    setPageCount(354);
-    setPublishedYear("2025");
-    setGoodreadsSuccess(true);
-    setError(null);
   };
 
   // CRUD Handler: Create Book Type in Repo
@@ -420,6 +419,7 @@ export function ImportCourseModal({
         drive_folder_url: finalDriveUrl,
       });
 
+      resetForm();
       onImportSuccess(newBook.id);
       onClose();
     } catch (err: any) {
@@ -435,7 +435,7 @@ export function ImportCourseModal({
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150"
       onClick={(e) => {
-        if (e.target === e.currentTarget && !isSubmitting) onClose();
+        if (e.target === e.currentTarget && !isSubmitting) handleClose();
       }}
     >
       <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-[#1b1b1b] border border-[#2f2f2f] rounded-2xl shadow-2xl text-white p-6 space-y-6">
@@ -453,26 +453,11 @@ export function ImportCourseModal({
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             disabled={isSubmitting}
             className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#282828] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Quick Sample Button */}
-        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-purple-950/20 border border-purple-500/30">
-          <div className="flex items-center gap-2 text-xs text-purple-200">
-            <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
-            <span>Want to test quickly? Fill the sample book data:</span>
-          </div>
-          <button
-            type="button"
-            onClick={handleQuickFillOptimistSample}
-            className="px-3 py-1 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white transition-colors cursor-pointer shrink-0"
-          >
-            Fill "The Optimist" Sample
           </button>
         </div>
 
@@ -871,7 +856,7 @@ export function ImportCourseModal({
           <div className="pt-4 border-t border-[#2e2e2e] flex items-center justify-end gap-3">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               disabled={isSubmitting}
               className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-300 hover:text-white hover:bg-[#282828] transition-colors cursor-pointer"
             >
