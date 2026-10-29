@@ -6,6 +6,7 @@ import {
   X,
   BookOpen,
   HardDrive,
+  Sparkles,
   Loader2,
   CheckCircle,
   Star,
