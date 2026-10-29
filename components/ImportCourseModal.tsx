@@ -69,7 +69,9 @@ export function ImportCourseModal({
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [authorGoodreadsUrl, setAuthorGoodreadsUrl] = useState("");
-  const [mainType, setMainType] = useState("Biography");
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(["Biography"]);
+  const [goodreadsGenres, setGoodreadsGenres] = useState<string[]>([]);
+  const mainType = selectedTypes[0] || "Biography";
   const [description, setDescription] = useState("");
   const [coverUrl, setCoverUrl] = useState(DEFAULT_COURSE_BANNER);
   const [rating, setRating] = useState<number | undefined>();
@@ -103,6 +105,38 @@ export function ImportCourseModal({
     setMounted(true);
   }, []);
 
+  // Helper to auto-select types of Goodreads book present in repo
+  const autoSelectTypesFromGoodreads = (
+    genresFromGoodreads: string[],
+    currentRepoTypes: BookTypeItem[],
+    bookTitle?: string
+  ) => {
+    if (!currentRepoTypes || currentRepoTypes.length === 0) return;
+    const repoNames = currentRepoTypes.map((t) => t.name);
+    const matched = getBookMainTypes(
+      {
+        title: bookTitle || title,
+        genres: genresFromGoodreads,
+      },
+      repoNames
+    );
+    if (matched && matched.length > 0) {
+      setSelectedTypes(matched);
+    }
+  };
+
+  const toggleType = (typeName: string) => {
+    setSelectedTypes((prev) => {
+      const exists = prev.some((t) => t.toLowerCase() === typeName.toLowerCase());
+      if (exists) {
+        if (prev.length <= 1) return prev;
+        return prev.filter((t) => t.toLowerCase() !== typeName.toLowerCase());
+      } else {
+        return [...prev, typeName];
+      }
+    });
+  };
+
   // Fetch types of book from repo on mount / open
   useEffect(() => {
     if (!isOpen) return;
@@ -117,6 +151,11 @@ export function ImportCourseModal({
               t.name.toLowerCase() !== "non-fiction"
           );
           setRepoTypes(filtered);
+          if (goodreadsGenres.length > 0) {
+            autoSelectTypesFromGoodreads(goodreadsGenres, filtered, title);
+          } else if (selectedTypes.length === 0 && filtered.length > 0) {
+            setSelectedTypes([filtered[0].name]);
+          }
         }
       })
       .catch(() => {});
@@ -127,12 +166,10 @@ export function ImportCourseModal({
 
   // Set initial default selection if not already set
   useEffect(() => {
-    if (isOpen && (!mainType || mainType.toLowerCase() === "nonfiction" || mainType.toLowerCase() === "fiction")) {
-      if (repoTypes.length > 0) {
-        setMainType(repoTypes[0].name);
-      }
+    if (isOpen && selectedTypes.length === 0 && repoTypes.length > 0) {
+      setSelectedTypes([repoTypes[0].name]);
     }
-  }, [isOpen, repoTypes, mainType]);
+  }, [isOpen, repoTypes, selectedTypes.length]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -202,17 +239,15 @@ export function ImportCourseModal({
       if (data.author) setAuthor(data.author);
       if (data.authorGoodreadsUrl) setAuthorGoodreadsUrl(data.authorGoodreadsUrl);
 
-      // Only match types of books that exist in repo types of book (nonfiction & fiction deleted)
-      const repoGenreNames = repoTypes.map((t) => t.name);
-      const matchedTypes = getBookMainTypes(
-        {
-          title: data.title,
-          genres: data.genres,
-          main_type: data.mainType,
-        },
-        repoGenreNames
-      );
-      setMainType(matchedTypes[0] || repoTypes[0]?.name || "Biography");
+      // Extract all genres from Goodreads
+      const rawGdGenres = data.genres || [];
+      if (data.mainType && !rawGdGenres.includes(data.mainType)) {
+        rawGdGenres.unshift(data.mainType);
+      }
+      setGoodreadsGenres(rawGdGenres);
+
+      // Automatically select types of the book from Goodreads that exist in repo types
+      autoSelectTypesFromGoodreads(rawGdGenres, repoTypes, data.title);
 
       if (data.description) setDescription(data.description);
       if (data.coverUrl) setCoverUrl(data.coverUrl);
@@ -234,10 +269,23 @@ export function ImportCourseModal({
     const sampleDrive = SAMPLE_BOOK_DRIVE_URL;
     setDriveUrl(sampleDrive);
     setGoodreadsUrl("https://www.goodreads.com/book/show/223400731-the-optimist");
-    setTitle("The Optimist: Sam Altman, OpenAI, and the Race to Invent the Future");
+    const optTitle = "The Optimist: Sam Altman, OpenAI, and the Race to Invent the Future";
+    setTitle(optTitle);
     setAuthor("Keach Hagey");
     setAuthorGoodreadsUrl("https://www.goodreads.com/author/show/16995547.Keach_Hagey");
-    setMainType("Biography");
+    const optimistGenres = [
+      "Biography",
+      "Artificial Intelligence",
+      "Business",
+      "Technology",
+      "Audiobook",
+      "Science",
+      "Biography Memoir",
+      "History",
+      "Politics",
+    ];
+    setGoodreadsGenres(optimistGenres);
+    autoSelectTypesFromGoodreads(optimistGenres, repoTypes, optTitle);
     setDescription(
       "The definitive, behind-the-scenes account of the high-stakes drama, secret deals, and personal rivalries inside OpenAI and the race to build superhuman artificial intelligence, from veteran Wall Street Journal tech reporter Keach Hagey."
     );
@@ -265,13 +313,27 @@ export function ImportCourseModal({
     setIsCreatingType(true);
     try {
       const created = await createBookType(trimmed);
-      setRepoTypes((prev) => {
-        if (prev.some((t) => t.id === created.id || t.name.toLowerCase() === created.name.toLowerCase())) {
-          return prev;
-        }
-        return [...prev, created];
-      });
-      setMainType(created.name);
+      const updated = repoTypes.some(
+        (t) => t.id === created.id || t.name.toLowerCase() === created.name.toLowerCase()
+      )
+        ? repoTypes
+        : [...repoTypes, created];
+      setRepoTypes(updated);
+
+      // If new type matches Goodreads genres of current book, auto-select it!
+      const isGoodreadsMatch = goodreadsGenres.some(
+        (g) =>
+          g.toLowerCase() === created.name.toLowerCase() ||
+          g.toLowerCase().includes(created.name.toLowerCase()) ||
+          created.name.toLowerCase().includes(g.toLowerCase())
+      );
+      if (isGoodreadsMatch) {
+        setSelectedTypes((prev) =>
+          prev.some((t) => t.toLowerCase() === created.name.toLowerCase())
+            ? prev
+            : [...prev, created.name]
+        );
+      }
       setNewTypeName("");
     } catch (err: any) {
       setError(err.message || "Failed to create book type");
@@ -289,9 +351,9 @@ export function ImportCourseModal({
       setRepoTypes((prev) =>
         prev.map((t) => (t.id === typeId ? { ...t, name: updated.name } : t))
       );
-      if (mainType.toLowerCase() === editingTypeName.toLowerCase() || repoTypes.find((t) => t.id === typeId)?.name === mainType) {
-        setMainType(updated.name);
-      }
+      setSelectedTypes((prev) =>
+        prev.map((t) => (t.toLowerCase() === editingTypeName.toLowerCase() ? updated.name : t))
+      );
       setEditingTypeId(null);
     } catch (err: any) {
       setError(err.message || "Failed to update book type");
@@ -302,11 +364,12 @@ export function ImportCourseModal({
   const handleDeleteType = async (typeId: string, typeName: string) => {
     try {
       await deleteBookType(typeId);
-      setRepoTypes((prev) => prev.filter((t) => t.id !== typeId));
-      if (mainType.toLowerCase() === typeName.toLowerCase()) {
-        const remaining = repoTypes.filter((t) => t.id !== typeId);
-        setMainType(remaining[0]?.name || "Biography");
-      }
+      const remaining = repoTypes.filter((t) => t.id !== typeId);
+      setRepoTypes(remaining);
+      setSelectedTypes((prev) => {
+        const filtered = prev.filter((t) => t.toLowerCase() !== typeName.toLowerCase());
+        return filtered.length > 0 ? filtered : [remaining[0]?.name || "Biography"];
+      });
     } catch (err: any) {
       setError(err.message || "Failed to delete book type");
     }
@@ -328,7 +391,11 @@ export function ImportCourseModal({
       ? `https://drive.google.com/drive/folders/${folderId}`
       : undefined;
 
-    const trimmedType = mainType.trim();
+    const typesToSave =
+      selectedTypes.length > 0
+        ? selectedTypes
+        : [repoTypes[0]?.name || "Biography"];
+    const finalMainType = typesToSave.join(" & ");
 
     setIsSubmitting(true);
     try {
@@ -340,8 +407,8 @@ export function ImportCourseModal({
           (author.trim().toLowerCase().includes("keach")
             ? "https://www.goodreads.com/author/show/16995547.Keach_Hagey"
             : undefined),
-        main_type: trimmedType || undefined,
-        genres: trimmedType ? [trimmedType] : undefined,
+        main_type: finalMainType,
+        genres: typesToSave,
         description: description.trim() || undefined,
         goodreads_url: goodreadsUrl.trim() || undefined,
         cover_url: coverUrl,
@@ -603,42 +670,71 @@ export function ImportCourseModal({
                   </button>
                 </div>
 
-                {/* Book Type Selector: Strictly from Repo Types of Book */}
-                <div>
-                  <label className="text-[11px] font-semibold text-gray-300 block mb-1">
-                    Select Type from Repo
-                  </label>
-                  <select
-                    value={mainType}
-                    onChange={(e) => setMainType(e.target.value)}
-                    className="w-full bg-[#161616] border border-[#3e3e3e] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-400 transition-colors cursor-pointer font-medium"
-                  >
-                    {repoTypes.map((t) => (
-                      <option key={t.id || t.name} value={t.name}>
-                        {t.name}
-                      </option>
+                {/* Selected Types (Auto-selected from Goodreads & repo types) */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-gray-300">
+                      Selected Types ({selectedTypes.length})
+                    </span>
+                    {goodreadsGenres.length > 0 && (
+                      <span className="text-[10px] text-purple-300 font-medium">
+                        ✓ Auto-matched from Goodreads
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 min-h-[38px] p-2 rounded-xl bg-[#161616] border border-[#333333] items-center">
+                    {selectedTypes.map((tName) => (
+                      <span
+                        key={tName}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-600 text-white border border-purple-400 shadow-sm"
+                      >
+                        <span>{tName}</span>
+                        {selectedTypes.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => toggleType(tName)}
+                            className="text-purple-200 hover:text-white ml-0.5 cursor-pointer"
+                            title={`Remove ${tName}`}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </span>
                     ))}
-                  </select>
+                  </div>
                 </div>
 
                 {/* Quick Genre Selection Pills (Only show types of books in repo types of book) */}
                 <div className="space-y-1">
-                  <span className="text-[10px] text-gray-400 block font-medium">Quick select from repo types of book:</span>
+                  <span className="text-[10px] text-gray-400 block font-medium">
+                    Quick select / toggle from repo types of book:
+                  </span>
                   <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
                     {repoTypes.map((t) => {
-                      const isSelected = mainType.toLowerCase() === t.name.toLowerCase();
+                      const isSelected = selectedTypes.some(
+                        (st) => st.toLowerCase() === t.name.toLowerCase()
+                      );
+                      const isGoodreadsMatch = goodreadsGenres.some(
+                        (g) => g.toLowerCase() === t.name.toLowerCase()
+                      );
                       return (
                         <button
                           key={t.id || t.name}
                           type="button"
-                          onClick={() => setMainType(t.name)}
-                          className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
+                          onClick={() => toggleType(t.name)}
+                          className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
                             isSelected
                               ? "bg-purple-600 text-white border border-purple-400 shadow-sm"
                               : "bg-[#2a2a2a] text-gray-300 border border-white/5 hover:bg-[#333333] hover:text-white"
                           }`}
+                          title={
+                            isGoodreadsMatch
+                              ? `Genre "${t.name}" on Goodreads matches repo type`
+                              : `Type in repo`
+                          }
                         >
-                          {t.name}
+                          {isSelected && <Check className="w-3 h-3" />}
+                          <span>{t.name}</span>
                         </button>
                       );
                     })}

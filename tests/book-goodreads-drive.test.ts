@@ -136,20 +136,20 @@ describe('Google Drive Chapter Import & Folder Resolution', () => {
 
 describe('Book Main Types and Goodreads Navigation', () => {
   it('correctly provides type from repo types and ignores nonfiction/fiction', () => {
-    // The Optimist: first genre on Goodreads is Biography
+    // The Optimist: genres matching repo types are Biography and Business
     const book1 = {
       title: 'The Optimist: Sam Altman, OpenAI, and the Race to Invent the Future',
       author: 'Keach Hagey',
       genres: ['Biography', 'Artificial Intelligence', 'Nonfiction', 'Business'],
     };
-    expect(getBookMainTypes(book1)).toEqual(['Biography']);
+    expect(getBookMainTypes(book1)).toEqual(['Biography', 'Business']);
 
-    // Grammar book: first genre is Grammar
+    // Grammar book: genres matching repo types are Grammar and Reference
     const book2 = {
       title: 'Destination B1: English Grammar',
       genres: ['Grammar', 'Reference'],
     };
-    expect(getBookMainTypes(book2)).toEqual(['Grammar']);
+    expect(getBookMainTypes(book2)).toEqual(['Grammar', 'Reference']);
 
     // Project Hail Mary: first genre is Science Fiction
     const book3 = {
@@ -158,7 +158,7 @@ describe('Book Main Types and Goodreads Navigation', () => {
     };
     expect(getBookMainTypes(book3)).toEqual(['Science Fiction']);
 
-    // Book starting with Fiction genre: skips Nonfiction/Fiction and picks first repo genre
+    // Book starting with Fiction genre: skips Nonfiction/Fiction and picks repo genres
     const book4 = {
       title: 'A Novel',
       genres: ['Fiction', 'Mystery', 'Crime'],
@@ -214,13 +214,13 @@ describe('Book Main Types and Goodreads Navigation', () => {
     const types = getBookMainTypes(bookWithRandomTags);
     expect(types).toEqual(['Business']);
 
-    // With custom repo types (e.g. user created 'Philosophy' via CRUD)
+    // With custom repo types (e.g. user created 'Philosophy' & 'Economics' via CRUD)
     const customRepoTypes = ['Philosophy', 'Economics'];
     const bookCustom = {
       title: 'Deep Thought',
       genres: ['UnknownTag', 'Philosophy', 'Economics'],
     };
     const cTypes = getBookMainTypes(bookCustom, customRepoTypes);
-    expect(cTypes).toEqual(['Philosophy']);
+    expect(cTypes).toEqual(['Philosophy', 'Economics']);
   });
 });

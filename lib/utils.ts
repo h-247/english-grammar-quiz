@@ -197,43 +197,46 @@ export function getBookMainTypes(
 
   const title = (book.title || "").toLowerCase();
 
-  // Determine type: first genre appearing in genres that exists in allowed repo types
-  let firstGenre = "";
+  // Determine matching types: ALL genres appearing in Goodreads genres that exist in allowed repo types
+  const matchedList: string[] = [];
 
   for (const g of rawGenres) {
     const matched = allowedGenres.find((t) => t.toLowerCase() === g.toLowerCase());
-    if (matched) {
-      firstGenre = matched;
-      break;
+    if (matched && !matchedList.includes(matched)) {
+      matchedList.push(matched);
     }
   }
 
   // If no exact match, try partial match
-  if (!firstGenre) {
+  if (matchedList.length === 0) {
     for (const g of rawGenres) {
       const gLower = g.toLowerCase();
       const matched = allowedGenres.find(
         (t) => gLower.includes(t.toLowerCase()) || t.toLowerCase().includes(gLower)
       );
-      if (matched) {
-        firstGenre = matched;
-        break;
+      if (matched && !matchedList.includes(matched)) {
+        matchedList.push(matched);
       }
     }
   }
 
-  // Fallbacks strictly to allowed repo types
-  if (!firstGenre) {
+  // Fallbacks strictly to allowed repo types if still empty
+  if (matchedList.length === 0) {
     if (title.includes("optimist") || title.includes("openai") || title.includes("sam altman")) {
-      firstGenre = allowedGenres.find((t) => t.toLowerCase() === "biography") || "Biography";
+      const b = allowedGenres.find((t) => t.toLowerCase() === "biography") || "Biography";
+      matchedList.push(b);
     } else if (title.includes("grammar") || title.includes("destination") || title.includes("english")) {
-      firstGenre = allowedGenres.find((t) => t.toLowerCase() === "grammar") || "Grammar";
+      const g = allowedGenres.find((t) => t.toLowerCase() === "grammar") || "Grammar";
+      matchedList.push(g);
     } else if (title.includes("hail mary") || title.includes("space") || title.includes("weir")) {
-      firstGenre = allowedGenres.find((t) => t.toLowerCase() === "science fiction") || "Science Fiction";
+      const sf = allowedGenres.find((t) => t.toLowerCase() === "science fiction") || "Science Fiction";
+      matchedList.push(sf);
+    } else if (allowedGenres.length > 0) {
+      matchedList.push(allowedGenres[0]);
     } else {
-      firstGenre = allowedGenres[0] || "Reference";
+      matchedList.push("Biography");
     }
   }
 
-  return [firstGenre];
+  return matchedList;
 }

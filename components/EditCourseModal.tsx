@@ -6,6 +6,8 @@ import {
   X,
   Loader2,
   BookOpen,
+  Check,
+  Tag,
 } from "lucide-react";
 import { CourseSummary, BookTypeItem } from "@/types/quiz";
 import { DEFAULT_COURSE_BANNER } from "@/lib/course-manifest";
@@ -33,7 +35,8 @@ export function EditCourseModal({
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [authorGoodreadsUrl, setAuthorGoodreadsUrl] = useState("");
-  const [mainType, setMainType] = useState("");
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const mainType = selectedTypes[0] || "";
   const [description, setDescription] = useState("");
   const [goodreadsUrl, setGoodreadsUrl] = useState("");
   const [selectedBanner, setSelectedBanner] = useState(DEFAULT_COURSE_BANNER);
@@ -78,8 +81,8 @@ export function EditCourseModal({
       setTitle(course.title || "");
       setAuthor(course.author || "");
       setAuthorGoodreadsUrl((course as any).author_goodreads_url || (course.author && course.author.toLowerCase().includes('keach') ? 'https://www.goodreads.com/author/show/16995547.Keach_Hagey' : ''));
-      const types = getBookMainTypes(course);
-      setMainType(types[0] || "");
+      const types = getBookMainTypes(course, repoTypes.map((t) => t.name));
+      setSelectedTypes(types.length > 0 ? types : [repoTypes[0]?.name || "Biography"]);
       setDescription(course.description || "");
       setGoodreadsUrl(course.goodreads_url || "");
       setSelectedBanner(course.cover_url || course.banner_url || DEFAULT_COURSE_BANNER);
@@ -104,6 +107,18 @@ export function EditCourseModal({
 
   if (!isOpen || !mounted || !course) return null;
 
+  const toggleType = (typeName: string) => {
+    setSelectedTypes((prev) => {
+      const exists = prev.some((t) => t.toLowerCase() === typeName.toLowerCase());
+      if (exists) {
+        if (prev.length <= 1) return prev;
+        return prev.filter((t) => t.toLowerCase() !== typeName.toLowerCase());
+      } else {
+        return [...prev, typeName];
+      }
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedTitle = title.trim();
@@ -116,13 +131,16 @@ export function EditCourseModal({
     setIsSaving(true);
     setError(null);
 
+    const typesToSave =
+      selectedTypes.length > 0 ? selectedTypes : [repoTypes[0]?.name || "Biography"];
+
     try {
       const updated = await updateCourse(course.id, {
         title: trimmedTitle,
         author: author.trim() || undefined,
         author_goodreads_url: authorGoodreadsUrl.trim() || (author.trim().toLowerCase().includes('keach') ? 'https://www.goodreads.com/author/show/16995547.Keach_Hagey' : undefined),
-        main_type: mainType.trim() || undefined,
-        genres: mainType.trim() ? [mainType.trim()] : undefined,
+        main_type: typesToSave.join(" & "),
+        genres: typesToSave,
         description: description.trim() || undefined,
         goodreads_url: goodreadsUrl.trim() || undefined,
         cover_url: selectedBanner,
@@ -214,21 +232,59 @@ export function EditCourseModal({
           </div>
 
           {/* Book Type (Repo Types Only) */}
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] block mb-1.5">
-              Type of Book (Repo Types)
-            </label>
-            <select
-              value={mainType}
-              onChange={(e) => setMainType(e.target.value)}
-              className="w-full bg-[#161616] border border-[#333333] rounded-xl px-3.5 py-2 text-sm text-[#ececec] focus:outline-none focus:border-white transition-colors cursor-pointer"
-            >
-              {repoTypes.map((t) => (
-                <option key={t.id || t.name} value={t.name}>
-                  {t.name}
-                </option>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] block">
+                Types of Book ({selectedTypes.length})
+              </label>
+            </div>
+            <div className="flex flex-wrap gap-1.5 min-h-[38px] p-2 rounded-xl bg-[#161616] border border-[#333333] items-center">
+              {selectedTypes.map((tName) => (
+                <span
+                  key={tName}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-600 text-white border border-purple-400 shadow-sm"
+                >
+                  <span>{tName}</span>
+                  {selectedTypes.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => toggleType(tName)}
+                      className="text-purple-200 hover:text-white ml-0.5 cursor-pointer"
+                      title={`Remove ${tName}`}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </span>
               ))}
-            </select>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] text-gray-400 block font-medium">
+                Click to select / deselect from repo types:
+              </span>
+              <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                {repoTypes.map((t) => {
+                  const isSelected = selectedTypes.some(
+                    (st) => st.toLowerCase() === t.name.toLowerCase()
+                  );
+                  return (
+                    <button
+                      key={t.id || t.name}
+                      type="button"
+                      onClick={() => toggleType(t.name)}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-purple-600 text-white border border-purple-400 shadow-sm"
+                          : "bg-[#2a2a2a] text-gray-300 border border-white/5 hover:bg-[#333333] hover:text-white"
+                      }`}
+                    >
+                      {isSelected && <Check className="w-3 h-3" />}
+                      <span>{t.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           {/* Goodreads URL */}
