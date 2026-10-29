@@ -69,8 +69,7 @@ export function ImportCourseModal({
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [authorGoodreadsUrl, setAuthorGoodreadsUrl] = useState("");
-  const [mainType1, setMainType1] = useState("Nonfiction");
-  const [mainType2, setMainType2] = useState("Biography");
+  const [mainType, setMainType] = useState("Biography");
   const [description, setDescription] = useState("");
   const [coverUrl, setCoverUrl] = useState(DEFAULT_COURSE_BANNER);
   const [rating, setRating] = useState<number | undefined>();
@@ -83,10 +82,7 @@ export function ImportCourseModal({
     DEFAULT_REPO_BOOK_TYPES.map((name) => ({
       id: name.toLowerCase().replace(/\s+/g, "-"),
       name,
-      category:
-        name.toLowerCase() === "nonfiction" || name.toLowerCase() === "fiction"
-          ? "broad"
-          : "genre",
+      category: "genre",
     }))
   );
   const [showTypeCrud, setShowTypeCrud] = useState(true);
@@ -114,7 +110,13 @@ export function ImportCourseModal({
     getBookTypes()
       .then((types) => {
         if (!isCancelled && types && types.length > 0) {
-          setRepoTypes(types);
+          const filtered = types.filter(
+            (t) =>
+              t.name.toLowerCase() !== "nonfiction" &&
+              t.name.toLowerCase() !== "fiction" &&
+              t.name.toLowerCase() !== "non-fiction"
+          );
+          setRepoTypes(filtered);
         }
       })
       .catch(() => {});
@@ -123,29 +125,14 @@ export function ImportCourseModal({
     };
   }, [isOpen]);
 
-  // Derived repo types: broad and genres
-  const broadTypes = repoTypes.filter(
-    (t) =>
-      t.category === "broad" ||
-      t.name.toLowerCase() === "nonfiction" ||
-      t.name.toLowerCase() === "fiction"
-  );
-  const genreTypes = repoTypes.filter(
-    (t) =>
-      t.category !== "broad" &&
-      t.name.toLowerCase() !== "nonfiction" &&
-      t.name.toLowerCase() !== "fiction"
-  );
-
-  // Set initial default selections if not already set
+  // Set initial default selection if not already set
   useEffect(() => {
-    if (isOpen) {
-      if (!mainType1) setMainType1("Nonfiction");
-      if (!mainType2 && genreTypes.length > 0) {
-        setMainType2(genreTypes[0].name);
+    if (isOpen && (!mainType || mainType.toLowerCase() === "nonfiction" || mainType.toLowerCase() === "fiction")) {
+      if (repoTypes.length > 0) {
+        setMainType(repoTypes[0].name);
       }
     }
-  }, [isOpen, genreTypes, mainType1, mainType2]);
+  }, [isOpen, repoTypes, mainType]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -215,9 +202,9 @@ export function ImportCourseModal({
       if (data.author) setAuthor(data.author);
       if (data.authorGoodreadsUrl) setAuthorGoodreadsUrl(data.authorGoodreadsUrl);
 
-      // Only match types of books that exist in repo types of book
+      // Only match types of books that exist in repo types of book (nonfiction & fiction deleted)
       const repoGenreNames = repoTypes.map((t) => t.name);
-      const [broadType, firstGenre] = getBookMainTypes(
+      const matchedTypes = getBookMainTypes(
         {
           title: data.title,
           genres: data.genres,
@@ -225,8 +212,7 @@ export function ImportCourseModal({
         },
         repoGenreNames
       );
-      setMainType1(broadType);
-      setMainType2(firstGenre);
+      setMainType(matchedTypes[0] || repoTypes[0]?.name || "Biography");
 
       if (data.description) setDescription(data.description);
       if (data.coverUrl) setCoverUrl(data.coverUrl);
@@ -251,8 +237,7 @@ export function ImportCourseModal({
     setTitle("The Optimist: Sam Altman, OpenAI, and the Race to Invent the Future");
     setAuthor("Keach Hagey");
     setAuthorGoodreadsUrl("https://www.goodreads.com/author/show/16995547.Keach_Hagey");
-    setMainType1("Nonfiction");
-    setMainType2("Biography");
+    setMainType("Biography");
     setDescription(
       "The definitive, behind-the-scenes account of the high-stakes drama, secret deals, and personal rivalries inside OpenAI and the race to build superhuman artificial intelligence, from veteran Wall Street Journal tech reporter Keach Hagey."
     );
@@ -268,6 +253,15 @@ export function ImportCourseModal({
   const handleCreateType = async () => {
     const trimmed = newTypeName.trim();
     if (!trimmed) return;
+    if (
+      trimmed.toLowerCase() === "nonfiction" ||
+      trimmed.toLowerCase() === "fiction" ||
+      trimmed.toLowerCase() === "non-fiction"
+    ) {
+      setError("Nonfiction and Fiction are deleted and cannot be added.");
+      return;
+    }
+
     setIsCreatingType(true);
     try {
       const created = await createBookType(trimmed);
@@ -277,7 +271,7 @@ export function ImportCourseModal({
         }
         return [...prev, created];
       });
-      setMainType2(created.name);
+      setMainType(created.name);
       setNewTypeName("");
     } catch (err: any) {
       setError(err.message || "Failed to create book type");
@@ -295,8 +289,8 @@ export function ImportCourseModal({
       setRepoTypes((prev) =>
         prev.map((t) => (t.id === typeId ? { ...t, name: updated.name } : t))
       );
-      if (mainType2.toLowerCase() === editingTypeName.toLowerCase() || repoTypes.find(t => t.id === typeId)?.name === mainType2) {
-        setMainType2(updated.name);
+      if (mainType.toLowerCase() === editingTypeName.toLowerCase() || repoTypes.find((t) => t.id === typeId)?.name === mainType) {
+        setMainType(updated.name);
       }
       setEditingTypeId(null);
     } catch (err: any) {
@@ -309,9 +303,9 @@ export function ImportCourseModal({
     try {
       await deleteBookType(typeId);
       setRepoTypes((prev) => prev.filter((t) => t.id !== typeId));
-      if (mainType2.toLowerCase() === typeName.toLowerCase()) {
-        const remaining = repoTypes.filter((t) => t.id !== typeId && t.category !== "broad");
-        setMainType2(remaining[0]?.name || "Biography");
+      if (mainType.toLowerCase() === typeName.toLowerCase()) {
+        const remaining = repoTypes.filter((t) => t.id !== typeId);
+        setMainType(remaining[0]?.name || "Biography");
       }
     } catch (err: any) {
       setError(err.message || "Failed to delete book type");
@@ -334,14 +328,20 @@ export function ImportCourseModal({
       ? `https://drive.google.com/drive/folders/${folderId}`
       : undefined;
 
+    const trimmedType = mainType.trim();
+
     setIsSubmitting(true);
     try {
       const newBook = await onCreateCourse({
         title: trimmedTitle,
         author: author.trim() || undefined,
-        author_goodreads_url: authorGoodreadsUrl.trim() || (author.trim().toLowerCase().includes('keach') ? 'https://www.goodreads.com/author/show/16995547.Keach_Hagey' : undefined),
-        main_type: [mainType1.trim(), mainType2.trim()].filter(Boolean).join(" & ") || undefined,
-        genres: [mainType1.trim(), mainType2.trim()].filter(Boolean).length > 0 ? [mainType1.trim(), mainType2.trim()].filter(Boolean) : undefined,
+        author_goodreads_url:
+          authorGoodreadsUrl.trim() ||
+          (author.trim().toLowerCase().includes("keach")
+            ? "https://www.goodreads.com/author/show/16995547.Keach_Hagey"
+            : undefined),
+        main_type: trimmedType || undefined,
+        genres: trimmedType ? [trimmedType] : undefined,
         description: description.trim() || undefined,
         goodreads_url: goodreadsUrl.trim() || undefined,
         cover_url: coverUrl,
@@ -418,9 +418,9 @@ export function ImportCourseModal({
               {repoTypes.length} types in repo
             </span>
             <span className="text-gray-500">•</span>
-            <span className="text-gray-400">Current:</span>
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-purple-500/20 text-purple-300">
-              {mainType1} & {mainType2}
+            <span className="text-gray-400">Selected Type:</span>
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-600 text-white">
+              {mainType}
             </span>
           </div>
           <button
@@ -591,7 +591,7 @@ export function ImportCourseModal({
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
                     <Tag className="w-3.5 h-3.5" />
-                    <span>Types of Book (Repo Types)</span>
+                    <span>Type of Book (Repo Types)</span>
                   </label>
                   <button
                     type="button"
@@ -603,54 +603,36 @@ export function ImportCourseModal({
                   </button>
                 </div>
 
-                {/* 2 Main Types Selectors: Strictly from Repo Types of Book */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[11px] font-semibold text-gray-300 block mb-1">
-                      Main Type 1 (Broad)
-                    </label>
-                    <select
-                      value={mainType1}
-                      onChange={(e) => setMainType1(e.target.value)}
-                      className="w-full bg-[#161616] border border-[#3e3e3e] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-400 transition-colors cursor-pointer"
-                    >
-                      {broadTypes.map((t) => (
-                        <option key={t.id || t.name} value={t.name}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-semibold text-gray-300 block mb-1">
-                      Main Type 2 (Repo Genre)
-                    </label>
-                    <select
-                      value={mainType2}
-                      onChange={(e) => setMainType2(e.target.value)}
-                      className="w-full bg-[#161616] border border-[#3e3e3e] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-400 transition-colors cursor-pointer"
-                    >
-                      {genreTypes.map((t) => (
-                        <option key={t.id || t.name} value={t.name}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Book Type Selector: Strictly from Repo Types of Book */}
+                <div>
+                  <label className="text-[11px] font-semibold text-gray-300 block mb-1">
+                    Select Type from Repo
+                  </label>
+                  <select
+                    value={mainType}
+                    onChange={(e) => setMainType(e.target.value)}
+                    className="w-full bg-[#161616] border border-[#3e3e3e] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-400 transition-colors cursor-pointer font-medium"
+                  >
+                    {repoTypes.map((t) => (
+                      <option key={t.id || t.name} value={t.name}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Quick Genre Selection Pills (Only show types of books in repo types of book) */}
                 <div className="space-y-1">
-                  <span className="text-[10px] text-gray-400 block font-medium">Select from repo types of book:</span>
+                  <span className="text-[10px] text-gray-400 block font-medium">Quick select from repo types of book:</span>
                   <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
-                    {genreTypes.map((t) => {
-                      const isSelected = mainType2.toLowerCase() === t.name.toLowerCase();
+                    {repoTypes.map((t) => {
+                      const isSelected = mainType.toLowerCase() === t.name.toLowerCase();
                       return (
                         <button
                           key={t.id || t.name}
                           type="button"
-                          onClick={() => setMainType2(t.name)}
-                          className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition-all cursor-pointer ${
+                          onClick={() => setMainType(t.name)}
+                          className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
                             isSelected
                               ? "bg-purple-600 text-white border border-purple-400 shadow-sm"
                               : "bg-[#2a2a2a] text-gray-300 border border-white/5 hover:bg-[#333333] hover:text-white"
@@ -734,9 +716,6 @@ export function ImportCourseModal({
                             <>
                               <div className="flex items-center gap-2">
                                 <span className="font-medium text-gray-200">{t.name}</span>
-                                <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-[#2a2a2a] text-gray-400">
-                                  {t.category === "broad" ? "broad" : "genre"}
-                                </span>
                               </div>
                               <div className="flex items-center gap-1">
                                 <button
@@ -750,16 +729,14 @@ export function ImportCourseModal({
                                 >
                                   <Edit2 className="w-3 h-3" />
                                 </button>
-                                {t.name !== "Nonfiction" && t.name !== "Fiction" && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteType(t.id, t.name)}
-                                    className="p-1 text-red-400 hover:text-red-300 rounded hover:bg-red-500/10 transition-colors cursor-pointer"
-                                    title="Delete type from repo"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteType(t.id, t.name)}
+                                  className="p-1 text-red-400 hover:text-red-300 rounded hover:bg-red-500/10 transition-colors cursor-pointer"
+                                  title="Delete type from repo"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
                               </div>
                             </>
                           )}
@@ -829,6 +806,5 @@ export function ImportCourseModal({
     document.body
   );
 }
-
 
 export const ImportBookModal = ImportCourseModal;

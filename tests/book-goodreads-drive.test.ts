@@ -67,7 +67,7 @@ describe('Goodreads Scraping & Metadata Extraction', () => {
     const result = parseGoodreadsHtml(sampleHtml, 'https://www.goodreads.com/book/show/214138402-the-optimist');
     expect(result.title).toBe('The Optimist');
     expect(result.author).toBe('Keach Hagey');
-    expect(result.mainType).toBe('Nonfiction & Biography');
+    expect(result.mainType).toBe('Biography');
     expect(result.genres).toContain('Biography');
     expect(result.genres).toContain('Business');
     expect(result.authorGoodreadsUrl).toContain('Keach_Hagey');
@@ -80,7 +80,7 @@ describe('Goodreads Scraping & Metadata Extraction', () => {
     const result = await fetchGoodreadsBookDetails(url);
     expect(result.title).toContain('The Optimist');
     expect(result.author).toBe('Keach Hagey');
-    expect(result.mainType).toBe('Nonfiction & Biography');
+    expect(result.mainType).toBe('Biography');
     expect(result.genres?.[0]).toBe('Biography');
     expect(result.pageCount).toBe(384);
     expect(result.rating).toBe(3.79);
@@ -134,36 +134,36 @@ describe('Google Drive Chapter Import & Folder Resolution', () => {
   });
 });
 
-describe('Book 2 Main Types and Goodreads Navigation', () => {
-  it('correctly provides 2 main types: Nonfiction/Fiction and the first Goodreads genre', () => {
-    // The Optimist: first genre on Goodreads is Biography, broad type is Nonfiction
+describe('Book Main Types and Goodreads Navigation', () => {
+  it('correctly provides type from repo types and ignores nonfiction/fiction', () => {
+    // The Optimist: first genre on Goodreads is Biography
     const book1 = {
       title: 'The Optimist: Sam Altman, OpenAI, and the Race to Invent the Future',
       author: 'Keach Hagey',
       genres: ['Biography', 'Artificial Intelligence', 'Nonfiction', 'Business'],
     };
-    expect(getBookMainTypes(book1)).toEqual(['Nonfiction', 'Biography']);
+    expect(getBookMainTypes(book1)).toEqual(['Biography']);
 
-    // Grammar book: first genre is Grammar, broad type is Nonfiction
+    // Grammar book: first genre is Grammar
     const book2 = {
       title: 'Destination B1: English Grammar',
       genres: ['Grammar', 'Reference'],
     };
-    expect(getBookMainTypes(book2)).toEqual(['Nonfiction', 'Grammar']);
+    expect(getBookMainTypes(book2)).toEqual(['Grammar']);
 
-    // Project Hail Mary: first genre is Science Fiction, broad type is Fiction
+    // Project Hail Mary: first genre is Science Fiction
     const book3 = {
       title: 'Project Hail Mary',
       genres: ['Science Fiction', 'Fiction', 'Space'],
     };
-    expect(getBookMainTypes(book3)).toEqual(['Fiction', 'Science Fiction']);
+    expect(getBookMainTypes(book3)).toEqual(['Science Fiction']);
 
-    // Book starting with Fiction genre: picks Fiction as broad type and skips to first specific genre
+    // Book starting with Fiction genre: skips Nonfiction/Fiction and picks first repo genre
     const book4 = {
       title: 'A Novel',
       genres: ['Fiction', 'Mystery', 'Crime'],
     };
-    expect(getBookMainTypes(book4)).toEqual(['Fiction', 'Mystery']);
+    expect(getBookMainTypes(book4)).toEqual(['Mystery']);
   });
 
   it('correctly generates Goodreads link for book title and author', () => {
@@ -211,18 +211,16 @@ describe('Book 2 Main Types and Goodreads Navigation', () => {
     };
 
     // 'Audiobook' and 'Politics' are not in repo types of book, so 'Business' is selected
-    const [broad, genre] = getBookMainTypes(bookWithRandomTags);
-    expect(broad).toBe('Nonfiction');
-    expect(genre).toBe('Business');
+    const types = getBookMainTypes(bookWithRandomTags);
+    expect(types).toEqual(['Business']);
 
     // With custom repo types (e.g. user created 'Philosophy' via CRUD)
-    const customRepoTypes = ['Nonfiction', 'Fiction', 'Philosophy', 'Economics'];
+    const customRepoTypes = ['Philosophy', 'Economics'];
     const bookCustom = {
       title: 'Deep Thought',
       genres: ['UnknownTag', 'Philosophy', 'Economics'],
     };
-    const [cBroad, cGenre] = getBookMainTypes(bookCustom, customRepoTypes);
-    expect(cBroad).toBe('Nonfiction');
-    expect(cGenre).toBe('Philosophy');
+    const cTypes = getBookMainTypes(bookCustom, customRepoTypes);
+    expect(cTypes).toEqual(['Philosophy']);
   });
 });

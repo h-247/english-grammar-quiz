@@ -32,15 +32,11 @@ export function ManageBookTypesModal({
     DEFAULT_REPO_BOOK_TYPES.map((name) => ({
       id: name.toLowerCase().replace(/\s+/g, "-"),
       name,
-      category:
-        name.toLowerCase() === "nonfiction" || name.toLowerCase() === "fiction"
-          ? "broad"
-          : "genre",
+      category: "genre",
     }))
   );
   const [isLoading, setIsLoading] = useState(false);
   const [newTypeName, setNewTypeName] = useState("");
-  const [newTypeCategory, setNewTypeCategory] = useState<"genre" | "broad">("genre");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
   const [editingTypeName, setEditingTypeName] = useState("");
@@ -97,7 +93,7 @@ export function ManageBookTypesModal({
     setIsSubmitting(true);
     setError(null);
     try {
-      const created = await createBookType(trimmed, newTypeCategory);
+      const created = await createBookType(trimmed, "genre");
       const updated = types.some((t) => t.id === created.id)
         ? types
         : [...types, created];
@@ -191,14 +187,6 @@ export function ManageBookTypesModal({
                 placeholder="e.g. Philosophy, Psychology, Memoir..."
                 className="flex-1 bg-[#161616] border border-[#3e3e3e] rounded-xl px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-400 transition-colors"
               />
-              <select
-                value={newTypeCategory}
-                onChange={(e) => setNewTypeCategory(e.target.value as any)}
-                className="bg-[#161616] border border-[#3e3e3e] rounded-xl px-2.5 py-2 text-xs text-gray-300 focus:outline-none focus:border-purple-400 transition-colors cursor-pointer"
-              >
-                <option value="genre">Genre</option>
-                <option value="broad">Broad</option>
-              </select>
               <button
                 type="submit"
                 disabled={isSubmitting || !newTypeName.trim()}
@@ -257,15 +245,6 @@ export function ManageBookTypesModal({
                     <>
                       <div className="flex items-center gap-2.5">
                         <span className="font-semibold text-xs text-gray-100">{t.name}</span>
-                        <span
-                          className={`text-[10px] font-medium uppercase px-2 py-0.5 rounded-full ${
-                            t.category === "broad"
-                              ? "bg-blue-500/15 text-blue-300 border border-blue-500/30"
-                              : "bg-purple-500/15 text-purple-300 border border-purple-500/30"
-                          }`}
-                        >
-                          {t.category === "broad" ? "Broad" : "Genre"}
-                        </span>
                       </div>
                       <div className="flex items-center gap-1">
                         <button
@@ -279,16 +258,14 @@ export function ManageBookTypesModal({
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
-                        {t.name !== "Nonfiction" && t.name !== "Fiction" && (
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(t.id)}
-                            className="p-1.5 text-red-400 hover:text-red-300 rounded-lg hover:bg-red-500/10 transition-colors cursor-pointer"
-                            title="Delete type from repo"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(t.id)}
+                          className="p-1.5 text-red-400 hover:text-red-300 rounded-lg hover:bg-red-500/10 transition-colors cursor-pointer"
+                          title="Delete type from repo"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </>
                   )}

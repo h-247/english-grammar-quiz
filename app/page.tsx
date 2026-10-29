@@ -158,45 +158,44 @@ export default function BooksDashboardPage() {
 
   const repoTypeNames = useMemo(() => repoTypes.map((t) => t.name), [repoTypes]);
 
-  // Available unique types across all books (the 2 main types of books)
+  // Available unique types across all books
   const availableTypes = useMemo(() => {
     const typesSet = new Set<string>();
-    let hasNonfiction = false;
-    let hasFiction = false;
 
     courses.forEach((c) => {
-      const [t1, t2] = getBookMainTypes(c, repoTypeNames.length > 0 ? repoTypeNames : undefined);
-      if (t1) {
-        typesSet.add(t1);
-        if (t1.toLowerCase() === "nonfiction") hasNonfiction = true;
-        if (t1.toLowerCase() === "fiction") hasFiction = true;
-      }
-      if (t2) {
-        typesSet.add(t2);
-        if (t2.toLowerCase() === "nonfiction") hasNonfiction = true;
-        if (t2.toLowerCase() === "fiction") hasFiction = true;
-      }
+      const types = getBookMainTypes(c, repoTypeNames.length > 0 ? repoTypeNames : undefined);
+      types.forEach((t) => {
+        if (
+          t &&
+          t.toLowerCase() !== "nonfiction" &&
+          t.toLowerCase() !== "fiction" &&
+          t.toLowerCase() !== "non-fiction"
+        ) {
+          typesSet.add(t);
+        }
+      });
     });
 
-    const specificTypes = Array.from(typesSet).filter(
-      (t) => t.toLowerCase() !== "nonfiction" && t.toLowerCase() !== "fiction"
-    );
-    specificTypes.sort((a, b) => a.localeCompare(b));
-
-    const result: string[] = [];
-    if (hasNonfiction) result.push("Nonfiction");
-    if (hasFiction) result.push("Fiction");
-    result.push(...specificTypes);
-
-    return result;
+    const list = Array.from(typesSet);
+    list.sort((a, b) => a.localeCompare(b));
+    return list;
   }, [courses, repoTypeNames]);
 
   // Type counts for each filter tab
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = { all: courses.length };
     courses.forEach((c) => {
-      const [t1, t2] = getBookMainTypes(c, repoTypeNames.length > 0 ? repoTypeNames : undefined);
-      const bookTypes = new Set<string>([t1.toLowerCase(), t2.toLowerCase()]);
+      const types = getBookMainTypes(c, repoTypeNames.length > 0 ? repoTypeNames : undefined);
+      const bookTypes = new Set<string>(
+        types
+          .filter(
+            (t) =>
+              t.toLowerCase() !== "nonfiction" &&
+              t.toLowerCase() !== "fiction" &&
+              t.toLowerCase() !== "non-fiction"
+          )
+          .map((t) => t.toLowerCase())
+      );
 
       availableTypes.forEach((t) => {
         if (bookTypes.has(t.toLowerCase())) {
@@ -220,8 +219,8 @@ export default function BooksDashboardPage() {
       const statusMatch =
         selectedStatus === "all" || getBookStatus(c) === selectedStatus;
 
-      const [t1, t2] = getBookMainTypes(c, repoTypeNames.length > 0 ? repoTypeNames : undefined);
-      const bookTypes = new Set<string>([t1.toLowerCase(), t2.toLowerCase()]);
+      const types = getBookMainTypes(c, repoTypeNames.length > 0 ? repoTypeNames : undefined);
+      const bookTypes = new Set<string>(types.map((t) => t.toLowerCase()));
       const typeMatch =
         selectedType === "all" || bookTypes.has(selectedType.toLowerCase());
 

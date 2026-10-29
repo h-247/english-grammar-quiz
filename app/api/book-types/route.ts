@@ -5,9 +5,7 @@ import { ensureDatabaseInitialized } from '@/lib/db-init';
 import { asc, eq, sql } from 'drizzle-orm';
 import { BookTypeItem } from '@/types/quiz';
 
-export const DEFAULT_REPO_TYPES: Array<{ id: string; name: string; category: 'broad' | 'genre' }> = [
-  { id: 'nonfiction', name: 'Nonfiction', category: 'broad' },
-  { id: 'fiction', name: 'Fiction', category: 'broad' },
+export const DEFAULT_REPO_TYPES: Array<{ id: string; name: string; category: string }> = [
   { id: 'biography', name: 'Biography', category: 'genre' },
   { id: 'grammar', name: 'Grammar', category: 'genre' },
   { id: 'science-fiction', name: 'Science Fiction', category: 'genre' },
@@ -27,7 +25,18 @@ export async function GET() {
     await ensureDatabaseInitialized();
     const db = getDb();
 
+    // Clean up any remaining nonfiction or fiction
+    try {
+      await db.run(sql`DELETE FROM book_types WHERE lower(name) IN ('nonfiction', 'fiction', 'non-fiction')`);
+    } catch {}
+
     let items = await db.select().from(bookTypes).orderBy(asc(bookTypes.name)).all();
+    items = items.filter(
+      (t) =>
+        t.name.toLowerCase() !== 'nonfiction' &&
+        t.name.toLowerCase() !== 'fiction' &&
+        t.name.toLowerCase() !== 'non-fiction'
+    );
 
     // If empty for any reason, seed defaults
     if (!items || items.length === 0) {
@@ -43,20 +52,15 @@ export async function GET() {
         } catch {}
       }
       items = await db.select().from(bookTypes).orderBy(asc(bookTypes.name)).all();
+      items = items.filter(
+        (t) =>
+          t.name.toLowerCase() !== 'nonfiction' &&
+          t.name.toLowerCase() !== 'fiction' &&
+          t.name.toLowerCase() !== 'non-fiction'
+      );
     }
 
-    // Sort broad types (Nonfiction, Fiction) first, then genres alphabetically
-    const sorted = [...items].sort((a, b) => {
-      const aIsBroad = a.category === 'broad' || a.name.toLowerCase() === 'nonfiction' || a.name.toLowerCase() === 'fiction';
-      const bIsBroad = b.category === 'broad' || b.name.toLowerCase() === 'nonfiction' || b.name.toLowerCase() === 'fiction';
-      if (aIsBroad && !bIsBroad) return -1;
-      if (!aIsBroad && bIsBroad) return 1;
-      if (aIsBroad && bIsBroad) {
-        if (a.name.toLowerCase() === 'nonfiction') return -1;
-        if (b.name.toLowerCase() === 'nonfiction') return 1;
-      }
-      return a.name.localeCompare(b.name);
-    });
+    const sorted = [...items].sort((a, b) => a.name.localeCompare(b.name));
 
     const response: BookTypeItem[] = sorted.map((t) => ({
       id: t.id,

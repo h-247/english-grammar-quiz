@@ -33,8 +33,7 @@ export function EditCourseModal({
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [authorGoodreadsUrl, setAuthorGoodreadsUrl] = useState("");
-  const [mainType1, setMainType1] = useState("");
-  const [mainType2, setMainType2] = useState("");
+  const [mainType, setMainType] = useState("");
   const [description, setDescription] = useState("");
   const [goodreadsUrl, setGoodreadsUrl] = useState("");
   const [selectedBanner, setSelectedBanner] = useState(DEFAULT_COURSE_BANNER);
@@ -45,10 +44,7 @@ export function EditCourseModal({
     DEFAULT_REPO_BOOK_TYPES.map((name) => ({
       id: name.toLowerCase().replace(/\s+/g, "-"),
       name,
-      category:
-        name.toLowerCase() === "nonfiction" || name.toLowerCase() === "fiction"
-          ? "broad"
-          : "genre",
+      category: "genre",
     }))
   );
 
@@ -58,7 +54,13 @@ export function EditCourseModal({
     getBookTypes()
       .then((types) => {
         if (!isCancelled && types && types.length > 0) {
-          setRepoTypes(types);
+          const filtered = types.filter(
+            (t) =>
+              t.name.toLowerCase() !== "nonfiction" &&
+              t.name.toLowerCase() !== "fiction" &&
+              t.name.toLowerCase() !== "non-fiction"
+          );
+          setRepoTypes(filtered);
         }
       })
       .catch(() => {});
@@ -66,19 +68,6 @@ export function EditCourseModal({
       isCancelled = true;
     };
   }, [isOpen]);
-
-  const broadTypes = repoTypes.filter(
-    (t) =>
-      t.category === "broad" ||
-      t.name.toLowerCase() === "nonfiction" ||
-      t.name.toLowerCase() === "fiction"
-  );
-  const genreTypes = repoTypes.filter(
-    (t) =>
-      t.category !== "broad" &&
-      t.name.toLowerCase() !== "nonfiction" &&
-      t.name.toLowerCase() !== "fiction"
-  );
 
   useEffect(() => {
     setMounted(true);
@@ -89,9 +78,8 @@ export function EditCourseModal({
       setTitle(course.title || "");
       setAuthor(course.author || "");
       setAuthorGoodreadsUrl((course as any).author_goodreads_url || (course.author && course.author.toLowerCase().includes('keach') ? 'https://www.goodreads.com/author/show/16995547.Keach_Hagey' : ''));
-      const [t1, t2] = getBookMainTypes(course);
-      setMainType1(t1 || "");
-      setMainType2(t2 || "");
+      const types = getBookMainTypes(course);
+      setMainType(types[0] || "");
       setDescription(course.description || "");
       setGoodreadsUrl(course.goodreads_url || "");
       setSelectedBanner(course.cover_url || course.banner_url || DEFAULT_COURSE_BANNER);
@@ -133,8 +121,8 @@ export function EditCourseModal({
         title: trimmedTitle,
         author: author.trim() || undefined,
         author_goodreads_url: authorGoodreadsUrl.trim() || (author.trim().toLowerCase().includes('keach') ? 'https://www.goodreads.com/author/show/16995547.Keach_Hagey' : undefined),
-        main_type: [mainType1.trim(), mainType2.trim()].filter(Boolean).join(" & ") || undefined,
-        genres: [mainType1.trim(), mainType2.trim()].filter(Boolean).length > 0 ? [mainType1.trim(), mainType2.trim()].filter(Boolean) : undefined,
+        main_type: mainType.trim() || undefined,
+        genres: mainType.trim() ? [mainType.trim()] : undefined,
         description: description.trim() || undefined,
         goodreads_url: goodreadsUrl.trim() || undefined,
         cover_url: selectedBanner,
@@ -225,40 +213,22 @@ export function EditCourseModal({
             />
           </div>
 
-          {/* 2 Main Types (Repo Types Only) */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] block mb-1.5">
-                Main Type 1 (Broad)
-              </label>
-              <select
-                value={mainType1}
-                onChange={(e) => setMainType1(e.target.value)}
-                className="w-full bg-[#161616] border border-[#333333] rounded-xl px-3.5 py-2 text-sm text-[#ececec] focus:outline-none focus:border-white transition-colors cursor-pointer"
-              >
-                {broadTypes.map((t) => (
-                  <option key={t.id || t.name} value={t.name}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] block mb-1.5">
-                Main Type 2 (Repo Genre)
-              </label>
-              <select
-                value={mainType2}
-                onChange={(e) => setMainType2(e.target.value)}
-                className="w-full bg-[#161616] border border-[#333333] rounded-xl px-3.5 py-2 text-sm text-[#ececec] focus:outline-none focus:border-white transition-colors cursor-pointer"
-              >
-                {genreTypes.map((t) => (
-                  <option key={t.id || t.name} value={t.name}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          {/* Book Type (Repo Types Only) */}
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] block mb-1.5">
+              Type of Book (Repo Types)
+            </label>
+            <select
+              value={mainType}
+              onChange={(e) => setMainType(e.target.value)}
+              className="w-full bg-[#161616] border border-[#333333] rounded-xl px-3.5 py-2 text-sm text-[#ececec] focus:outline-none focus:border-white transition-colors cursor-pointer"
+            >
+              {repoTypes.map((t) => (
+                <option key={t.id || t.name} value={t.name}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Goodreads URL */}

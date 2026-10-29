@@ -199,12 +199,12 @@ export async function ensureDatabaseInitialized(): Promise<void> {
         `));
       } catch {}
 
-      // Backfill and fix The Optimist (Nonfiction & Biography, Keach Hagey author URL, and remove any bad Goodreads drive URLs)
+      // Backfill and fix The Optimist (Biography, Keach Hagey author URL, and remove any bad Goodreads drive URLs)
       try {
         await db.run(sql.raw(`
           UPDATE courses
-          SET main_type = 'Nonfiction & Biography',
-              genres = '["Biography","Artificial Intelligence","Nonfiction","Business","Technology","Audiobook","Science","Biography Memoir","History","Politics"]',
+          SET main_type = 'Biography',
+              genres = '["Biography","Artificial Intelligence","Business","Technology","Audiobook","Science","Biography Memoir","History","Politics"]',
               goodreads_url = 'https://www.goodreads.com/book/show/223400731-the-optimist',
               author = 'Keach Hagey',
               author_goodreads_url = 'https://www.goodreads.com/author/show/16995547.Keach_Hagey',
@@ -212,6 +212,14 @@ export async function ensureDatabaseInitialized(): Promise<void> {
               rating_count = 1352,
               page_count = 384
           WHERE lower(title) LIKE '%optimist%' OR lower(author) LIKE '%keach%';
+
+          UPDATE courses
+          SET main_type = 'Biography'
+          WHERE lower(main_type) IN ('nonfiction', 'fiction', 'non-fiction', 'nonfiction & biography', 'biography & nonfiction');
+
+          UPDATE courses
+          SET main_type = 'Grammar'
+          WHERE lower(main_type) IN ('nonfiction & grammar', 'grammar & nonfiction');
         `));
       } catch {}
 
@@ -231,13 +239,10 @@ export async function ensureDatabaseInitialized(): Promise<void> {
       } catch {}
 
       
-      // Seed default book types in repo if empty
+      // Seed default book types in repo if empty (excluding nonfiction / fiction)
       try {
-        const existingTypesCount = await db.run(sql.raw('SELECT count(*) as count FROM book_types'));
-        // If empty, seed default types
+        await db.run(sql.raw("DELETE FROM book_types WHERE lower(name) IN ('nonfiction', 'fiction', 'non-fiction')"));
         const defaultTypes = [
-          { id: 'nonfiction', name: 'Nonfiction', category: 'broad' },
-          { id: 'fiction', name: 'Fiction', category: 'broad' },
           { id: 'biography', name: 'Biography', category: 'genre' },
           { id: 'grammar', name: 'Grammar', category: 'genre' },
           { id: 'science-fiction', name: 'Science Fiction', category: 'genre' },
@@ -246,6 +251,10 @@ export async function ensureDatabaseInitialized(): Promise<void> {
           { id: 'technology', name: 'Technology', category: 'genre' },
           { id: 'history', name: 'History', category: 'genre' },
           { id: 'literature', name: 'Literature', category: 'genre' },
+          { id: 'mystery', name: 'Mystery', category: 'genre' },
+          { id: 'self-help', name: 'Self-Help', category: 'genre' },
+          { id: 'philosophy', name: 'Philosophy', category: 'genre' },
+          { id: 'psychology', name: 'Psychology', category: 'genre' },
         ];
         const nowIso = new Date().toISOString();
         for (const t of defaultTypes) {
