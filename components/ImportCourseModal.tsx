@@ -89,7 +89,7 @@ export function ImportCourseModal({
           : "genre",
     }))
   );
-  const [showTypeCrud, setShowTypeCrud] = useState(false);
+  const [showTypeCrud, setShowTypeCrud] = useState(true);
   const [newTypeName, setNewTypeName] = useState("");
   const [isCreatingType, setIsCreatingType] = useState(false);
   const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
@@ -406,6 +406,30 @@ export function ImportCourseModal({
             className="px-3 py-1 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white transition-colors cursor-pointer shrink-0"
           >
             Fill "The Optimist" Sample
+          </button>
+        </div>
+
+        {/* Book Types Summary & Quick CRUD Toggle */}
+        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#222222] border border-[#333333]">
+          <div className="flex items-center gap-2 text-xs">
+            <Tag className="w-4 h-4 text-purple-400 shrink-0" />
+            <span className="text-gray-300">Repo Types of Book:</span>
+            <span className="font-semibold text-purple-300">
+              {repoTypes.length} types in repo
+            </span>
+            <span className="text-gray-500">•</span>
+            <span className="text-gray-400">Current:</span>
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-purple-500/20 text-purple-300">
+              {mainType1} & {mainType2}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowTypeCrud(!showTypeCrud)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 border border-purple-500/40 transition-colors cursor-pointer"
+          >
+            <Settings2 className="w-3.5 h-3.5" />
+            <span>{showTypeCrud ? "Hide CRUD Types" : "CRUD Types of Books"}</span>
           </button>
         </div>
 

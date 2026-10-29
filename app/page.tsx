@@ -12,6 +12,7 @@ import {
   BookOpen,
   Bookmark,
   SlidersHorizontal,
+  Tag,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { CourseCard } from "@/components/CourseCard";
@@ -19,6 +20,7 @@ import { ImportCourseModal } from "@/components/ImportCourseModal";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { QuizConfigModal } from "@/components/QuizConfigModal";
 import { EditCourseModal } from "@/components/EditCourseModal";
+import { ManageBookTypesModal } from "@/components/ManageBookTypesModal";
 import {
   getCourses,
   getQuizzes,
@@ -49,6 +51,7 @@ export default function BooksDashboardPage() {
 
   // Modals state
   const [isImportCourseOpen, setIsImportCourseOpen] = useState<boolean>(false);
+  const [isManageTypesOpen, setIsManageTypesOpen] = useState<boolean>(false);
   const [courseToDelete, setCourseToDelete] = useState<CourseSummary | null>(null);
   const [isDeletingCourse, setIsDeletingCourse] = useState<boolean>(false);
   const [courseToEdit, setCourseToEdit] = useState<CourseSummary | null>(null);
@@ -345,6 +348,15 @@ export default function BooksDashboardPage() {
             </button>
 
             <button
+              onClick={() => setIsManageTypesOpen(true)}
+              title="CRUD Types of Books (Add, Edit, Delete types in repo)"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#222222] text-purple-300 hover:text-white hover:bg-[#2c2c2c] border border-purple-500/30 transition-all cursor-pointer shrink-0"
+            >
+              <Tag className="w-3.5 h-3.5 text-purple-400" />
+              <span className="hidden sm:inline">Types of Book</span>
+            </button>
+
+            <button
               onClick={() => setIsImportCourseOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white text-black hover:bg-neutral-200 transition-all shadow-sm cursor-pointer shrink-0"
             >
@@ -442,6 +454,17 @@ export default function BooksDashboardPage() {
                     </span>
                   </button>
                 ))}
+
+                {/* CRUD Types of Book Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsManageTypesOpen(true)}
+                  className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-purple-500/20 text-purple-200 hover:bg-purple-500/30 border border-purple-500/40 transition-all flex items-center gap-1 shrink-0 cursor-pointer shadow-sm ml-1"
+                  title="CRUD Types of Books (Add, Edit, Delete types in repo)"
+                >
+                  <Plus className="w-3.5 h-3.5 text-purple-300" />
+                  <span>Add / Manage Types</span>
+                </button>
               </div>
             )}
           </div>
@@ -529,6 +552,16 @@ export default function BooksDashboardPage() {
           await loadData(true);
         }}
         onCreateCourse={createCourse}
+      />
+
+      {/* Manage Book Types Modal (CRUD Types of Books) */}
+      <ManageBookTypesModal
+        isOpen={isManageTypesOpen}
+        onClose={() => {
+          setIsManageTypesOpen(false);
+          loadData(true);
+        }}
+        onTypesChange={(updatedTypes) => setRepoTypes(updatedTypes)}
       />
 
       {/* Delete Book Confirmation Modal */}
