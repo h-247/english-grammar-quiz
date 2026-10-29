@@ -29,6 +29,7 @@ interface CourseCardProps {
   onStartQuiz?: (quiz: QuizSummary, mode: "timed" | "practice") => void;
   selectedType?: string;
   onSelectType?: (type: string) => void;
+  repoTypes?: string[];
 }
 
 export const CourseCard = memo(function CourseCard({
@@ -38,6 +39,7 @@ export const CourseCard = memo(function CourseCard({
   onDeleteCourse,
   selectedType,
   onSelectType,
+  repoTypes,
 }: CourseCardProps) {
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -107,7 +109,10 @@ export const CourseCard = memo(function CourseCard({
       ? "Doing"
       : "To do");
 
-  const mainTypes = getBookMainTypes(course);
+  const mainTypes = getBookMainTypes(
+    course,
+    repoTypes && repoTypes.length > 0 ? repoTypes : undefined
+  );
   const bookGoodreadsUrl = getBookGoodreadsUrl(course);
   const authorGoodreadsUrl = getAuthorGoodreadsUrl(course);
 

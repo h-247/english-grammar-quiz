@@ -536,6 +536,7 @@ export default function BooksDashboardPage() {
                 onStartQuiz={handleStartQuiz}
                 selectedType={selectedType}
                 onSelectType={(t) => setSelectedType(t)}
+                repoTypes={repoTypeNames}
               />
             ))}
           </div>

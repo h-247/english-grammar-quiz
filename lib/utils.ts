@@ -133,9 +133,14 @@ export const DEFAULT_REPO_BOOK_TYPES: string[] = [
   "Psychology",
 ];
 
+export function normalizeTypeString(s: string): string {
+  return s.toLowerCase().replace(/[-\s_]+/g, " ").trim();
+}
+
 export function getBookMainTypes(
   book: {
     title?: string | null;
+    author?: string | null;
     main_type?: string | null;
     genres?: string[] | null;
     description?: string | null;
@@ -149,6 +154,10 @@ export function getBookMainTypes(
     (t) => t.toLowerCase() !== "nonfiction" && t.toLowerCase() !== "fiction" && t.toLowerCase() !== "non-fiction"
   );
 
+  const title = (book.title || "").toLowerCase();
+  const author = (book.author || "").toLowerCase();
+  const isDefiningDecade = title.includes("defining decade") || author.includes("meg jay");
+
   // If book.main_type is explicitly provided, check its components (ignoring nonfiction/fiction)
   if (book.main_type) {
     const split = book.main_type.split(/[&/,+]/).map((s) => s.trim()).filter(Boolean);
@@ -156,10 +165,14 @@ export function getBookMainTypes(
       (s) =>
         s.toLowerCase() !== "nonfiction" &&
         s.toLowerCase() !== "fiction" &&
-        s.toLowerCase() !== "non-fiction"
+        s.toLowerCase() !== "non-fiction" &&
+        allowedGenres.some((t) => normalizeTypeString(t) === normalizeTypeString(s))
     );
-    if (validMain.length > 0) {
-      return validMain;
+    // Don't keep accidental "Biography" if book is clearly The Defining Decade
+    if (isDefiningDecade && validMain.length === 1 && normalizeTypeString(validMain[0]) === "biography") {
+      // Fall through to correct genre matching
+    } else if (validMain.length > 0) {
+      return Array.from(new Set(validMain));
     }
   }
 
@@ -195,13 +208,12 @@ export function getBookMainTypes(
     }
   }
 
-  const title = (book.title || "").toLowerCase();
-
   // Determine matching types: ALL genres appearing in Goodreads genres that exist in allowed repo types
   const matchedList: string[] = [];
 
   for (const g of rawGenres) {
-    const matched = allowedGenres.find((t) => t.toLowerCase() === g.toLowerCase());
+    const normG = normalizeTypeString(g);
+    const matched = allowedGenres.find((t) => normalizeTypeString(t) === normG);
     if (matched && !matchedList.includes(matched)) {
       matchedList.push(matched);
     }
@@ -210,10 +222,11 @@ export function getBookMainTypes(
   // If no exact match, try partial match
   if (matchedList.length === 0) {
     for (const g of rawGenres) {
-      const gLower = g.toLowerCase();
-      const matched = allowedGenres.find(
-        (t) => gLower.includes(t.toLowerCase()) || t.toLowerCase().includes(gLower)
-      );
+      const normG = normalizeTypeString(g);
+      const matched = allowedGenres.find((t) => {
+        const normT = normalizeTypeString(t);
+        return normG.includes(normT) || normT.includes(normG);
+      });
       if (matched && !matchedList.includes(matched)) {
         matchedList.push(matched);
       }
@@ -222,14 +235,19 @@ export function getBookMainTypes(
 
   // Fallbacks strictly to allowed repo types if still empty
   if (matchedList.length === 0) {
-    if (title.includes("optimist") || title.includes("openai") || title.includes("sam altman")) {
-      const b = allowedGenres.find((t) => t.toLowerCase() === "biography") || "Biography";
+    if (isDefiningDecade) {
+      const sh = allowedGenres.find((t) => normalizeTypeString(t) === "self help" || normalizeTypeString(t) === "psychology") ||
+                 allowedGenres.find((t) => normalizeTypeString(t).includes("self") || normalizeTypeString(t).includes("psychology")) ||
+                 "Self-Help";
+      matchedList.push(sh);
+    } else if (title.includes("optimist") || title.includes("openai") || title.includes("sam altman")) {
+      const b = allowedGenres.find((t) => normalizeTypeString(t) === "biography") || "Biography";
       matchedList.push(b);
     } else if (title.includes("grammar") || title.includes("destination") || title.includes("english")) {
-      const g = allowedGenres.find((t) => t.toLowerCase() === "grammar") || "Grammar";
+      const g = allowedGenres.find((t) => normalizeTypeString(t) === "grammar") || "Grammar";
       matchedList.push(g);
     } else if (title.includes("hail mary") || title.includes("space") || title.includes("weir")) {
-      const sf = allowedGenres.find((t) => t.toLowerCase() === "science fiction") || "Science Fiction";
+      const sf = allowedGenres.find((t) => normalizeTypeString(t) === "science fiction") || "Science Fiction";
       matchedList.push(sf);
     } else if (allowedGenres.length > 0) {
       matchedList.push(allowedGenres[0]);

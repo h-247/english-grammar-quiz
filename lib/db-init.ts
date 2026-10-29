@@ -214,6 +214,17 @@ export async function ensureDatabaseInitialized(): Promise<void> {
           WHERE lower(title) LIKE '%optimist%' OR lower(author) LIKE '%keach%';
 
           UPDATE courses
+          SET main_type = 'Self Help',
+              genres = '["Self Help","Psychology","Nonfiction","Personal Development","Audiobook","Personal Growth","Business"]',
+              goodreads_url = COALESCE(NULLIF(goodreads_url, ''), 'https://www.goodreads.com/book/show/40603783-the-defining-decade'),
+              author = 'Meg Jay',
+              author_goodreads_url = 'https://www.goodreads.com/author/show/1038942.Meg_Jay',
+              rating = 4.1,
+              rating_count = 95421,
+              page_count = 273
+          WHERE lower(title) LIKE '%defining decade%' OR lower(author) LIKE '%meg jay%';
+
+          UPDATE courses
           SET main_type = 'Biography'
           WHERE lower(main_type) IN ('nonfiction', 'fiction', 'non-fiction', 'nonfiction & biography', 'biography & nonfiction');
 

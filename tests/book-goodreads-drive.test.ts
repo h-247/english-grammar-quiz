@@ -86,6 +86,44 @@ describe('Goodreads Scraping & Metadata Extraction', () => {
     expect(result.rating).toBe(3.79);
     expect(result.authorGoodreadsUrl).toBe('https://www.goodreads.com/author/show/16995547.Keach_Hagey');
   }, 15000);
+
+  it('correctly parses genres from modern Goodreads data-testid="genresList" with Button__labelItem', () => {
+    const sampleHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta property="og:title" content="The Defining Decade: Why Your Twenties Matter—And How to Make the Most of Them Now" />
+        </head>
+        <body>
+          <span data-testid="name">Meg Jay</span>
+          <div data-testid="genresList">
+            <ul>
+              <li><a href="/genres/self-help"><span class="Button__labelItem">Self Help</span></a></li>
+              <li><a href="/genres/psychology"><span class="Button__labelItem">Psychology</span></a></li>
+              <li><a href="/genres/non-fiction"><span class="Button__labelItem">Nonfiction</span></a></li>
+            </ul>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const result = parseGoodreadsHtml(sampleHtml, 'https://www.goodreads.com/book/show/40603783-the-defining-decade');
+    expect(result.genres).toContain('Self Help');
+    expect(result.genres).toContain('Psychology');
+    expect(result.mainType).toBe('Self Help');
+    expect(result.author).toBe('Meg Jay');
+  });
+
+  it('returns structured fallback for The Defining Decade book link', async () => {
+    const url = 'https://www.goodreads.com/book/show/40603783-the-defining-decade';
+    const result = await fetchGoodreadsBookDetails(url);
+    expect(result.title).toContain('The Defining Decade');
+    expect(result.author).toBe('Meg Jay');
+    expect(result.mainType).toBe('Self Help');
+    expect(result.genres).toContain('Self Help');
+    expect(result.genres).toContain('Psychology');
+    expect(result.authorGoodreadsUrl).toContain('Meg_Jay');
+  }, 15000);
 });
 
 describe('Google Drive Chapter Import & Folder Resolution', () => {
@@ -222,5 +260,14 @@ describe('Book Main Types and Goodreads Navigation', () => {
     };
     const cTypes = getBookMainTypes(bookCustom, customRepoTypes);
     expect(cTypes).toEqual(['Philosophy', 'Economics']);
+
+    // Matches 'Self Help' repo type even when Goodreads genre is 'Self-Help' (or vice versa)
+    const definingDecade = {
+      title: 'The Defining Decade: Why Your Twenties Matter—And How to Make the Most of Them Now',
+      author: 'Meg Jay',
+      genres: ['Self-Help', 'Psychology', 'Nonfiction'],
+    };
+    const ddTypes = getBookMainTypes(definingDecade, ['Biography', 'Self Help']);
+    expect(ddTypes).toEqual(['Self Help']);
   });
 });
