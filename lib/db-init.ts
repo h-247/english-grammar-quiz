@@ -219,6 +219,8 @@ export async function ensureDatabaseInitialized(): Promise<void> {
               goodreads_url = COALESCE(NULLIF(goodreads_url, ''), 'https://www.goodreads.com/book/show/40603783-the-defining-decade'),
               author = 'Meg Jay',
               author_goodreads_url = 'https://www.goodreads.com/author/show/1038942.Meg_Jay',
+              drive_folder_id = '1LQDIbz4mao1NaHkGX-welZbG0BlZNsWY',
+              drive_folder_url = 'https://drive.google.com/drive/folders/1LQDIbz4mao1NaHkGX-welZbG0BlZNsWY',
               rating = 4.1,
               rating_count = 95421,
               page_count = 273
@@ -232,6 +234,18 @@ export async function ensureDatabaseInitialized(): Promise<void> {
           SET main_type = 'Grammar'
           WHERE lower(main_type) IN ('nonfiction & grammar', 'grammar & nonfiction');
         `));
+      } catch {}
+
+      // Automatically ensure The Defining Decade chapters exist if book is present
+      try {
+        const ddCourses = await db.run(sql.raw("SELECT id FROM courses WHERE lower(title) LIKE '%defining decade%' OR lower(author) LIKE '%meg jay%' OR drive_folder_id = '1LQDIbz4mao1NaHkGX-welZbG0BlZNsWY'"));
+        const ddRows = (ddCourses as any)?.rows || (ddCourses as any)?.results || [];
+        if (Array.isArray(ddRows) && ddRows.length > 0) {
+          const { syncCourseDriveQuizzes } = await import('@/lib/course-service');
+          for (const row of ddRows) {
+            await syncCourseDriveQuizzes(row.id || row[0], db);
+          }
+        }
       } catch {}
 
       // Clean up any drive_folder_id or drive_folder_url that was accidentally populated with Goodreads URL

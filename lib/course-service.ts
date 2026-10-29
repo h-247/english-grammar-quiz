@@ -8,6 +8,7 @@ import {
   DEFAULT_COURSE_BANNER,
   GRAMMAR_UNITS_MANIFEST,
   SAMPLE_BOOK_DRIVE_FOLDER_ID,
+  DEFINING_DECADE_DRIVE_FOLDER_ID,
 } from './course-manifest';
 import { calculateContentHash } from './hash';
 import { listDriveFolderFiles, fetchDriveFileContent } from './gdrive-service';
@@ -36,6 +37,28 @@ export const SAMPLE_BOOK_MANIFEST = [
   { unit: 16, title: 'Chapter 16 - The Blip', filename: '16_ch16_the-blip_p259-p276.pdf', start_page: 259, end_page: 276, drive_file_id: '1bsHC5MgSUaBAFdGGwAZMFqaAdgFPlGZ4' },
   { unit: 17, title: 'Chapter 17 - Prometheus Unbound', filename: '17_ch17_prometheus-unbound_p277-p291.pdf', start_page: 277, end_page: 291, drive_file_id: '10qjsWmgDDZu0uG2FrycnhbGfPg7-nKir' },
   { unit: 99, title: 'Back matter', filename: '99_back_p292-p354.pdf', start_page: 292, end_page: 354, drive_file_id: '1HUJ84qEUnDUtva5jGoabMNCIh_l32bWI' },
+];
+
+export const DEFINING_DECADE_MANIFEST = [
+  { unit: 0, title: 'Front', filename: '00_front_p001-p019.pdf', start_page: 1, end_page: 19, drive_file_id: '16wBSuS2DPmuSY7V0igEWXdYXmApGAtYC' },
+  { unit: 1, title: 'WORK: Identity Capital', filename: '01_work_identity-capital_p020-p030.pdf', start_page: 20, end_page: 30, drive_file_id: '1ROQEi38bclpHyl59nBM7RZ4rsbKy5C1b' },
+  { unit: 2, title: 'WORK: Weak Ties', filename: '02_work_weak-ties_p031-p042.pdf', start_page: 31, end_page: 42, drive_file_id: '1imHA-QIkNXv10Sr81Ax3UAbgxCpQaVmb' },
+  { unit: 3, title: 'WORK: The Unthought Known', filename: '03_work_the-unthought-known_p043-p049.pdf', start_page: 43, end_page: 49, drive_file_id: '1UwbHkWFm3ZFI95f-jZr8WkNDCkwdgUes' },
+  { unit: 4, title: 'WORK: My Life Should Look Better on Facebook', filename: '04_work_my-life-should-look-better-on-facebook_p050-p059.pdf', start_page: 50, end_page: 59, drive_file_id: '14fibhxypN0N0qqgWeH1tD-4zwL0E-6qp' },
+  { unit: 5, title: 'WORK: The Customized Life', filename: '05_work_the-customized-life_p060-p067.pdf', start_page: 60, end_page: 67, drive_file_id: '1cbGwfW4T3MFKvkPsNIOApWzCRpdg27TA' },
+  { unit: 6, title: 'LOVE: An Upmarket Conversation', filename: '06_love_an-upmarket-conversation_p068-p077.pdf', start_page: 68, end_page: 77, drive_file_id: '1l5qM7ldMyc2O1QaGmC2SXh6JV1KIvw_q' },
+  { unit: 7, title: 'LOVE: Picking Your Family', filename: '07_love_picking-your-family_p078-p083.pdf', start_page: 78, end_page: 83, drive_file_id: '1LcbEQLArnPA_upEdXQ0Ca_3kgH1SUJZV' },
+  { unit: 8, title: 'LOVE: The Cohabitation Effect', filename: '08_love_the-cohabitation-effect_p084-p092.pdf', start_page: 84, end_page: 92, drive_file_id: '1xcwiSQiQ_T0Ft6E1hlanS7rXVZhXqSon' },
+  { unit: 9, title: 'LOVE: On Dating Down', filename: '09_love_on-dating-down_p093-p101.pdf', start_page: 93, end_page: 101, drive_file_id: '1l33UD2TJA8VyoYmX3IEr2E9inbpqdD5A' },
+  { unit: 10, title: 'LOVE: Being in Like', filename: '10_love_being-in-like_p102-p115.pdf', start_page: 102, end_page: 115, drive_file_id: '1ghFWgTj_k_Ty2i_ucntBDzqiubiqdcx0' },
+  { unit: 11, title: 'THE BRAIN AND THE BODY: Forward Thinking', filename: '11_the-brain-and-the-body_forward-thinking_p116-p123.pdf', start_page: 116, end_page: 123, drive_file_id: '1DVivWAPy7zKPezhfzk4jYS8m4hSGX4ay' },
+  { unit: 12, title: 'THE BRAIN AND THE BODY: Calm Yourself', filename: '12_the-brain-and-the-body_calm-yourself_p124-p132.pdf', start_page: 124, end_page: 132, drive_file_id: '1qIg6T4lmQWIA15-2Ydo2UVnSv13Ea3SN' },
+  { unit: 13, title: 'THE BRAIN AND THE BODY: Outside In', filename: '13_the-brain-and-the-body_outside-in_p133-p139.pdf', start_page: 133, end_page: 139, drive_file_id: '1Yip7oglyfYTSw7_T4QscH3G6GkZHfKNA' },
+  { unit: 14, title: 'THE BRAIN AND THE BODY: Getting Along and Getting Ahead', filename: '14_the-brain-and-the-body_getting-along-and-getting-ahead_p140-p146.pdf', start_page: 140, end_page: 146, drive_file_id: '1ruqBdwNwICaJQ5wJGs62LxhjEO5F1KIp' },
+  { unit: 15, title: 'THE BRAIN AND THE BODY: Every Body', filename: '15_the-brain-and-the-body_every-body_p147-p156.pdf', start_page: 147, end_page: 156, drive_file_id: '1E2rut2ThMX5L42RLb3_C14T7GIDSrdDl' },
+  { unit: 16, title: 'THE BRAIN AND THE BODY: Do the Math', filename: '16_the-brain-and-the-body_do-the-math_p157-p164.pdf', start_page: 157, end_page: 164, drive_file_id: '1PSpc6tLYXniLNkEa6qb0AAEQ6psYQR98' },
+  { unit: 17, title: 'EPILOGUE: Will Things Work Out for Me?', filename: '17_epilogue_will-things-work-out-for-me_p165-p167.pdf', start_page: 165, end_page: 167, drive_file_id: '1rJXlk7Qf_iDNBLI3QR_h8KKGyTjy8MqM' },
+  { unit: 99, title: 'Back Matter', filename: '99_back_p168-p210.pdf', start_page: 168, end_page: 210, drive_file_id: '1OkxacISMDgcN7yF7-lgyNQ6oA0TIbguX' },
 ];
 
 function parseCsvLine(line: string): string[] {
@@ -199,20 +222,45 @@ export async function syncCourseDriveQuizzes(
       const csvContent = await fetchDriveFileContent(manifestFile.id);
       if (csvContent) {
         const lines = csvContent.split(/\r?\n/).filter((l) => l.trim().length > 0);
+        const headers = lines.length > 0 ? parseCsvLine(lines[0]).map((h) => h.toLowerCase().trim()) : [];
+        const filenameIdx = headers.findIndex((h) => h.includes('filename') || h.includes('file'));
+        const titleIdx = headers.findIndex((h) => h === 'title' || h.includes('title') || h.includes('chapter'));
+        const partIdx = headers.findIndex((h) => h === 'part' || h.includes('section'));
+        const startPageIdx = headers.findIndex((h) => h.includes('start') || h.includes('from'));
+        const endPageIdx = headers.findIndex((h) => h.includes('end') || h.includes('to'));
+
         for (let i = 1; i < lines.length; i++) {
           const parts = parseCsvLine(lines[i]);
           if (parts.length < 3) continue;
 
-          const filename = parts[0];
-          const _type = parts[1];
-          const title = parts[2] || filename;
-          const startPage = parts[3] ? parseInt(parts[3], 10) : null;
-          const endPage = parts[4] ? parseInt(parts[4], 10) : null;
+          const filename = filenameIdx !== -1 && parts[filenameIdx] ? parts[filenameIdx] : parts[0];
+          const part = partIdx !== -1 && parts[partIdx] ? parts[partIdx] : '';
+          let rawTitle = titleIdx !== -1 && parts[titleIdx] ? parts[titleIdx] : (parts.length > 3 ? parts[3] : parts[2]);
+          if (!rawTitle) rawTitle = filename;
+          const title = part && !rawTitle.toLowerCase().includes(part.toLowerCase()) ? `${part}: ${rawTitle}` : rawTitle;
+
+          const startRaw = startPageIdx !== -1 ? parts[startPageIdx] : (parts.length > 4 ? parts[4] : parts[3]);
+          const endRaw = endPageIdx !== -1 ? parts[endPageIdx] : (parts.length > 5 ? parts[5] : parts[4]);
+          const startPage = startRaw ? parseInt(startRaw, 10) : null;
+          const endPage = endRaw ? parseInt(endRaw, 10) : null;
 
           const numMatch = filename.match(/^0*(\d+)/);
           const unitNum = numMatch ? parseInt(numMatch[1], 10) : i;
 
-          const matchedFile = driveFiles.find((f) => f.name === filename);
+          const matchedFile = driveFiles.find((f) => {
+            const fLower = f.name.toLowerCase();
+            const fnLower = filename.toLowerCase();
+            if (fLower === fnLower) return true;
+            const unitPrefix = `${String(unitNum).padStart(2, '0')}_`;
+            if (fLower.startsWith(unitPrefix) && (fnLower.startsWith(unitPrefix) || fnLower.startsWith(String(unitNum)))) {
+              return true;
+            }
+            const baseShort = fLower.replace(/~.*\.pdf$/i, '');
+            if (baseShort.length >= 4 && fnLower.startsWith(baseShort)) {
+              return true;
+            }
+            return false;
+          });
           const driveFileId = matchedFile?.id || null;
 
           const existing =
@@ -507,6 +555,39 @@ export async function syncCourseDriveQuizzes(
   if (course.driveFolderId === SAMPLE_BOOK_DRIVE_FOLDER_ID) {
     for (let i = 0; i < SAMPLE_BOOK_MANIFEST.length; i++) {
       const item = SAMPLE_BOOK_MANIFEST[i];
+      if (quizByUnitNum.has(item.unit) || quizByFilename.has(item.filename)) {
+        skippedCount++;
+        continue;
+      }
+      const hash = await calculateContentHash(`book_${courseId}_unit_${item.unit}_${item.filename}`);
+      await db.insert(quizzes).values({
+        id: crypto.randomUUID(),
+        courseId,
+        contentHash: hash,
+        title: item.title,
+        unitNumber: item.unit,
+        unitTitle: item.title,
+        instructions: `Pages ${item.start_page} - ${item.end_page}`,
+        status: 'To do',
+        readingStatus: 'To do',
+        startPage: item.start_page,
+        endPage: item.end_page,
+        driveFileId: item.drive_file_id,
+        sourceFilename: item.filename,
+        questionCount: 0,
+        blankCount: 0,
+        placeholderSyntax: '{{n}}',
+        createdAt: new Date().toISOString(),
+      });
+      syncedCount++;
+      fileReports.push({ fileId: item.drive_file_id, filename: item.filename, status: 'synced' });
+    }
+  } else if (
+    course.driveFolderId === DEFINING_DECADE_DRIVE_FOLDER_ID ||
+    (course.title && course.title.toLowerCase().includes('defining decade'))
+  ) {
+    for (let i = 0; i < DEFINING_DECADE_MANIFEST.length; i++) {
+      const item = DEFINING_DECADE_MANIFEST[i];
       if (quizByUnitNum.has(item.unit) || quizByFilename.has(item.filename)) {
         skippedCount++;
         continue;

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseGoodreadsHtml, fetchGoodreadsBookDetails } from '@/lib/goodreads-service';
-import { SAMPLE_BOOK_MANIFEST } from '@/lib/course-service';
+import { SAMPLE_BOOK_MANIFEST, DEFINING_DECADE_MANIFEST } from '@/lib/course-service';
 import { extractDriveFolderId } from '@/lib/course-manifest';
 import { getBookMainTypes, getBookGoodreadsUrl, getAuthorGoodreadsUrl } from '@/lib/utils';
 
@@ -162,6 +162,35 @@ describe('Google Drive Chapter Import & Folder Resolution', () => {
     const backMatter = SAMPLE_BOOK_MANIFEST.find((c) => c.unit === 99);
     expect(backMatter).toBeDefined();
     expect(backMatter?.title).toBe('Back matter');
+  });
+
+  it('contains authoritative manifest of 19 chapters for The Defining Decade folder', () => {
+    expect(DEFINING_DECADE_MANIFEST.length).toBe(19);
+
+    // Front matter
+    expect(DEFINING_DECADE_MANIFEST[0].title).toBe('Front');
+    expect(DEFINING_DECADE_MANIFEST[0].unit).toBe(0);
+    expect(DEFINING_DECADE_MANIFEST[0].start_page).toBe(1);
+    expect(DEFINING_DECADE_MANIFEST[0].end_page).toBe(19);
+
+    // Chapter 1 - WORK: Identity Capital
+    expect(DEFINING_DECADE_MANIFEST[1].title).toBe('WORK: Identity Capital');
+    expect(DEFINING_DECADE_MANIFEST[1].unit).toBe(1);
+    expect(DEFINING_DECADE_MANIFEST[1].start_page).toBe(20);
+    expect(DEFINING_DECADE_MANIFEST[1].end_page).toBe(30);
+
+    // Chapter 17 - Epilogue
+    const ch17 = DEFINING_DECADE_MANIFEST.find((c) => c.unit === 17);
+    expect(ch17).toBeDefined();
+    expect(ch17?.title).toContain('Will Things Work Out for Me?');
+
+    // Back matter
+    const backMatter = DEFINING_DECADE_MANIFEST.find((c) => c.unit === 99);
+    expect(backMatter).toBeDefined();
+    expect(backMatter?.title).toBe('Back Matter');
+
+    // Folder ID extraction
+    expect(extractDriveFolderId('https://drive.google.com/drive/folders/1LQDIbz4mao1NaHkGX-welZbG0BlZNsWY')).toBe('1LQDIbz4mao1NaHkGX-welZbG0BlZNsWY');
   });
 
   it('verifies chapter status lifecycle adheres to To do, Doing, Done', () => {

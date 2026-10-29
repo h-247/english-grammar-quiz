@@ -23,6 +23,14 @@ export const SAMPLE_BOOK_AUTHOR = 'Keach Hagey';
 export const SAMPLE_BOOK_BANNER = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=800&auto=format&fit=crop';
 export const SAMPLE_BOOK_GOODREADS_URL = 'https://www.goodreads.com/book/show/223400731-the-optimist';
 
+// Defining Decade Manifest Constants (Meg Jay - The Defining Decade)
+export const DEFINING_DECADE_DRIVE_FOLDER_ID = '1LQDIbz4mao1NaHkGX-welZbG0BlZNsWY';
+export const DEFINING_DECADE_DRIVE_URL = `https://drive.google.com/drive/folders/${DEFINING_DECADE_DRIVE_FOLDER_ID}`;
+export const DEFINING_DECADE_TITLE = 'The Defining Decade: Why Your Twenties Matter—And How to Make the Most of Them Now';
+export const DEFINING_DECADE_AUTHOR = 'Meg Jay';
+export const DEFINING_DECADE_BANNER = 'https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1529594243i/40603783.jpg';
+export const DEFINING_DECADE_GOODREADS_URL = 'https://www.goodreads.com/book/show/40603783-the-defining-decade';
+
 export const PRESET_COURSE_BANNERS = [
   {
     id: 'grammar-books',

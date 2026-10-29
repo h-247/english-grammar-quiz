@@ -116,17 +116,27 @@ async function getGoogleCredentials(): Promise<{
     }
   }
 
-  // Development fallback: only check local token file when running in Node.js
+  // Development fallback: check local token file when running in Node.js
   if (
-    (!accessToken || !refreshToken) &&
-    typeof process !== 'undefined' &&
-    process.versions?.node
+    (!accessToken || !refreshToken || !clientId || !clientSecret) &&
+    typeof process !== 'undefined'
   ) {
     try {
       const fs = await import('fs');
       const path = await import('path');
-      const userProfile =
-        process.env.USERPROFILE || process.env.HOME || '';
+      let userProfile = process.env.USERPROFILE || process.env.HOME || '';
+      if (!userProfile) {
+        try {
+          const os = await import('os');
+          userProfile = (os.homedir && os.homedir()) || '';
+        } catch {}
+      }
+      if (!userProfile && typeof process.cwd === 'function') {
+        const cwd = process.cwd();
+        const userMatch = cwd.match(/^[a-zA-Z]:\\Users\\[^\\]+/i);
+        if (userMatch) userProfile = userMatch[0];
+      }
+
       if (userProfile) {
         const potentialPath = path.resolve(
           userProfile,
@@ -135,9 +145,6 @@ async function getGoogleCredentials(): Promise<{
         if (fs.existsSync(potentialPath)) {
           tokenFilePath = potentialPath;
           const parsed = JSON.parse(fs.readFileSync(potentialPath, 'utf8'));
-          if (!accessToken && parsed.token?.access_token) {
-            accessToken = parsed.token.access_token;
-          }
           if (!refreshToken && parsed.token?.refresh_token) {
             refreshToken = parsed.token.refresh_token;
           }
@@ -146,6 +153,18 @@ async function getGoogleCredentials(): Promise<{
           }
           if (!clientSecret && parsed.client_secret) {
             clientSecret = parsed.client_secret;
+          }
+          if (!accessToken && parsed.token?.access_token) {
+            let isExpired = false;
+            if (parsed.token?.expiry) {
+              const exp = new Date(parsed.token.expiry).getTime();
+              if (!isNaN(exp) && exp <= Date.now()) {
+                isExpired = true;
+              }
+            }
+            if (!isExpired) {
+              accessToken = parsed.token.access_token;
+            }
           }
         }
       }
@@ -320,6 +339,14 @@ export async function fetchDriveFolderMetadata(
     const bookRes = {
       id: folderId,
       name: 'The Optimist_ Sam Altman, OpenAI, and the Race to Invent the -- Keach Hagey -- 2025.pdf',
+    };
+    setInCache(metadataCache, folderId, { data: bookRes, timestamp: now });
+    return bookRes;
+  }
+  if (folderId === '1LQDIbz4mao1NaHkGX-welZbG0BlZNsWY') {
+    const bookRes = {
+      id: folderId,
+      name: 'The Defining Decade_ Why Your Twenties Matter--And How to -- Meg Jay -- 2012',
     };
     setInCache(metadataCache, folderId, { data: bookRes, timestamp: now });
     return bookRes;
