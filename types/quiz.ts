@@ -333,3 +333,11 @@ export interface QuizHistoryResponse {
   stats: QuizScoreStats;
   attempts: QuizAttemptHistoryItem[];
 }
+
+
+export interface BookTypeItem {
+  id: string;
+  name: string;
+  category?: 'broad' | 'genre' | string;
+  created_at?: string;
+}

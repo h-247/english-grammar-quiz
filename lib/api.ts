@@ -14,6 +14,7 @@ import {
   TopicMasteryResponse,
   AppSettingsResponse,
   QuizHistoryResponse,
+  BookTypeItem,
 } from "@/types/quiz";
 
 export function getApiBase(): string {
@@ -353,5 +354,30 @@ export const deleteChapter = deleteQuiz;
 export async function getQuizHistory(quizId: string): Promise<QuizHistoryResponse> {
   return fetchApi<QuizHistoryResponse>(`/quizzes/${quizId}/attempts`, {
     cache: "no-store",
+  });
+}
+
+
+export async function getBookTypes(): Promise<BookTypeItem[]> {
+  return fetchApi<BookTypeItem[]>('/book-types');
+}
+
+export async function createBookType(name: string, category: string = 'genre'): Promise<BookTypeItem> {
+  return fetchApi<BookTypeItem>('/book-types', {
+    method: 'POST',
+    body: JSON.stringify({ name, category }),
+  });
+}
+
+export async function updateBookType(id: string, name: string, category?: string): Promise<BookTypeItem> {
+  return fetchApi<BookTypeItem>(`/book-types/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name, category }),
+  });
+}
+
+export async function deleteBookType(id: string): Promise<{ success: boolean }> {
+  return fetchApi<{ success: boolean }>(`/book-types/${id}`, {
+    method: 'DELETE',
   });
 }

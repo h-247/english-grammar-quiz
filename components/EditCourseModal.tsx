@@ -7,10 +7,10 @@ import {
   Loader2,
   BookOpen,
 } from "lucide-react";
-import { CourseSummary } from "@/types/quiz";
+import { CourseSummary, BookTypeItem } from "@/types/quiz";
 import { DEFAULT_COURSE_BANNER } from "@/lib/course-manifest";
-import { updateCourse } from "@/lib/api";
-import { getBookMainTypes } from "@/lib/utils";
+import { updateCourse, getBookTypes } from "@/lib/api";
+import { getBookMainTypes, DEFAULT_REPO_BOOK_TYPES } from "@/lib/utils";
 import { useToast } from "@/components/Toast";
 
 interface EditCourseModalProps {
@@ -40,6 +40,45 @@ export function EditCourseModal({
   const [selectedBanner, setSelectedBanner] = useState(DEFAULT_COURSE_BANNER);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [repoTypes, setRepoTypes] = useState<BookTypeItem[]>(() =>
+    DEFAULT_REPO_BOOK_TYPES.map((name) => ({
+      id: name.toLowerCase().replace(/\s+/g, "-"),
+      name,
+      category:
+        name.toLowerCase() === "nonfiction" || name.toLowerCase() === "fiction"
+          ? "broad"
+          : "genre",
+    }))
+  );
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let isCancelled = false;
+    getBookTypes()
+      .then((types) => {
+        if (!isCancelled && types && types.length > 0) {
+          setRepoTypes(types);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isCancelled = true;
+    };
+  }, [isOpen]);
+
+  const broadTypes = repoTypes.filter(
+    (t) =>
+      t.category === "broad" ||
+      t.name.toLowerCase() === "nonfiction" ||
+      t.name.toLowerCase() === "fiction"
+  );
+  const genreTypes = repoTypes.filter(
+    (t) =>
+      t.category !== "broad" &&
+      t.name.toLowerCase() !== "nonfiction" &&
+      t.name.toLowerCase() !== "fiction"
+  );
 
   useEffect(() => {
     setMounted(true);
@@ -186,31 +225,39 @@ export function EditCourseModal({
             />
           </div>
 
-          {/* 2 Main Types */}
+          {/* 2 Main Types (Repo Types Only) */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] block mb-1.5">
-                Main Type 1 (Nonfiction / Fiction)
+                Main Type 1 (Broad)
               </label>
-              <input
-                type="text"
+              <select
                 value={mainType1}
                 onChange={(e) => setMainType1(e.target.value)}
-                placeholder="e.g. Nonfiction"
-                className="w-full bg-[#161616] border border-[#333333] rounded-xl px-3.5 py-2 text-sm text-[#ececec] placeholder-gray-500 focus:outline-none focus:border-white transition-colors"
-              />
+                className="w-full bg-[#161616] border border-[#333333] rounded-xl px-3.5 py-2 text-sm text-[#ececec] focus:outline-none focus:border-white transition-colors cursor-pointer"
+              >
+                {broadTypes.map((t) => (
+                  <option key={t.id || t.name} value={t.name}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] block mb-1.5">
-                Main Type 2 (Goodreads Genre)
+                Main Type 2 (Repo Genre)
               </label>
-              <input
-                type="text"
+              <select
                 value={mainType2}
                 onChange={(e) => setMainType2(e.target.value)}
-                placeholder="e.g. Business"
-                className="w-full bg-[#161616] border border-[#333333] rounded-xl px-3.5 py-2 text-sm text-[#ececec] placeholder-gray-500 focus:outline-none focus:border-white transition-colors"
-              />
+                className="w-full bg-[#161616] border border-[#333333] rounded-xl px-3.5 py-2 text-sm text-[#ececec] focus:outline-none focus:border-white transition-colors cursor-pointer"
+              >
+                {genreTypes.map((t) => (
+                  <option key={t.id || t.name} value={t.name}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 

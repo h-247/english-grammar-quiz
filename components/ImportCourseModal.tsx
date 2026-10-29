@@ -11,15 +11,28 @@ import {
   CheckCircle,
   Star,
   Bookmark,
+  Plus,
+  Edit2,
+  Trash2,
+  Check,
+  Tag,
+  Settings2,
 } from "lucide-react";
 import {
   SAMPLE_BOOK_DRIVE_URL,
   DEFAULT_COURSE_BANNER,
   extractDriveFolderId,
 } from "@/lib/course-manifest";
-import { getDriveFolderInfo, fetchGoodreadsInfo } from "@/lib/api";
-import { GoodreadsBookDetails } from "@/types/quiz";
-import { getBookMainTypes } from "@/lib/utils";
+import {
+  getDriveFolderInfo,
+  fetchGoodreadsInfo,
+  getBookTypes,
+  createBookType,
+  updateBookType,
+  deleteBookType,
+} from "@/lib/api";
+import { GoodreadsBookDetails, BookTypeItem } from "@/types/quiz";
+import { getBookMainTypes, DEFAULT_REPO_BOOK_TYPES } from "@/lib/utils";
 
 interface ImportCourseModalProps {
   isOpen: boolean;
@@ -38,6 +51,9 @@ interface ImportCourseModalProps {
     published_year?: string;
     drive_folder_url?: string;
     banner_url?: string;
+    main_type?: string;
+    author_goodreads_url?: string;
+    genres?: string[];
   }) => Promise<any>;
 }
 
@@ -53,14 +69,31 @@ export function ImportCourseModal({
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [authorGoodreadsUrl, setAuthorGoodreadsUrl] = useState("");
-  const [mainType1, setMainType1] = useState("");
-  const [mainType2, setMainType2] = useState("");
+  const [mainType1, setMainType1] = useState("Nonfiction");
+  const [mainType2, setMainType2] = useState("Biography");
   const [description, setDescription] = useState("");
   const [coverUrl, setCoverUrl] = useState(DEFAULT_COURSE_BANNER);
   const [rating, setRating] = useState<number | undefined>();
   const [pageCount, setPageCount] = useState<number | undefined>();
   const [publishedYear, setPublishedYear] = useState<string | undefined>();
   const [isbn, setIsbn] = useState<string | undefined>();
+
+  // Repo Types of Book state & CRUD
+  const [repoTypes, setRepoTypes] = useState<BookTypeItem[]>(() =>
+    DEFAULT_REPO_BOOK_TYPES.map((name) => ({
+      id: name.toLowerCase().replace(/\s+/g, "-"),
+      name,
+      category:
+        name.toLowerCase() === "nonfiction" || name.toLowerCase() === "fiction"
+          ? "broad"
+          : "genre",
+    }))
+  );
+  const [showTypeCrud, setShowTypeCrud] = useState(false);
+  const [newTypeName, setNewTypeName] = useState("");
+  const [isCreatingType, setIsCreatingType] = useState(false);
+  const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
+  const [editingTypeName, setEditingTypeName] = useState("");
 
   const [isFetchingGoodreads, setIsFetchingGoodreads] = useState(false);
   const [goodreadsSuccess, setGoodreadsSuccess] = useState(false);
@@ -73,6 +106,46 @@ export function ImportCourseModal({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Fetch types of book from repo on mount / open
+  useEffect(() => {
+    if (!isOpen) return;
+    let isCancelled = false;
+    getBookTypes()
+      .then((types) => {
+        if (!isCancelled && types && types.length > 0) {
+          setRepoTypes(types);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isCancelled = true;
+    };
+  }, [isOpen]);
+
+  // Derived repo types: broad and genres
+  const broadTypes = repoTypes.filter(
+    (t) =>
+      t.category === "broad" ||
+      t.name.toLowerCase() === "nonfiction" ||
+      t.name.toLowerCase() === "fiction"
+  );
+  const genreTypes = repoTypes.filter(
+    (t) =>
+      t.category !== "broad" &&
+      t.name.toLowerCase() !== "nonfiction" &&
+      t.name.toLowerCase() !== "fiction"
+  );
+
+  // Set initial default selections if not already set
+  useEffect(() => {
+    if (isOpen) {
+      if (!mainType1) setMainType1("Nonfiction");
+      if (!mainType2 && genreTypes.length > 0) {
+        setMainType2(genreTypes[0].name);
+      }
+    }
+  }, [isOpen, genreTypes, mainType1, mainType2]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -89,63 +162,48 @@ export function ImportCourseModal({
     };
   }, [isOpen, isSubmitting, onClose]);
 
-  // Reset form when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setError(null);
-    }
-  }, [isOpen]);
-
-  // Handle Google Drive folder auto-resolve
+  // Auto-resolve Google Drive folder name when user pastes Drive URL
   useEffect(() => {
     const trimmed = driveUrl.trim();
     if (!trimmed) {
       setDetectedDriveName(null);
       return;
     }
+
     const folderId = extractDriveFolderId(trimmed);
     if (!folderId) {
       setDetectedDriveName(null);
       return;
     }
 
-    let isCurrent = true;
+    let isCancelled = false;
     setIsResolvingDrive(true);
+
     getDriveFolderInfo(folderId)
-      .then((res) => {
-        if (isCurrent && res && typeof res.name === "string") {
-          const folderName = res.name;
-          setDetectedDriveName(folderName);
-          // If no title yet, infer from drive folder name
-          setTitle((prev) => {
-            if (!prev) {
-              const cleaned = folderName
-                .replace(/\.pdf$/i, "")
-                .replace(/[_-]+/g, " ")
-                .trim();
-              return cleaned || folderName;
-            }
-            return prev;
-          });
+      .then((info) => {
+        if (!isCancelled && info) {
+          setDetectedDriveName(info.name || null);
+          if (info.name && !title) {
+            setTitle(info.name);
+          }
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!isCancelled) setDetectedDriveName(null);
+      })
       .finally(() => {
-        if (isCurrent) setIsResolvingDrive(false);
+        if (!isCancelled) setIsResolvingDrive(false);
       });
 
     return () => {
-      isCurrent = false;
+      isCancelled = true;
     };
-  }, [driveUrl]);
+  }, [driveUrl, title]);
 
-  // Fetch Goodreads metadata
-  const handleFetchGoodreads = async (urlToFetch?: string) => {
-    const targetUrl = (urlToFetch || goodreadsUrl).trim();
-    if (!targetUrl) {
-      setError("Please paste a Goodreads book link first.");
-      return;
-    }
+  // Handle Fetch Details from Goodreads
+  const handleFetchGoodreads = async (overrideUrl?: string) => {
+    const targetUrl = (overrideUrl || goodreadsUrl).trim();
+    if (!targetUrl) return;
 
     setError(null);
     setIsFetchingGoodreads(true);
@@ -156,13 +214,20 @@ export function ImportCourseModal({
       if (data.title) setTitle(data.title);
       if (data.author) setAuthor(data.author);
       if (data.authorGoodreadsUrl) setAuthorGoodreadsUrl(data.authorGoodreadsUrl);
-      const [broadType, firstGenre] = getBookMainTypes({
-        title: data.title,
-        genres: data.genres,
-        main_type: data.mainType,
-      });
+
+      // Only match types of books that exist in repo types of book
+      const repoGenreNames = repoTypes.map((t) => t.name);
+      const [broadType, firstGenre] = getBookMainTypes(
+        {
+          title: data.title,
+          genres: data.genres,
+          main_type: data.mainType,
+        },
+        repoGenreNames
+      );
       setMainType1(broadType);
       setMainType2(firstGenre);
+
       if (data.description) setDescription(data.description);
       if (data.coverUrl) setCoverUrl(data.coverUrl);
       if (data.rating) setRating(data.rating);
@@ -197,6 +262,60 @@ export function ImportCourseModal({
     setPublishedYear("2025");
     setGoodreadsSuccess(true);
     setError(null);
+  };
+
+  // CRUD Handler: Create Book Type in Repo
+  const handleCreateType = async () => {
+    const trimmed = newTypeName.trim();
+    if (!trimmed) return;
+    setIsCreatingType(true);
+    try {
+      const created = await createBookType(trimmed);
+      setRepoTypes((prev) => {
+        if (prev.some((t) => t.id === created.id || t.name.toLowerCase() === created.name.toLowerCase())) {
+          return prev;
+        }
+        return [...prev, created];
+      });
+      setMainType2(created.name);
+      setNewTypeName("");
+    } catch (err: any) {
+      setError(err.message || "Failed to create book type");
+    } finally {
+      setIsCreatingType(false);
+    }
+  };
+
+  // CRUD Handler: Update Book Type in Repo
+  const handleUpdateType = async (typeId: string) => {
+    const trimmed = editingTypeName.trim();
+    if (!trimmed) return;
+    try {
+      const updated = await updateBookType(typeId, trimmed);
+      setRepoTypes((prev) =>
+        prev.map((t) => (t.id === typeId ? { ...t, name: updated.name } : t))
+      );
+      if (mainType2.toLowerCase() === editingTypeName.toLowerCase() || repoTypes.find(t => t.id === typeId)?.name === mainType2) {
+        setMainType2(updated.name);
+      }
+      setEditingTypeId(null);
+    } catch (err: any) {
+      setError(err.message || "Failed to update book type");
+    }
+  };
+
+  // CRUD Handler: Delete Book Type from Repo
+  const handleDeleteType = async (typeId: string, typeName: string) => {
+    try {
+      await deleteBookType(typeId);
+      setRepoTypes((prev) => prev.filter((t) => t.id !== typeId));
+      if (mainType2.toLowerCase() === typeName.toLowerCase()) {
+        const remaining = repoTypes.filter((t) => t.id !== typeId && t.category !== "broad");
+        setMainType2(remaining[0]?.name || "Biography");
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to delete book type");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -249,54 +368,51 @@ export function ImportCourseModal({
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150"
       onClick={(e) => {
-        if (e.target === e.currentTarget && !isSubmitting) {
-          onClose();
-        }
+        if (e.target === e.currentTarget && !isSubmitting) onClose();
       }}
     >
-      <div
-        className="relative w-full max-w-2xl bg-[#1e1e1e] border border-[#333333] rounded-2xl shadow-2xl overflow-hidden text-[#ececec] my-auto max-h-[92vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#2e2e2e] bg-[#242424] shrink-0">
+      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-[#1b1b1b] border border-[#2f2f2f] rounded-2xl shadow-2xl text-white p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-[#2e2e2e] pb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center border border-purple-500/30">
               <BookOpen className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white">Import Book</h3>
-              <p className="text-xs text-[#9CA3AF]">
-                Import via Goodreads metadata & Google Drive chapter files
+              <h2 className="text-lg font-bold text-white">Import Book into Library</h2>
+              <p className="text-xs text-gray-400">
+                Add a new book, fetch Goodreads details, and link Google Drive chapters.
               </p>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleQuickFillOptimistSample}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 border border-emerald-500/30 transition-colors cursor-pointer"
-              title="Fill sample book: The Optimist & Google Drive folder"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Fill Sample Book</span>
-            </button>
-
-            <button
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="p-1.5 text-[#9CA3AF] hover:text-white rounded-lg hover:bg-[#333333] transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#282828] transition-colors cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* Form Body (Scrollable) */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+        {/* Quick Sample Button */}
+        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-purple-950/20 border border-purple-500/30">
+          <div className="flex items-center gap-2 text-xs text-purple-200">
+            <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
+            <span>Want to test quickly? Fill the sample book data:</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleQuickFillOptimistSample}
+            className="px-3 py-1 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white transition-colors cursor-pointer shrink-0"
+          >
+            Fill "The Optimist" Sample
+          </button>
+        </div>
+
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="p-3 text-xs text-red-300 bg-red-950/40 border border-red-800/60 rounded-xl">
+            <div className="p-3 rounded-xl bg-red-950/40 border border-red-500/40 text-xs text-red-200">
               {error}
             </div>
           )}
@@ -446,28 +562,188 @@ export function ImportCourseModal({
                 />
               </div>
 
-              {/* 2 Main Types */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-gray-300 block mb-1">Main Type 1 (Nonfiction / Fiction)</label>
-                  <input
-                    type="text"
-                    value={mainType1}
-                    onChange={(e) => setMainType1(e.target.value)}
-                    placeholder="e.g. Nonfiction"
-                    className="w-full bg-[#1b1b1b] border border-[#333333] rounded-xl px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-white transition-colors"
-                  />
+              {/* Types of Book Section (Repo Types of Book & CRUD) */}
+              <div className="p-3 rounded-xl bg-[#202020] border border-[#303030] space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+                    <Tag className="w-3.5 h-3.5" />
+                    <span>Types of Book (Repo Types)</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowTypeCrud(!showTypeCrud)}
+                    className="flex items-center gap-1 text-[11px] font-medium text-purple-300 hover:text-purple-200 hover:underline cursor-pointer"
+                  >
+                    <Settings2 className="w-3 h-3" />
+                    <span>{showTypeCrud ? "Hide Manage Types" : "Manage / CRUD Types"}</span>
+                  </button>
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-gray-300 block mb-1">Main Type 2 (Goodreads Genre)</label>
-                  <input
-                    type="text"
-                    value={mainType2}
-                    onChange={(e) => setMainType2(e.target.value)}
-                    placeholder="e.g. Business"
-                    className="w-full bg-[#1b1b1b] border border-[#333333] rounded-xl px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-white transition-colors"
-                  />
+
+                {/* 2 Main Types Selectors: Strictly from Repo Types of Book */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-semibold text-gray-300 block mb-1">
+                      Main Type 1 (Broad)
+                    </label>
+                    <select
+                      value={mainType1}
+                      onChange={(e) => setMainType1(e.target.value)}
+                      className="w-full bg-[#161616] border border-[#3e3e3e] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-400 transition-colors cursor-pointer"
+                    >
+                      {broadTypes.map((t) => (
+                        <option key={t.id || t.name} value={t.name}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-gray-300 block mb-1">
+                      Main Type 2 (Repo Genre)
+                    </label>
+                    <select
+                      value={mainType2}
+                      onChange={(e) => setMainType2(e.target.value)}
+                      className="w-full bg-[#161616] border border-[#3e3e3e] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-400 transition-colors cursor-pointer"
+                    >
+                      {genreTypes.map((t) => (
+                        <option key={t.id || t.name} value={t.name}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
+
+                {/* Quick Genre Selection Pills (Only show types of books in repo types of book) */}
+                <div className="space-y-1">
+                  <span className="text-[10px] text-gray-400 block font-medium">Select from repo types of book:</span>
+                  <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                    {genreTypes.map((t) => {
+                      const isSelected = mainType2.toLowerCase() === t.name.toLowerCase();
+                      return (
+                        <button
+                          key={t.id || t.name}
+                          type="button"
+                          onClick={() => setMainType2(t.name)}
+                          className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition-all cursor-pointer ${
+                            isSelected
+                              ? "bg-purple-600 text-white border border-purple-400 shadow-sm"
+                              : "bg-[#2a2a2a] text-gray-300 border border-white/5 hover:bg-[#333333] hover:text-white"
+                          }`}
+                        >
+                          {t.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Collapsible CRUD Panel for Repo Types of Book */}
+                {showTypeCrud && (
+                  <div className="pt-2 border-t border-[#333333] space-y-3">
+                    <div className="flex items-center justify-between text-xs font-semibold text-gray-300">
+                      <span>CRUD Types of Book in Repo</span>
+                      <span className="text-[10px] text-gray-400">{repoTypes.length} types in repo</span>
+                    </div>
+
+                    {/* Create New Type */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newTypeName}
+                        onChange={(e) => setNewTypeName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleCreateType();
+                          }
+                        }}
+                        placeholder="Add new book type to repo..."
+                        className="flex-1 bg-[#161616] border border-[#3e3e3e] rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-400 transition-colors"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCreateType}
+                        disabled={isCreatingType || !newTypeName.trim()}
+                        className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1 shrink-0"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Type</span>
+                      </button>
+                    </div>
+
+                    {/* Read, Update & Delete list */}
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                      {repoTypes.map((t) => (
+                        <div
+                          key={t.id}
+                          className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[#181818] border border-[#2b2b2b] text-xs"
+                        >
+                          {editingTypeId === t.id ? (
+                            <div className="flex items-center gap-1.5 flex-1 mr-2">
+                              <input
+                                type="text"
+                                value={editingTypeName}
+                                onChange={(e) => setEditingTypeName(e.target.value)}
+                                className="flex-1 bg-[#252525] border border-purple-500 rounded px-2 py-0.5 text-xs text-white focus:outline-none"
+                                autoFocus
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateType(t.id)}
+                                className="p-1 text-emerald-400 hover:text-emerald-300 cursor-pointer"
+                                title="Save"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingTypeId(null)}
+                                className="p-1 text-gray-400 hover:text-white cursor-pointer"
+                                title="Cancel"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-gray-200">{t.name}</span>
+                                <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-[#2a2a2a] text-gray-400">
+                                  {t.category === "broad" ? "broad" : "genre"}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingTypeId(t.id);
+                                    setEditingTypeName(t.name);
+                                  }}
+                                  className="p-1 text-gray-400 hover:text-white rounded hover:bg-[#2c2c2c] transition-colors cursor-pointer"
+                                  title="Edit type name"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                                {t.name !== "Nonfiction" && t.name !== "Fiction" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteType(t.id, t.name)}
+                                    className="p-1 text-red-400 hover:text-red-300 rounded hover:bg-red-500/10 transition-colors cursor-pointer"
+                                    title="Delete type from repo"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -518,7 +794,7 @@ export function ImportCourseModal({
               ) : (
                 <>
                   <BookOpen className="w-3.5 h-3.5" />
-                  <span>Create Book & Import Chapters</span>
+                  <span>Import Book</span>
                 </>
               )}
             </button>
@@ -529,5 +805,6 @@ export function ImportCourseModal({
     document.body
   );
 }
+
 
 export const ImportBookModal = ImportCourseModal;

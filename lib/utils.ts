@@ -118,13 +118,33 @@ export function getAuthorGoodreadsUrl(book: {
   return null;
 }
 
-export function getBookMainTypes(book: {
-  title?: string | null;
-  main_type?: string | null;
-  genres?: string[] | null;
-  description?: string | null;
-} | null | undefined): [string, string] {
-  if (!book) return ['Nonfiction', 'Biography'];
+export const DEFAULT_REPO_BOOK_TYPES: string[] = [
+  "Nonfiction",
+  "Fiction",
+  "Biography",
+  "Grammar",
+  "Science Fiction",
+  "Reference",
+  "Business",
+  "Technology",
+  "History",
+  "Literature",
+  "Mystery",
+  "Self-Help",
+  "Philosophy",
+  "Psychology",
+];
+
+export function getBookMainTypes(
+  book: {
+    title?: string | null;
+    main_type?: string | null;
+    genres?: string[] | null;
+    description?: string | null;
+  } | null | undefined,
+  repoTypes?: string[]
+): [string, string] {
+  if (!book) return ["Nonfiction", "Biography"];
 
   const rawGenres: string[] = [];
 
@@ -203,28 +223,49 @@ export function getBookMainTypes(book: {
     broadType = 'Fiction';
   }
 
-  // 2. Determine first genre: type xuất hiện đầu tiên trong genres trên Goodreads
+  // 2. Determine first genre: type xuất hiện đầu tiên trong genres trên Goodreads mà có trong repo types of book
   let firstGenre = '';
 
+  const activeRepoTypes = repoTypes && repoTypes.length > 0 ? repoTypes : DEFAULT_REPO_BOOK_TYPES;
+  const allowedGenres = activeRepoTypes.filter(
+    (t) => t.toLowerCase() !== 'nonfiction' && t.toLowerCase() !== 'fiction' && t.toLowerCase() !== 'non-fiction'
+  );
+
+  // First check: does any rawGenre match an allowed repo genre exactly (case-insensitive)?
   for (const g of rawGenres) {
-    const lower = g.toLowerCase();
-    // Skip if identical to broadType ('fiction' or 'nonfiction' or 'non-fiction')
-    if (lower !== 'fiction' && lower !== 'nonfiction' && lower !== 'non-fiction') {
-      firstGenre = g;
+    const matched = allowedGenres.find((t) => t.toLowerCase() === g.toLowerCase());
+    if (matched) {
+      firstGenre = matched;
       break;
     }
   }
 
-  // Fallbacks if firstGenre is still empty
+  // Second check: does any rawGenre contain or is contained in an allowed repo genre?
+  if (!firstGenre) {
+    for (const g of rawGenres) {
+      const gLower = g.toLowerCase();
+      if (gLower !== 'nonfiction' && gLower !== 'fiction' && gLower !== 'non-fiction') {
+        const matched = allowedGenres.find((t) => gLower.includes(t.toLowerCase()) || t.toLowerCase().includes(gLower));
+        if (matched) {
+          firstGenre = matched;
+          break;
+        }
+      }
+    }
+  }
+
+  // Fallbacks strictly to allowed repo types
   if (!firstGenre) {
     if (title.includes('optimist') || title.includes('openai') || title.includes('sam altman')) {
-      firstGenre = 'Biography';
+      firstGenre = allowedGenres.find(t => t.toLowerCase() === 'biography') || allowedGenres[0] || 'Biography';
     } else if (title.includes('grammar') || title.includes('destination') || title.includes('english')) {
-      firstGenre = 'Grammar';
+      firstGenre = allowedGenres.find(t => t.toLowerCase() === 'grammar') || allowedGenres[0] || 'Grammar';
     } else if (title.includes('hail mary') || title.includes('space') || title.includes('weir')) {
-      firstGenre = 'Science Fiction';
+      firstGenre = allowedGenres.find(t => t.toLowerCase() === 'science fiction') || allowedGenres[0] || 'Science Fiction';
     } else {
-      firstGenre = broadType === 'Fiction' ? 'Literature' : 'Reference';
+      firstGenre = broadType === 'Fiction'
+        ? (allowedGenres.find(t => t.toLowerCase() === 'literature') || allowedGenres[0] || 'Literature')
+        : (allowedGenres.find(t => t.toLowerCase() === 'reference') || allowedGenres[0] || 'Reference');
     }
   }
 

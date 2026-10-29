@@ -140,6 +140,14 @@ export async function ensureDatabaseInitialized(): Promise<void> {
           );
         `),
         db.run(sql`
+          CREATE TABLE IF NOT EXISTS book_types (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            category TEXT NOT NULL DEFAULT 'genre',
+            created_at TEXT NOT NULL
+          );
+        `),
+        db.run(sql`
           CREATE TABLE IF NOT EXISTS app_settings (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
@@ -221,6 +229,31 @@ export async function ensureDatabaseInitialized(): Promise<void> {
           WHERE drive_folder_id LIKE '%goodreads%' OR drive_folder_url LIKE '%goodreads%';
         `));
       } catch {}
+
+      
+      // Seed default book types in repo if empty
+      try {
+        const existingTypesCount = await db.run(sql.raw('SELECT count(*) as count FROM book_types'));
+        // If empty, seed default types
+        const defaultTypes = [
+          { id: 'nonfiction', name: 'Nonfiction', category: 'broad' },
+          { id: 'fiction', name: 'Fiction', category: 'broad' },
+          { id: 'biography', name: 'Biography', category: 'genre' },
+          { id: 'grammar', name: 'Grammar', category: 'genre' },
+          { id: 'science-fiction', name: 'Science Fiction', category: 'genre' },
+          { id: 'reference', name: 'Reference', category: 'genre' },
+          { id: 'business', name: 'Business', category: 'genre' },
+          { id: 'technology', name: 'Technology', category: 'genre' },
+          { id: 'history', name: 'History', category: 'genre' },
+          { id: 'literature', name: 'Literature', category: 'genre' },
+        ];
+        const nowIso = new Date().toISOString();
+        for (const t of defaultTypes) {
+          await db.run(sql.raw(`INSERT OR IGNORE INTO book_types (id, name, category, created_at) VALUES ('${t.id}', '${t.name}', '${t.category}', '${nowIso}')`));
+        }
+      } catch (e) {
+        console.error('Failed to seed default book types:', e);
+      }
 
       tablesChecked = true;
     })();

@@ -195,3 +195,16 @@ export const appSettings = sqliteTable('app_settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
 });
+
+export const bookTypes = sqliteTable(
+  'book_types',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull().unique(),
+    category: text('category').notNull().default('genre'),
+    createdAt: text('created_at').notNull(),
+  },
+  (table) => [
+    uniqueIndex('book_types_name_idx').on(table.name),
+  ]
+);

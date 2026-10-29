@@ -26,8 +26,9 @@ import {
   deleteCourse,
   syncCourseDrive,
   startAttempt,
+  getBookTypes,
 } from "@/lib/api";
-import { CourseSummary, QuizSummary } from "@/types/quiz";
+import { CourseSummary, QuizSummary, BookTypeItem } from "@/types/quiz";
 import { useToast } from "@/components/Toast";
 import { getBookMainTypes } from "@/lib/utils";
 
@@ -142,6 +143,17 @@ export default function BooksDashboardPage() {
 
   // Selected Type filter
   const [selectedType, setSelectedType] = useState<string>("all");
+  const [repoTypes, setRepoTypes] = useState<BookTypeItem[]>([]);
+
+  useEffect(() => {
+    getBookTypes()
+      .then((types) => {
+        if (types && types.length > 0) setRepoTypes(types);
+      })
+      .catch(() => {});
+  }, []);
+
+  const repoTypeNames = useMemo(() => repoTypes.map((t) => t.name), [repoTypes]);
 
   // Available unique types across all books (the 2 main types of books)
   const availableTypes = useMemo(() => {
@@ -150,7 +162,7 @@ export default function BooksDashboardPage() {
     let hasFiction = false;
 
     courses.forEach((c) => {
-      const [t1, t2] = getBookMainTypes(c);
+      const [t1, t2] = getBookMainTypes(c, repoTypeNames.length > 0 ? repoTypeNames : undefined);
       if (t1) {
         typesSet.add(t1);
         if (t1.toLowerCase() === "nonfiction") hasNonfiction = true;
@@ -174,13 +186,13 @@ export default function BooksDashboardPage() {
     result.push(...specificTypes);
 
     return result;
-  }, [courses]);
+  }, [courses, repoTypeNames]);
 
   // Type counts for each filter tab
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = { all: courses.length };
     courses.forEach((c) => {
-      const [t1, t2] = getBookMainTypes(c);
+      const [t1, t2] = getBookMainTypes(c, repoTypeNames.length > 0 ? repoTypeNames : undefined);
       const bookTypes = new Set<string>([t1.toLowerCase(), t2.toLowerCase()]);
 
       availableTypes.forEach((t) => {
@@ -190,7 +202,7 @@ export default function BooksDashboardPage() {
       });
     });
     return counts;
-  }, [courses, availableTypes]);
+  }, [courses, availableTypes, repoTypeNames]);
 
   // Filtered books by search query, status filter, and type filter
   const filteredCourses = useMemo(() => {
@@ -205,14 +217,14 @@ export default function BooksDashboardPage() {
       const statusMatch =
         selectedStatus === "all" || getBookStatus(c) === selectedStatus;
 
-      const [t1, t2] = getBookMainTypes(c);
+      const [t1, t2] = getBookMainTypes(c, repoTypeNames.length > 0 ? repoTypeNames : undefined);
       const bookTypes = new Set<string>([t1.toLowerCase(), t2.toLowerCase()]);
       const typeMatch =
         selectedType === "all" || bookTypes.has(selectedType.toLowerCase());
 
       return titleMatch && statusMatch && typeMatch;
     });
-  }, [courses, searchQuery, selectedStatus, selectedType, getBookStatus]);
+  }, [courses, searchQuery, selectedStatus, selectedType, getBookStatus, repoTypeNames]);
 
   // Handle Sync Book with Drive
   const handleSyncDrive = async (courseId: string) => {

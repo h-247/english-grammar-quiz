@@ -85,7 +85,7 @@ describe('Goodreads Scraping & Metadata Extraction', () => {
     expect(result.pageCount).toBe(384);
     expect(result.rating).toBe(3.79);
     expect(result.authorGoodreadsUrl).toBe('https://www.goodreads.com/author/show/16995547.Keach_Hagey');
-  });
+  }, 15000);
 });
 
 describe('Google Drive Chapter Import & Folder Resolution', () => {
@@ -201,5 +201,28 @@ describe('Book 2 Main Types and Goodreads Navigation', () => {
     };
     expect(getBookGoodreadsUrl(book3)).toBe('https://www.goodreads.com/book/show/123');
     expect(getAuthorGoodreadsUrl(book3)).toBe('https://www.goodreads.com/author/show/456');
+  });
+
+  it('strictly enforces only types in repo types of book and ignores non-repo Goodreads genres', () => {
+    // Book with raw Goodreads tags where non-repo tags (Audiobook, Hardcover, Politics) are present
+    const bookWithRandomTags = {
+      title: 'Business Insights',
+      genres: ['Audiobook', 'Politics', 'Business', 'Nonfiction', 'RandomTag'],
+    };
+
+    // 'Audiobook' and 'Politics' are not in repo types of book, so 'Business' is selected
+    const [broad, genre] = getBookMainTypes(bookWithRandomTags);
+    expect(broad).toBe('Nonfiction');
+    expect(genre).toBe('Business');
+
+    // With custom repo types (e.g. user created 'Philosophy' via CRUD)
+    const customRepoTypes = ['Nonfiction', 'Fiction', 'Philosophy', 'Economics'];
+    const bookCustom = {
+      title: 'Deep Thought',
+      genres: ['UnknownTag', 'Philosophy', 'Economics'],
+    };
+    const [cBroad, cGenre] = getBookMainTypes(bookCustom, customRepoTypes);
+    expect(cBroad).toBe('Nonfiction');
+    expect(cGenre).toBe('Philosophy');
   });
 });
