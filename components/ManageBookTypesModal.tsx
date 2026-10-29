@@ -28,13 +28,7 @@ export function ManageBookTypesModal({
   onTypesChange,
 }: ManageBookTypesModalProps) {
   const [mounted, setMounted] = useState(false);
-  const [types, setTypes] = useState<BookTypeItem[]>(() =>
-    DEFAULT_REPO_BOOK_TYPES.map((name) => ({
-      id: name.toLowerCase().replace(/\s+/g, "-"),
-      name,
-      category: "genre",
-    }))
-  );
+  const [types, setTypes] = useState<BookTypeItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [newTypeName, setNewTypeName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,7 +44,7 @@ export function ManageBookTypesModal({
     setIsLoading(true);
     try {
       const data = await getBookTypes();
-      if (data && data.length > 0) {
+      if (Array.isArray(data)) {
         setTypes(data);
         onTypesChange?.(data);
       }

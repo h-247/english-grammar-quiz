@@ -199,40 +199,32 @@ export async function ensureDatabaseInitialized(): Promise<void> {
         `));
       } catch {}
 
-      // Backfill and fix The Optimist (Biography, Keach Hagey author URL, and remove any bad Goodreads drive URLs)
+      // Backfill initial books only if main_type is missing or invalid (never overwrite user edits)
       try {
         await db.run(sql.raw(`
           UPDATE courses
           SET main_type = 'Biography',
-              genres = '["Biography","Artificial Intelligence","Business","Technology","Audiobook","Science","Biography Memoir","History","Politics"]',
-              goodreads_url = 'https://www.goodreads.com/book/show/223400731-the-optimist',
-              author = 'Keach Hagey',
-              author_goodreads_url = 'https://www.goodreads.com/author/show/16995547.Keach_Hagey',
-              rating = 3.79,
-              rating_count = 1352,
-              page_count = 384
-          WHERE lower(title) LIKE '%optimist%' OR lower(author) LIKE '%keach%';
+              genres = '["Biography"]',
+              goodreads_url = COALESCE(NULLIF(goodreads_url, ''), 'https://www.goodreads.com/book/show/223400731-the-optimist'),
+              author = COALESCE(NULLIF(author, ''), 'Keach Hagey'),
+              author_goodreads_url = COALESCE(NULLIF(author_goodreads_url, ''), 'https://www.goodreads.com/author/show/16995547.Keach_Hagey'),
+              rating = COALESCE(rating, 3.79),
+              page_count = COALESCE(page_count, 384)
+          WHERE (lower(title) LIKE '%optimist%' OR lower(author) LIKE '%keach%')
+            AND (main_type IS NULL OR main_type = '' OR lower(main_type) IN ('nonfiction', 'fiction', 'non-fiction'));
 
           UPDATE courses
           SET main_type = 'Self Help',
-              genres = '["Self Help","Psychology","Nonfiction","Personal Development","Audiobook","Personal Growth","Business"]',
+              genres = '["Self Help"]',
               goodreads_url = COALESCE(NULLIF(goodreads_url, ''), 'https://www.goodreads.com/book/show/40603783-the-defining-decade'),
-              author = 'Meg Jay',
-              author_goodreads_url = 'https://www.goodreads.com/author/show/1038942.Meg_Jay',
-              drive_folder_id = '1LQDIbz4mao1NaHkGX-welZbG0BlZNsWY',
-              drive_folder_url = 'https://drive.google.com/drive/folders/1LQDIbz4mao1NaHkGX-welZbG0BlZNsWY',
-              rating = 4.1,
-              rating_count = 95421,
-              page_count = 273
-          WHERE lower(title) LIKE '%defining decade%' OR lower(author) LIKE '%meg jay%';
-
-          UPDATE courses
-          SET main_type = 'Biography'
-          WHERE lower(main_type) IN ('nonfiction', 'fiction', 'non-fiction', 'nonfiction & biography', 'biography & nonfiction');
-
-          UPDATE courses
-          SET main_type = 'Grammar'
-          WHERE lower(main_type) IN ('nonfiction & grammar', 'grammar & nonfiction');
+              author = COALESCE(NULLIF(author, ''), 'Meg Jay'),
+              author_goodreads_url = COALESCE(NULLIF(author_goodreads_url, ''), 'https://www.goodreads.com/author/show/1038942.Meg_Jay'),
+              drive_folder_id = COALESCE(NULLIF(drive_folder_id, ''), '1LQDIbz4mao1NaHkGX-welZbG0BlZNsWY'),
+              drive_folder_url = COALESCE(NULLIF(drive_folder_url, ''), 'https://drive.google.com/drive/folders/1LQDIbz4mao1NaHkGX-welZbG0BlZNsWY'),
+              rating = COALESCE(rating, 4.1),
+              page_count = COALESCE(page_count, 273)
+          WHERE (lower(title) LIKE '%defining decade%' OR lower(author) LIKE '%meg jay%')
+            AND (main_type IS NULL OR main_type = '' OR lower(main_type) IN ('nonfiction', 'fiction', 'non-fiction'));
         `));
       } catch {}
 
@@ -264,27 +256,40 @@ export async function ensureDatabaseInitialized(): Promise<void> {
       } catch {}
 
       
-      // Seed default book types in repo if empty (excluding nonfiction / fiction)
+      // Seed default book types in repo ONCE only on fresh new database (never overwrite user deletions)
       try {
-        await db.run(sql.raw("DELETE FROM book_types WHERE lower(name) IN ('nonfiction', 'fiction', 'non-fiction')"));
-        const defaultTypes = [
-          { id: 'biography', name: 'Biography', category: 'genre' },
-          { id: 'grammar', name: 'Grammar', category: 'genre' },
-          { id: 'science-fiction', name: 'Science Fiction', category: 'genre' },
-          { id: 'reference', name: 'Reference', category: 'genre' },
-          { id: 'business', name: 'Business', category: 'genre' },
-          { id: 'technology', name: 'Technology', category: 'genre' },
-          { id: 'history', name: 'History', category: 'genre' },
-          { id: 'literature', name: 'Literature', category: 'genre' },
-          { id: 'mystery', name: 'Mystery', category: 'genre' },
-          { id: 'self-help', name: 'Self-Help', category: 'genre' },
-          { id: 'philosophy', name: 'Philosophy', category: 'genre' },
-          { id: 'psychology', name: 'Psychology', category: 'genre' },
-        ];
-        const nowIso = new Date().toISOString();
-        for (const t of defaultTypes) {
-          await db.run(sql.raw(`INSERT OR IGNORE INTO book_types (id, name, category, created_at) VALUES ('${t.id}', '${t.name}', '${t.category}', '${nowIso}')`));
+        const seededRecord = await db.run(
+          sql.raw("SELECT value FROM app_settings WHERE key = 'has_seeded_book_types'")
+        );
+        const seededRows = (seededRecord as any)?.rows || (seededRecord as any)?.results || [];
+        const hasSeeded = seededRows.length > 0 && (seededRows[0]?.value === 'true' || seededRows[0]?.[0] === 'true');
+
+        if (!hasSeeded) {
+          const countRecord = await db.run(sql.raw("SELECT count(*) as count FROM book_types"));
+          const countRows = (countRecord as any)?.rows || (countRecord as any)?.results || [];
+          const count = countRows[0]?.count ?? countRows[0]?.[0] ?? 0;
+
+          if (count === 0) {
+            const defaultTypes = [
+              { id: 'biography', name: 'Biography', category: 'genre' },
+              { id: 'self-help', name: 'Self Help', category: 'genre' },
+            ];
+            const nowIso = new Date().toISOString();
+            for (const t of defaultTypes) {
+              await db.run(
+                sql.raw(
+                  `INSERT OR IGNORE INTO book_types (id, name, category, created_at) VALUES ('${t.id}', '${t.name}', '${t.category}', '${nowIso}')`
+                )
+              );
+            }
+          }
+          await db.run(
+            sql.raw("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('has_seeded_book_types', 'true')")
+          );
         }
+
+        // Always clean up any unwanted nonfiction/fiction
+        await db.run(sql.raw("DELETE FROM book_types WHERE lower(name) IN ('nonfiction', 'fiction', 'non-fiction')"));
       } catch (e) {
         console.error('Failed to seed default book types:', e);
       }

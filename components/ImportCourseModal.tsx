@@ -79,13 +79,7 @@ export function ImportCourseModal({
   const [isbn, setIsbn] = useState<string | undefined>();
 
   // Repo Types of Book state & CRUD
-  const [repoTypes, setRepoTypes] = useState<BookTypeItem[]>(() =>
-    DEFAULT_REPO_BOOK_TYPES.map((name) => ({
-      id: name.toLowerCase().replace(/\s+/g, "-"),
-      name,
-      category: "genre",
-    }))
-  );
+  const [repoTypes, setRepoTypes] = useState<BookTypeItem[]>([]);
   const [showTypeCrud, setShowTypeCrud] = useState(true);
   const [newTypeName, setNewTypeName] = useState("");
   const [isCreatingType, setIsCreatingType] = useState(false);
@@ -176,7 +170,7 @@ export function ImportCourseModal({
     let isCancelled = false;
     getBookTypes()
       .then((types) => {
-        if (!isCancelled && types && types.length > 0) {
+        if (!isCancelled && Array.isArray(types)) {
           const filtered = types.filter(
             (t) =>
               t.name.toLowerCase() !== "nonfiction" &&

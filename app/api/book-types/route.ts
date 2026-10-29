@@ -38,8 +38,14 @@ export async function GET() {
         t.name.toLowerCase() !== 'non-fiction'
     );
 
-    // If empty for any reason, seed defaults
-    if (!items || items.length === 0) {
+    // Only seed initial defaults if never seeded before
+    const seededRecord = await db.run(
+      sql`SELECT value FROM app_settings WHERE key = 'has_seeded_book_types'`
+    );
+    const seededRows = (seededRecord as any)?.rows || (seededRecord as any)?.results || [];
+    const hasSeeded = seededRows.length > 0 && (seededRows[0]?.value === 'true' || seededRows[0]?.[0] === 'true');
+
+    if (!hasSeeded && (!items || items.length === 0)) {
       const nowIso = new Date().toISOString();
       for (const t of DEFAULT_REPO_TYPES) {
         try {
@@ -51,6 +57,7 @@ export async function GET() {
           });
         } catch {}
       }
+      await db.run(sql`INSERT OR REPLACE INTO app_settings (key, value) VALUES ('has_seeded_book_types', 'true')`);
       items = await db.select().from(bookTypes).orderBy(asc(bookTypes.name)).all();
       items = items.filter(
         (t) =>

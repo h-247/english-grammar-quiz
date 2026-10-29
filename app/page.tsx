@@ -151,7 +151,7 @@ export default function BooksDashboardPage() {
   useEffect(() => {
     getBookTypes()
       .then((types) => {
-        if (types && types.length > 0) setRepoTypes(types);
+        if (Array.isArray(types)) setRepoTypes(types);
       })
       .catch(() => {});
   }, []);

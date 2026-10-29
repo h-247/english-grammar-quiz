@@ -43,20 +43,14 @@ export function EditCourseModal({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [repoTypes, setRepoTypes] = useState<BookTypeItem[]>(() =>
-    DEFAULT_REPO_BOOK_TYPES.map((name) => ({
-      id: name.toLowerCase().replace(/\s+/g, "-"),
-      name,
-      category: "genre",
-    }))
-  );
+  const [repoTypes, setRepoTypes] = useState<BookTypeItem[]>([]);
 
   useEffect(() => {
     if (!isOpen) return;
     let isCancelled = false;
     getBookTypes()
       .then((types) => {
-        if (!isCancelled && types && types.length > 0) {
+        if (!isCancelled && Array.isArray(types)) {
           const filtered = types.filter(
             (t) =>
               t.name.toLowerCase() !== "nonfiction" &&

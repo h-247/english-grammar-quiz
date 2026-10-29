@@ -298,5 +298,14 @@ describe('Book Main Types and Goodreads Navigation', () => {
     };
     const ddTypes = getBookMainTypes(definingDecade, ['Biography', 'Self Help']);
     expect(ddTypes).toEqual(['Self Help']);
+
+    // Preserves repo types without resetting on restart
+    const userRepoTypes = ['Biography', 'Self Help'];
+    const book = {
+      title: 'A Random Business Book',
+      genres: ['Business', 'Technology', 'Biography'],
+    };
+    const persistedTypes = getBookMainTypes(book, userRepoTypes);
+    expect(persistedTypes).toEqual(['Biography']);
   });
 });
