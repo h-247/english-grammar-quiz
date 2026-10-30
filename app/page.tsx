@@ -310,6 +310,40 @@ export default function BooksDashboardPage() {
     }
   }, []);
 
+  // Keyboard shortcut Ctrl+Shift to open Import Book modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
+        const key = e.key.toLowerCase();
+        if (
+          e.key === "Shift" ||
+          e.key === "Control" ||
+          e.code.startsWith("Shift") ||
+          e.code.startsWith("Control") ||
+          key === "i" ||
+          key === "o" ||
+          key === "b"
+        ) {
+          e.preventDefault();
+          setIsImportCourseOpen(true);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const handleToggleSidebar = () => {
     setIsSidebarOpen((prev) => {
       const next = !prev;

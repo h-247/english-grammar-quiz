@@ -173,6 +173,41 @@ export function Sidebar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Global shortcut Ctrl+Shift to open Import Book modal
+  useEffect(() => {
+    if (!handleOpenImport) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
+        const key = e.key.toLowerCase();
+        if (
+          e.key === "Shift" ||
+          e.key === "Control" ||
+          e.code.startsWith("Shift") ||
+          e.code.startsWith("Control") ||
+          key === "i" ||
+          key === "o" ||
+          key === "b"
+        ) {
+          e.preventDefault();
+          handleOpenImport();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleOpenImport]);
+
   const isMainDashboard = Boolean(onSelectStatus || onSelectGenre);
 
   // Common User Menu Popover (Gộp Drive, Prompt Link, Settings, Sign out)
@@ -364,10 +399,16 @@ export function Sidebar({
                     <button
                       type="button"
                       onClick={handleOpenImport}
-                      className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white text-black font-semibold text-xs hover:bg-neutral-200 transition-all shadow-sm cursor-pointer active:scale-98"
+                      title="Import Book (Ctrl+Shift)"
+                      className="w-full flex items-center justify-between py-2 px-3 rounded-xl bg-white text-black font-semibold text-xs hover:bg-neutral-200 transition-all shadow-sm cursor-pointer active:scale-98 group"
                     >
-                      <Plus className="w-4 h-4 text-black stroke-[2.5]" />
-                      <span>Import Book</span>
+                      <div className="flex items-center gap-2">
+                        <Plus className="w-4 h-4 text-black stroke-[2.5]" />
+                        <span>Import Book</span>
+                      </div>
+                      <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/10 text-neutral-700 border border-black/10 group-hover:bg-black/15 transition-colors">
+                        Ctrl+Shift
+                      </kbd>
                     </button>
                   )}
 
@@ -621,7 +662,7 @@ export function Sidebar({
                 <button
                   type="button"
                   onClick={handleOpenImport}
-                  title="Import Book"
+                  title="Import Book (Ctrl+Shift)"
                   className="w-10 h-10 rounded-xl text-gray-400 hover:text-white hover:bg-[#252525] flex items-center justify-center transition-colors cursor-pointer"
                 >
                   <SquarePen className="w-4 h-4" />
