@@ -13,7 +13,6 @@ import {
   Bookmark,
   SlidersHorizontal,
   Tag,
-  PanelLeft,
 } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import { CourseCard } from "@/components/CourseCard";
@@ -344,61 +343,6 @@ export default function BooksDashboardPage() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-        {/* ChatGPT Style Minimal Header Bar */}
-        <header className="sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6 h-13 bg-[#212121]/95 backdrop-blur-md border-b border-[#2a2a2a]/60 shrink-0">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleToggleSidebar}
-              title={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#2c2c2c] transition-colors cursor-pointer"
-            >
-              <PanelLeft className="w-4 h-4" />
-            </button>
-
-            {/* Active Filter Indicators */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-white tracking-tight">
-                {selectedGenre !== "all" ? selectedGenre : "Books"}
-              </span>
-              {selectedGenre !== "all" && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-600/30 text-purple-300 border border-purple-500/40">
-                  Genre: {selectedGenre}
-                </span>
-              )}
-              {selectedStatus !== "all" && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#2a2a2a] text-gray-300 border border-[#3d3d3d]">
-                  Status: {selectedStatus}
-                </span>
-              )}
-              {searchQuery && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#2a2a2a] text-amber-300 border border-amber-500/30">
-                  Search: &quot;{searchQuery}&quot;
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {(selectedGenre !== "all" || selectedStatus !== "all" || searchQuery) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedGenre("all");
-                  setSelectedStatus("all");
-                  setSearchQuery("");
-                }}
-                className="text-xs text-purple-400 hover:text-purple-300 hover:underline cursor-pointer"
-              >
-                Clear Filters
-              </button>
-            )}
-            <span className="text-xs text-gray-500 hidden sm:inline">
-              {filteredCourses.length} {filteredCourses.length === 1 ? "book" : "books"}
-            </span>
-          </div>
-        </header>
-
         {/* Content Body */}
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
 
