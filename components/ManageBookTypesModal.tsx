@@ -95,7 +95,7 @@ export function ManageBookTypesModal({
       onTypesChange?.(updated);
       setNewTypeName("");
     } catch (err: any) {
-      setError(err.message || "Failed to create book type");
+      setError(err.message || "Failed to create book genre");
     } finally {
       setIsSubmitting(false);
     }
@@ -114,7 +114,7 @@ export function ManageBookTypesModal({
       onTypesChange?.(updatedList);
       setEditingTypeId(null);
     } catch (err: any) {
-      setError(err.message || "Failed to update book type");
+      setError(err.message || "Failed to update book genre");
     }
   };
 
@@ -125,7 +125,7 @@ export function ManageBookTypesModal({
       setTypes(updatedList);
       onTypesChange?.(updatedList);
     } catch (err: any) {
-      setError(err.message || "Failed to delete book type");
+      setError(err.message || "Failed to delete book genre");
     }
   };
 
@@ -146,9 +146,9 @@ export function ManageBookTypesModal({
               <Tag className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">CRUD Types of Books</h2>
+              <h2 className="text-lg font-bold text-white">CRUD Genres of Books</h2>
               <p className="text-xs text-gray-400">
-                Manage types in repo types of book (Create, Read, Update, Delete)
+                Manage genres in repo genres of book (Create, Read, Update, Delete)
               </p>
             </div>
           </div>
@@ -168,17 +168,17 @@ export function ManageBookTypesModal({
             </div>
           )}
 
-          {/* Create New Type Form */}
+          {/* Create New Genre Form */}
           <form onSubmit={handleCreate} className="p-3.5 rounded-xl bg-[#222222] border border-[#333333] space-y-2.5">
             <label className="text-xs font-bold uppercase tracking-wider text-purple-300 block">
-              + Add New Type to Repo
+              + Add New Genre to Repo
             </label>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={newTypeName}
                 onChange={(e) => setNewTypeName(e.target.value)}
-                placeholder="e.g. Philosophy, Psychology, Memoir..."
+                placeholder="e.g. Science Fiction, Self Help, Mystery..."
                 className="flex-1 bg-[#161616] border border-[#3e3e3e] rounded-xl px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-400 transition-colors"
               />
               <button
@@ -187,15 +187,15 @@ export function ManageBookTypesModal({
                 className="px-4 py-2 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white transition-colors cursor-pointer disabled:opacity-50 shrink-0 flex items-center gap-1.5 shadow-sm"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add</span>
+                <span>Add Genre</span>
               </button>
             </div>
           </form>
 
-          {/* List of Types in Repo */}
+          {/* List of Genres in Repo */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs font-semibold text-gray-400 px-1">
-              <span>Repo Types of Book ({types.length})</span>
+              <span>Repo Genres of Book ({types.length})</span>
               {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-400" />}
             </div>
 
@@ -222,7 +222,7 @@ export function ManageBookTypesModal({
                         type="button"
                         onClick={() => handleUpdate(t.id)}
                         className="p-1 text-emerald-400 hover:text-emerald-300 cursor-pointer"
-                        title="Save type name"
+                        title="Save genre name"
                       >
                         <Check className="w-4 h-4" />
                       </button>
@@ -248,7 +248,7 @@ export function ManageBookTypesModal({
                             setEditingTypeName(t.name);
                           }}
                           className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-[#2c2c2c] transition-colors cursor-pointer"
-                          title="Edit type name (Update)"
+                          title="Edit genre name (Update)"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
@@ -256,7 +256,7 @@ export function ManageBookTypesModal({
                           type="button"
                           onClick={() => handleDelete(t.id)}
                           className="p-1.5 text-red-400 hover:text-red-300 rounded-lg hover:bg-red-500/10 transition-colors cursor-pointer"
-                          title="Delete type from repo"
+                          title="Delete genre from repo"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>

@@ -225,11 +225,11 @@ export function EditCourseModal({
             />
           </div>
 
-          {/* Book Type (Repo Types Only) */}
+          {/* Book Genre (Repo Genres Only) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] block">
-                Types of Book ({selectedTypes.length})
+                Genres of Book ({selectedTypes.length})
               </label>
             </div>
             <div className="flex flex-wrap gap-1.5 min-h-[38px] p-2 rounded-xl bg-[#161616] border border-[#333333] items-center">
@@ -254,7 +254,7 @@ export function EditCourseModal({
             </div>
             <div className="space-y-1">
               <span className="text-[10px] text-gray-400 block font-medium">
-                Click to select / deselect from repo types:
+                Click to select / deselect from repo genres:
               </span>
               <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
                 {repoTypes.map((t) => {

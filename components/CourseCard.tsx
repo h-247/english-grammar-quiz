@@ -29,7 +29,10 @@ interface CourseCardProps {
   onStartQuiz?: (quiz: QuizSummary, mode: "timed" | "practice") => void;
   selectedType?: string;
   onSelectType?: (type: string) => void;
+  selectedGenre?: string;
+  onSelectGenre?: (genre: string) => void;
   repoTypes?: string[];
+  repoGenres?: string[];
 }
 
 export const CourseCard = memo(function CourseCard({
@@ -39,7 +42,10 @@ export const CourseCard = memo(function CourseCard({
   onDeleteCourse,
   selectedType,
   onSelectType,
+  selectedGenre,
+  onSelectGenre,
   repoTypes,
+  repoGenres,
 }: CourseCardProps) {
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -109,9 +115,13 @@ export const CourseCard = memo(function CourseCard({
       ? "Doing"
       : "To do");
 
-  const mainTypes = getBookMainTypes(
+  const currentGenre = selectedGenre ?? selectedType;
+  const handleSelectGenre = onSelectGenre ?? onSelectType;
+  const genresList = repoGenres ?? repoTypes;
+
+  const mainGenres = getBookMainTypes(
     course,
-    repoTypes && repoTypes.length > 0 ? repoTypes : undefined
+    genresList && genresList.length > 0 ? genresList : undefined
   );
   const bookGoodreadsUrl = getBookGoodreadsUrl(course);
   const authorGoodreadsUrl = getAuthorGoodreadsUrl(course);
@@ -153,26 +163,26 @@ export const CourseCard = memo(function CourseCard({
               <span>{bookStatus}</span>
             </span>
 
-            {/* 2 Main Types */}
-            {mainTypes.map((t, idx) => {
+            {/* 2 Main Genres */}
+            {mainGenres.map((g, idx) => {
               const isSelected =
-                selectedType && selectedType.toLowerCase() === t.toLowerCase();
+                currentGenre && currentGenre.toLowerCase() === g.toLowerCase();
               return (
                 <button
                   key={idx}
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onSelectType?.(isSelected ? "all" : t);
+                    handleSelectGenre?.(isSelected ? "all" : g);
                   }}
-                  title={`Filter books by "${t}"`}
+                  title={`Filter books by genre "${g}"`}
                   className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
                     isSelected
                       ? "bg-purple-600 text-white border border-purple-400 shadow-sm"
                       : "bg-purple-500/15 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 hover:border-purple-400"
                   }`}
                 >
-                  {t}
+                  {g}
                 </button>
               );
             })}

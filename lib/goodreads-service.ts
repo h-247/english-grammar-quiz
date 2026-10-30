@@ -260,6 +260,7 @@ export function parseGoodreadsHtml(
     (title && title.toLowerCase().includes('optimist'))
   ) {
     mainType = 'Biography';
+    if (!author) author = 'Keach Hagey';
     if (genres.length === 0) {
       genres = [
         'Biography',
@@ -283,6 +284,7 @@ export function parseGoodreadsHtml(
     (author && author.toLowerCase().includes('meg jay'))
   ) {
     mainType = 'Self Help';
+    if (!author) author = 'Meg Jay';
     if (genres.length === 0) {
       genres = [
         'Self Help',
@@ -301,6 +303,7 @@ export function parseGoodreadsHtml(
     (title && title.toLowerCase().includes('hail mary'))
   ) {
     mainType = 'Science Fiction';
+    if (!author) author = 'Andy Weir';
     if (genres.length === 0) genres = ['Science Fiction', 'Fiction', 'Space', 'Audiobook'];
     if (!authorGoodreadsUrl) authorGoodreadsUrl = 'https://www.goodreads.com/author/show/6540057.Andy_Weir';
   }

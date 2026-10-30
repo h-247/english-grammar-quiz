@@ -144,26 +144,26 @@ export default function BooksDashboardPage() {
     return { all: courses.length, todo, doing, done };
   }, [courses, getBookStatus]);
 
-  // Selected Type filter
-  const [selectedType, setSelectedType] = useState<string>("all");
-  const [repoTypes, setRepoTypes] = useState<BookTypeItem[]>([]);
+  // Selected Genre filter
+  const [selectedGenre, setSelectedGenre] = useState<string>("all");
+  const [repoGenres, setRepoGenres] = useState<BookTypeItem[]>([]);
 
   useEffect(() => {
     getBookTypes()
       .then((types) => {
-        if (Array.isArray(types)) setRepoTypes(types);
+        if (Array.isArray(types)) setRepoGenres(types);
       })
       .catch(() => {});
   }, []);
 
-  const repoTypeNames = useMemo(() => repoTypes.map((t) => t.name), [repoTypes]);
+  const repoGenreNames = useMemo(() => repoGenres.map((t) => t.name), [repoGenres]);
 
-  // Available unique types across all books
-  const availableTypes = useMemo(() => {
-    const typesSet = new Set<string>();
+  // Available unique genres across all books
+  const availableGenres = useMemo(() => {
+    const genresSet = new Set<string>();
 
     courses.forEach((c) => {
-      const types = getBookMainTypes(c, repoTypeNames.length > 0 ? repoTypeNames : undefined);
+      const types = getBookMainTypes(c, repoGenreNames.length > 0 ? repoGenreNames : undefined);
       types.forEach((t) => {
         if (
           t &&
@@ -171,21 +171,21 @@ export default function BooksDashboardPage() {
           t.toLowerCase() !== "fiction" &&
           t.toLowerCase() !== "non-fiction"
         ) {
-          typesSet.add(t);
+          genresSet.add(t);
         }
       });
     });
 
-    const list = Array.from(typesSet);
+    const list = Array.from(genresSet);
     list.sort((a, b) => a.localeCompare(b));
     return list;
-  }, [courses, repoTypeNames]);
+  }, [courses, repoGenreNames]);
 
-  // Type counts for each filter tab
-  const typeCounts = useMemo(() => {
+  // Genre counts for each filter tab
+  const genreCounts = useMemo(() => {
     const counts: Record<string, number> = { all: courses.length };
     courses.forEach((c) => {
-      const types = getBookMainTypes(c, repoTypeNames.length > 0 ? repoTypeNames : undefined);
+      const types = getBookMainTypes(c, repoGenreNames.length > 0 ? repoGenreNames : undefined);
       const bookTypes = new Set<string>(
         types
           .filter(
@@ -197,16 +197,16 @@ export default function BooksDashboardPage() {
           .map((t) => t.toLowerCase())
       );
 
-      availableTypes.forEach((t) => {
-        if (bookTypes.has(t.toLowerCase())) {
-          counts[t] = (counts[t] || 0) + 1;
+      availableGenres.forEach((g) => {
+        if (bookTypes.has(g.toLowerCase())) {
+          counts[g] = (counts[g] || 0) + 1;
         }
       });
     });
     return counts;
-  }, [courses, availableTypes, repoTypeNames]);
+  }, [courses, availableGenres, repoGenreNames]);
 
-  // Filtered books by search query, status filter, and type filter
+  // Filtered books by search query, status filter, and genre filter
   const filteredCourses = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return courses.filter((c) => {
@@ -219,14 +219,14 @@ export default function BooksDashboardPage() {
       const statusMatch =
         selectedStatus === "all" || getBookStatus(c) === selectedStatus;
 
-      const types = getBookMainTypes(c, repoTypeNames.length > 0 ? repoTypeNames : undefined);
+      const types = getBookMainTypes(c, repoGenreNames.length > 0 ? repoGenreNames : undefined);
       const bookTypes = new Set<string>(types.map((t) => t.toLowerCase()));
-      const typeMatch =
-        selectedType === "all" || bookTypes.has(selectedType.toLowerCase());
+      const genreMatch =
+        selectedGenre === "all" || bookTypes.has(selectedGenre.toLowerCase());
 
-      return titleMatch && statusMatch && typeMatch;
+      return titleMatch && statusMatch && genreMatch;
     });
-  }, [courses, searchQuery, selectedStatus, selectedType, getBookStatus, repoTypeNames]);
+  }, [courses, searchQuery, selectedStatus, selectedGenre, getBookStatus, repoGenreNames]);
 
   // Handle Sync Book with Drive
   const handleSyncDrive = async (courseId: string) => {
@@ -348,11 +348,11 @@ export default function BooksDashboardPage() {
 
             <button
               onClick={() => setIsManageTypesOpen(true)}
-              title="CRUD Types of Books (Add, Edit, Delete types in repo)"
+              title="CRUD Genres of Books (Add, Edit, Delete genres in repo)"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#222222] text-purple-300 hover:text-white hover:bg-[#2c2c2c] border border-purple-500/30 transition-all cursor-pointer shrink-0"
             >
               <Tag className="w-3.5 h-3.5 text-purple-400" />
-              <span className="hidden sm:inline">Types of Book</span>
+              <span className="hidden sm:inline">Genres of Book</span>
             </button>
 
             <button
@@ -365,7 +365,7 @@ export default function BooksDashboardPage() {
           </div>
         </div>
 
-        {/* Filters: Status & Type Filters */}
+        {/* Filters: Status & Genre Filters */}
         {courses.length > 0 && (
           <div className="space-y-3 mb-6 bg-[#181818] p-3.5 rounded-2xl border border-[#2a2a2a]">
             {/* Status Filter Tabs */}
@@ -404,65 +404,65 @@ export default function BooksDashboardPage() {
               ))}
             </div>
 
-            {/* Type / Genre Filter Tabs */}
-            {availableTypes.length > 0 && (
+            {/* Genre Filter Tabs */}
+            {availableGenres.length > 0 && (
               <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-none border-t border-[#262626] pt-2.5">
                 <span className="text-xs font-semibold text-purple-300 flex items-center gap-1 shrink-0 min-w-[52px]">
                   <Bookmark className="w-3.5 h-3.5 text-purple-400" />
-                  Type:
+                  Genre:
                 </span>
                 <button
-                  onClick={() => setSelectedType("all")}
+                  onClick={() => setSelectedGenre("all")}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
-                    selectedType === "all"
+                    selectedGenre === "all"
                       ? "bg-purple-600 text-white shadow-sm"
                       : "bg-[#222222] text-purple-300 hover:text-white border border-purple-500/25 hover:border-purple-500/50"
                   }`}
                 >
-                  <span>All Types</span>
+                  <span>All Genres</span>
                   <span
                     className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                      selectedType === "all"
+                      selectedGenre === "all"
                         ? "bg-purple-700 text-white"
                         : "bg-[#2a2a2a] text-purple-300"
                     }`}
                   >
-                    {typeCounts.all || courses.length}
+                    {genreCounts.all || courses.length}
                   </span>
                 </button>
 
-                {availableTypes.map((type) => (
+                {availableGenres.map((genre) => (
                   <button
-                    key={type}
-                    onClick={() => setSelectedType(selectedType === type ? "all" : type)}
+                    key={genre}
+                    onClick={() => setSelectedGenre(selectedGenre === genre ? "all" : genre)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
-                      selectedType === type
+                      selectedGenre === genre
                         ? "bg-purple-600 text-white shadow-sm"
                         : "bg-[#222222] text-purple-300 hover:text-white border border-purple-500/25 hover:border-purple-500/50"
                     }`}
                   >
-                    <span>{type}</span>
+                    <span>{genre}</span>
                     <span
                       className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                        selectedType === type
+                        selectedGenre === genre
                           ? "bg-purple-700 text-white"
                           : "bg-[#2a2a2a] text-purple-300"
                       }`}
                     >
-                      {typeCounts[type] || 0}
+                      {genreCounts[genre] || 0}
                     </span>
                   </button>
                 ))}
 
-                {/* CRUD Types of Book Button */}
+                {/* CRUD Genres of Book Button */}
                 <button
                   type="button"
                   onClick={() => setIsManageTypesOpen(true)}
                   className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-purple-500/20 text-purple-200 hover:bg-purple-500/30 border border-purple-500/40 transition-all flex items-center gap-1 shrink-0 cursor-pointer shadow-sm ml-1"
-                  title="CRUD Types of Books (Add, Edit, Delete types in repo)"
+                  title="CRUD Genres of Books (Add, Edit, Delete genres in repo)"
                 >
                   <Plus className="w-3.5 h-3.5 text-purple-300" />
-                  <span>Add / Manage Types</span>
+                  <span>Add / Manage Genres</span>
                 </button>
               </div>
             )}
@@ -509,13 +509,13 @@ export default function BooksDashboardPage() {
             <p className="text-xs text-gray-400 max-w-md mx-auto mb-4">
               No books match the selected filters
               {selectedStatus !== "all" ? ` (Status: "${selectedStatus}")` : ""}
-              {selectedType !== "all" ? ` (Type: "${selectedType}")` : ""}
+              {selectedGenre !== "all" ? ` (Genre: "${selectedGenre}")` : ""}
               {searchQuery ? ` or search &quot;${searchQuery}&quot;` : ""}.
             </p>
             <button
               onClick={() => {
                 setSelectedStatus("all");
-                setSelectedType("all");
+                setSelectedGenre("all");
                 setSearchQuery("");
               }}
               className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[#2a2a2a] hover:bg-[#353535] text-white transition-colors cursor-pointer"
@@ -534,9 +534,12 @@ export default function BooksDashboardPage() {
                 onDeleteCourse={handleDeleteCourseClick}
                 onEditCourse={(c) => setCourseToEdit(c)}
                 onStartQuiz={handleStartQuiz}
-                selectedType={selectedType}
-                onSelectType={(t) => setSelectedType(t)}
-                repoTypes={repoTypeNames}
+                selectedGenre={selectedGenre}
+                onSelectGenre={(g) => setSelectedGenre(g)}
+                selectedType={selectedGenre}
+                onSelectType={(t) => setSelectedGenre(t)}
+                repoGenres={repoGenreNames}
+                repoTypes={repoGenreNames}
               />
             ))}
           </div>
@@ -554,14 +557,14 @@ export default function BooksDashboardPage() {
         onCreateCourse={createCourse}
       />
 
-      {/* Manage Book Types Modal (CRUD Types of Books) */}
+      {/* Manage Book Genres Modal (CRUD Genres of Books) */}
       <ManageBookTypesModal
         isOpen={isManageTypesOpen}
         onClose={() => {
           setIsManageTypesOpen(false);
           loadData(true);
         }}
-        onTypesChange={(updatedTypes) => setRepoTypes(updatedTypes)}
+        onTypesChange={(updatedTypes) => setRepoGenres(updatedTypes)}
       />
 
       {/* Delete Book Confirmation Modal */}

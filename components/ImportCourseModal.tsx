@@ -330,7 +330,7 @@ export function ImportCourseModal({
       }
       setNewTypeName("");
     } catch (err: any) {
-      setError(err.message || "Failed to create book type");
+      setError(err.message || "Failed to create book genre");
     } finally {
       setIsCreatingType(false);
     }
@@ -350,7 +350,7 @@ export function ImportCourseModal({
       );
       setEditingTypeId(null);
     } catch (err: any) {
-      setError(err.message || "Failed to update book type");
+      setError(err.message || "Failed to update book genre");
     }
   };
 
@@ -365,7 +365,7 @@ export function ImportCourseModal({
         return filtered.length > 0 ? filtered : [remaining[0]?.name || "Biography"];
       });
     } catch (err: any) {
-      setError(err.message || "Failed to delete book type");
+      setError(err.message || "Failed to delete book genre");
     }
   };
 
@@ -456,16 +456,16 @@ export function ImportCourseModal({
           </button>
         </div>
 
-        {/* Book Types Summary & Quick CRUD Toggle */}
+        {/* Book Genres Summary & Quick CRUD Toggle */}
         <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#222222] border border-[#333333]">
           <div className="flex items-center gap-2 text-xs">
             <Tag className="w-4 h-4 text-purple-400 shrink-0" />
-            <span className="text-gray-300">Repo Types of Book:</span>
+            <span className="text-gray-300">Repo Genres of Book:</span>
             <span className="font-semibold text-purple-300">
-              {repoTypes.length} types in repo
+              {repoTypes.length} genres in repo
             </span>
             <span className="text-gray-500">•</span>
-            <span className="text-gray-400">Selected Type:</span>
+            <span className="text-gray-400">Selected Genre:</span>
             <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-600 text-white">
               {mainType}
             </span>
@@ -476,7 +476,7 @@ export function ImportCourseModal({
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 border border-purple-500/40 transition-colors cursor-pointer"
           >
             <Settings2 className="w-3.5 h-3.5" />
-            <span>{showTypeCrud ? "Hide CRUD Types" : "CRUD Types of Books"}</span>
+            <span>{showTypeCrud ? "Hide CRUD Genres" : "CRUD Genres of Books"}</span>
           </button>
         </div>
 
@@ -633,12 +633,12 @@ export function ImportCourseModal({
                 />
               </div>
 
-              {/* Types of Book Section (Repo Types of Book & CRUD) */}
+              {/* Genres of Book Section (Repo Genres of Book & CRUD) */}
               <div className="p-3 rounded-xl bg-[#202020] border border-[#303030] space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
                     <Tag className="w-3.5 h-3.5" />
-                    <span>Type of Book (Repo Types)</span>
+                    <span>Genre of Book (Repo Genres)</span>
                   </label>
                   <button
                     type="button"
@@ -646,15 +646,15 @@ export function ImportCourseModal({
                     className="flex items-center gap-1 text-[11px] font-medium text-purple-300 hover:text-purple-200 hover:underline cursor-pointer"
                   >
                     <Settings2 className="w-3 h-3" />
-                    <span>{showTypeCrud ? "Hide Manage Types" : "Manage / CRUD Types"}</span>
+                    <span>{showTypeCrud ? "Hide Manage Genres" : "Manage / CRUD Genres"}</span>
                   </button>
                 </div>
 
-                {/* Selected Types (Auto-selected from Goodreads & repo types) */}
+                {/* Selected Genres (Auto-selected from Goodreads & repo genres) */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-semibold text-gray-300">
-                      Selected Types ({selectedTypes.length})
+                      Selected Genres ({selectedTypes.length})
                     </span>
                     {goodreadsGenres.length > 0 && (
                       <span className="text-[10px] text-purple-300 font-medium">
@@ -684,10 +684,10 @@ export function ImportCourseModal({
                   </div>
                 </div>
 
-                {/* Quick Genre Selection Pills (Only show types of books in repo types of book) */}
+                {/* Quick Genre Selection Pills (Only show genres of books in repo genres of book) */}
                 <div className="space-y-1">
                   <span className="text-[10px] text-gray-400 block font-medium">
-                    Quick select / toggle from repo types of book:
+                    Quick select / toggle from repo genres of book:
                   </span>
                   <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
                     {repoTypes.map((t) => {
@@ -709,8 +709,8 @@ export function ImportCourseModal({
                           }`}
                           title={
                             isGoodreadsMatch
-                              ? `Genre "${t.name}" on Goodreads matches repo type`
-                              : `Type in repo`
+                              ? `Genre "${t.name}" on Goodreads matches repo genre`
+                              : `Genre in repo`
                           }
                         >
                           {isSelected && <Check className="w-3 h-3" />}
@@ -721,15 +721,15 @@ export function ImportCourseModal({
                   </div>
                 </div>
 
-                {/* Collapsible CRUD Panel for Repo Types of Book */}
+                {/* Collapsible CRUD Panel for Repo Genres of Book */}
                 {showTypeCrud && (
                   <div className="pt-2 border-t border-[#333333] space-y-3">
                     <div className="flex items-center justify-between text-xs font-semibold text-gray-300">
-                      <span>CRUD Types of Book in Repo</span>
-                      <span className="text-[10px] text-gray-400">{repoTypes.length} types in repo</span>
+                      <span>CRUD Genres of Book in Repo</span>
+                      <span className="text-[10px] text-gray-400">{repoTypes.length} genres in repo</span>
                     </div>
 
-                    {/* Create New Type */}
+                    {/* Create New Genre */}
                     <div className="flex gap-2">
                       <input
                         type="text"
@@ -741,7 +741,7 @@ export function ImportCourseModal({
                             handleCreateType();
                           }
                         }}
-                        placeholder="Add new book type to repo..."
+                        placeholder="Add new book genre to repo..."
                         className="flex-1 bg-[#161616] border border-[#3e3e3e] rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-400 transition-colors"
                       />
                       <button
@@ -751,7 +751,7 @@ export function ImportCourseModal({
                         className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1 shrink-0"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>Add Type</span>
+                        <span>Add Genre</span>
                       </button>
                     </div>
 
@@ -775,7 +775,7 @@ export function ImportCourseModal({
                                 type="button"
                                 onClick={() => handleUpdateType(t.id)}
                                 className="p-1 text-emerald-400 hover:text-emerald-300 cursor-pointer"
-                                title="Save"
+                                title="Save genre name"
                               >
                                 <Check className="w-3.5 h-3.5" />
                               </button>
@@ -801,7 +801,7 @@ export function ImportCourseModal({
                                     setEditingTypeName(t.name);
                                   }}
                                   className="p-1 text-gray-400 hover:text-white rounded hover:bg-[#2c2c2c] transition-colors cursor-pointer"
-                                  title="Edit type name"
+                                  title="Edit genre name"
                                 >
                                   <Edit2 className="w-3 h-3" />
                                 </button>
@@ -809,7 +809,7 @@ export function ImportCourseModal({
                                   type="button"
                                   onClick={() => handleDeleteType(t.id, t.name)}
                                   className="p-1 text-red-400 hover:text-red-300 rounded hover:bg-red-500/10 transition-colors cursor-pointer"
-                                  title="Delete type from repo"
+                                  title="Delete genre from repo"
                                 >
                                   <Trash2 className="w-3 h-3" />
                                 </button>
