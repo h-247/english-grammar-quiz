@@ -93,15 +93,13 @@ export function Sidebar({
   );
   const [isEditPromptOpen, setIsEditPromptOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [showPromptPopover, setShowPromptPopover] = useState(false);
   const [showUserPopover, setShowUserPopover] = useState(false);
 
-  const promptPopoverRef = useRef<HTMLDivElement>(null);
   const userPopoverRef = useRef<HTMLDivElement>(null);
 
   const handleOpenImport = onOpenImportBook || onOpenImportCourse;
 
-  // Compute 2-character avatar initials (matching ChatGPT collapsed style e.g. "H2" or "TO")
+  // Compute 2-character avatar initials (matching ChatGPT collapsed style e.g. "LO")
   const userInitial = (
     currentUserEmail.includes("@")
       ? currentUserEmail.split("@")[0]
@@ -109,7 +107,7 @@ export function Sidebar({
   )
     .replace(/[^a-zA-Z0-9]/g, "")
     .slice(0, 2)
-    .toUpperCase() || "US";
+    .toUpperCase() || "LO";
 
   // Fetch or sync user email
   useEffect(() => {
@@ -161,15 +159,9 @@ export function Sidebar({
     onPromptChatUrlChange?.(newUrl);
   };
 
-  // Close popovers when clicking outside
+  // Close popover when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (
-        promptPopoverRef.current &&
-        !promptPopoverRef.current.contains(e.target as Node)
-      ) {
-        setShowPromptPopover(false);
-      }
       if (
         userPopoverRef.current &&
         !userPopoverRef.current.contains(e.target as Node)
@@ -182,6 +174,121 @@ export function Sidebar({
   }, []);
 
   const isMainDashboard = Boolean(onSelectStatus || onSelectGenre);
+
+  // Common User Menu Popover (Gộp Drive, Prompt Link, Settings, Sign out)
+  const renderUserMenuPopover = (isCollapsedMode = false) => (
+    <div
+      className={`absolute ${
+        isCollapsedMode
+          ? "bottom-2 left-12 w-72"
+          : "bottom-full left-2 right-2 mb-2"
+      } p-2 rounded-2xl bg-[#1e1e1e] border border-[#333333] shadow-2xl z-50 animate-in fade-in zoom-in-95 space-y-1.5`}
+    >
+      {/* Account Header */}
+      <div className="flex items-center gap-3 p-2 rounded-xl bg-[#252525] border border-[#333333]">
+        <div className="w-8 h-8 rounded-full bg-[#e65100] text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm border border-amber-600/50">
+          {userInitial}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">
+            Account
+          </p>
+          <p
+            className="text-xs font-mono text-white truncate"
+            title={currentUserEmail}
+          >
+            {currentUserEmail}
+          </p>
+        </div>
+      </div>
+
+      {/* Merged Section 1: Google Drive */}
+      <button
+        type="button"
+        onClick={() => {
+          setShowUserPopover(false);
+          setIsSettingsOpen(true);
+        }}
+        className="w-full flex items-center justify-between p-2 rounded-xl text-xs text-gray-200 hover:text-white hover:bg-[#282828] transition-colors cursor-pointer group"
+      >
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-[#252525] flex items-center justify-center text-blue-400 border border-[#383838]">
+            <HardDrive className="w-3.5 h-3.5" />
+          </div>
+          <span className="font-medium">Google Drive</span>
+        </div>
+        <span className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          {driveConnected ? "Connected" : "Offline"}
+        </span>
+      </button>
+
+      {/* Merged Section 2: ChatGPT Prompt Link */}
+      <div className="p-1 rounded-xl bg-[#242424]/80 border border-[#2e2e2e] space-y-1">
+        <div className="flex items-center justify-between px-2 pt-1 text-xs font-medium text-emerald-400">
+          <span className="flex items-center gap-1.5">
+            <Link2 className="w-3.5 h-3.5" />
+            <span>Prompt in ChatGPT</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setShowUserPopover(false);
+              setIsEditPromptOpen(true);
+            }}
+            title="Edit Prompt URL"
+            className="p-1 text-gray-400 hover:text-amber-300 rounded hover:bg-[#303030] transition-colors cursor-pointer"
+          >
+            <Pencil className="w-3 h-3" />
+          </button>
+        </div>
+        <a
+          href={activePromptChatUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => setShowUserPopover(false)}
+          className="flex items-center justify-between px-2 py-1.5 rounded-lg text-xs text-gray-300 hover:text-white hover:bg-[#2c2c2c] transition-colors cursor-pointer"
+        >
+          <span className="truncate text-[11px] text-gray-400 font-mono">
+            {activePromptChatUrl}
+          </span>
+          <ExternalLink className="w-3 h-3 text-emerald-400 shrink-0 ml-1.5" />
+        </a>
+      </div>
+
+      {/* Merged Section 3: Settings */}
+      <button
+        type="button"
+        onClick={() => {
+          setShowUserPopover(false);
+          setIsSettingsOpen(true);
+        }}
+        className="w-full flex items-center justify-between p-2 rounded-xl text-xs text-gray-200 hover:text-white hover:bg-[#282828] transition-colors cursor-pointer"
+      >
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-[#252525] flex items-center justify-center text-gray-300 border border-[#383838]">
+            <Settings className="w-3.5 h-3.5" />
+          </div>
+          <span className="font-medium">Settings & Drive Config</span>
+        </div>
+        <ChevronRight className="w-3.5 h-3.5 text-gray-500" />
+      </button>
+
+      {/* Divider */}
+      <div className="border-t border-[#2e2e2e] my-1" />
+
+      {/* Merged Section 4: Sign out */}
+      <a
+        href="/signout-with-chatgpt"
+        className="w-full flex items-center gap-2.5 p-2 rounded-xl text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors cursor-pointer"
+      >
+        <div className="w-7 h-7 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400 border border-red-500/20">
+          <LogOut className="w-3.5 h-3.5" />
+        </div>
+        <span className="font-semibold">Sign out</span>
+      </a>
+    </div>
+  );
 
   return (
     <>
@@ -264,7 +371,7 @@ export function Sidebar({
                     </button>
                   )}
 
-                  {/* Search Bar (Moved from Photo 5) */}
+                  {/* Search Bar */}
                   {onSearchChange && (
                     <div className="relative w-full">
                       <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -287,7 +394,7 @@ export function Sidebar({
                     </div>
                   )}
 
-                  {/* Genres of Book Management Button (Moved from Photo 5) */}
+                  {/* Genres of Book Management Button */}
                   {onOpenManageGenres && (
                     <button
                       type="button"
@@ -305,7 +412,7 @@ export function Sidebar({
 
                   {/* Scrollable Filters Section (Status & Genres) */}
                   <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin">
-                    {/* Status Filter (Moved from Photo 5) */}
+                    {/* Status Filter */}
                     {onSelectStatus && (
                       <div className="space-y-1.5 pt-1">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
@@ -362,7 +469,7 @@ export function Sidebar({
                       </div>
                     )}
 
-                    {/* Genre Filter (Moved from Photo 5) */}
+                    {/* Genre Filter */}
                     {onSelectGenre && (
                       <div className="space-y-1.5 pt-2 border-t border-[#262626]">
                         <div className="flex items-center justify-between px-1">
@@ -464,126 +571,32 @@ export function Sidebar({
               )}
             </div>
 
-            {/* Bottom Section: Circle Icons (Gộp sections in Photo 3 & 4 to circle icons) */}
-            <div className="p-3 border-t border-[#262626] bg-[#141414] relative">
-              <div className="flex items-center justify-around">
-                {/* Circle Icon 1: Drive Status (Photo 3) */}
-                <div className="relative group">
-                  <button
-                    type="button"
-                    onClick={() => setIsSettingsOpen(true)}
-                    title={
-                      driveConnected
-                        ? "Google Drive: Connected (Click for settings)"
-                        : "Google Drive: Offline"
-                    }
-                    className="relative w-9 h-9 rounded-full bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#333333] hover:border-gray-500 flex items-center justify-center text-blue-400 hover:text-blue-300 transition-all cursor-pointer shadow-sm active:scale-95"
-                  >
-                    <HardDrive className="w-4 h-4" />
-                    <span
-                      className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#141414] ${
-                        driveConnected
-                          ? "bg-emerald-400 animate-pulse"
-                          : "bg-gray-500"
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                {/* Circle Icon 2: Shared Prompt Link (Photo 3) */}
-                <div className="relative" ref={promptPopoverRef}>
-                  <button
-                    type="button"
-                    onClick={() => setShowPromptPopover(!showPromptPopover)}
-                    title="ChatGPT Prompt Link"
-                    className="w-9 h-9 rounded-full bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-emerald-500/40 hover:border-emerald-400 flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-all cursor-pointer shadow-sm active:scale-95"
-                  >
-                    <Link2 className="w-4 h-4" />
-                  </button>
-
-                  {/* Prompt Link Popover */}
-                  {showPromptPopover && (
-                    <div className="absolute bottom-12 left-0 w-60 p-2.5 rounded-xl bg-[#1e1e1e] border border-[#333333] shadow-2xl z-50 animate-in fade-in zoom-in-95 space-y-1.5">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 px-1 pb-1 border-b border-[#2d2d2d]">
-                        ChatGPT Prompt Link
-                      </div>
-                      <a
-                        href={activePromptChatUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={() => setShowPromptPopover(false)}
-                        className="flex items-center justify-between px-2 py-1.5 text-xs text-gray-200 hover:text-white hover:bg-[#282828] rounded-lg transition-colors cursor-pointer"
-                      >
-                        <span className="flex items-center gap-2">
-                          <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>Open in ChatGPT</span>
-                        </span>
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowPromptPopover(false);
-                          setIsEditPromptOpen(true);
-                        }}
-                        className="w-full flex items-center justify-between px-2 py-1.5 text-xs text-gray-200 hover:text-white hover:bg-[#282828] rounded-lg transition-colors cursor-pointer"
-                      >
-                        <span className="flex items-center gap-2">
-                          <Pencil className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Edit Prompt URL</span>
-                        </span>
-                      </button>
+            {/* Bottom Section: Gộp Drive, Prompt Link, Settings into bottom-most User Avatar icon */}
+            <div className="p-2.5 border-t border-[#262626] bg-[#141414] relative" ref={userPopoverRef}>
+              <button
+                type="button"
+                onClick={() => setShowUserPopover(!showUserPopover)}
+                className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-[#222222] transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-[#e65100] text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm border border-amber-600/50">
+                    {userInitial}
+                  </div>
+                  <div className="min-w-0 flex-1 text-left">
+                    <p className="text-xs font-medium text-white truncate" title={currentUserEmail}>
+                      {currentUserEmail}
+                    </p>
+                    <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                      <span className={`w-1.5 h-1.5 rounded-full ${driveConnected ? "bg-emerald-400 animate-pulse" : "bg-gray-500"}`} />
+                      <span>Drive: {driveConnected ? "Connected" : "Offline"}</span>
                     </div>
-                  )}
+                  </div>
                 </div>
+                <Settings className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors shrink-0" />
+              </button>
 
-                {/* Circle Icon 3: Settings (Photo 4) */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setIsSettingsOpen(true)}
-                    title="Application Settings"
-                    className="w-9 h-9 rounded-full bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#333333] hover:border-gray-500 flex items-center justify-center text-gray-300 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
-                  >
-                    <Settings className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Circle Icon 4: User Profile & Sign Out (Photo 4) */}
-                <div className="relative" ref={userPopoverRef}>
-                  <button
-                    type="button"
-                    onClick={() => setShowUserPopover(!showUserPopover)}
-                    title={currentUserEmail}
-                    className="w-9 h-9 rounded-full bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#333333] hover:border-gray-500 flex items-center justify-center text-gray-300 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
-                  >
-                    <User className="w-4 h-4" />
-                  </button>
-
-                  {/* User Account Popover */}
-                  {showUserPopover && (
-                    <div className="absolute bottom-12 right-0 w-64 p-2.5 rounded-xl bg-[#1e1e1e] border border-[#333333] shadow-2xl z-50 animate-in fade-in zoom-in-95 space-y-2">
-                      <div className="px-1 pb-1.5 border-b border-[#2d2d2d]">
-                        <p className="text-[10px] text-gray-400 font-medium">
-                          Signed in as
-                        </p>
-                        <p
-                          className="text-xs font-mono text-white truncate"
-                          title={currentUserEmail}
-                        >
-                          {currentUserEmail}
-                        </p>
-                      </div>
-                      <a
-                        href="/signout-with-chatgpt"
-                        className="flex items-center gap-2 px-2 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
-                      >
-                        <LogOut className="w-3.5 h-3.5" />
-                        <span>Sign out</span>
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
+              {/* Popover Menu containing Drive, Prompt Link, Settings, Sign out */}
+              {showUserPopover && renderUserMenuPopover(false)}
             </div>
           </>
         ) : (
@@ -649,118 +662,19 @@ export function Sidebar({
               </Link>
             </div>
 
-            {/* Bottom Circle Icons in Collapsed Rail */}
-            <div className="flex flex-col items-center gap-2.5 w-full pb-2 px-1">
-              {/* Drive status circle */}
+            {/* Bottom Icon in Collapsed Rail: ONLY the User Avatar ("LO")! Gộp all sections into this icon! */}
+            <div className="flex flex-col items-center w-full pb-3 px-1 relative" ref={userPopoverRef}>
               <button
                 type="button"
-                onClick={() => setIsSettingsOpen(true)}
-                title={
-                  driveConnected
-                    ? "Google Drive: Connected (Click for settings)"
-                    : "Google Drive: Offline"
-                }
-                className="relative w-8 h-8 rounded-full bg-[#1e1e1e] hover:bg-[#282828] border border-[#333333] hover:border-gray-500 flex items-center justify-center text-blue-400 transition-all cursor-pointer shadow-sm"
+                onClick={() => setShowUserPopover(!showUserPopover)}
+                title={currentUserEmail}
+                className="w-8 h-8 rounded-full bg-[#e65100] hover:bg-[#f57c00] text-white flex items-center justify-center text-[10px] font-bold transition-all cursor-pointer shadow-sm border border-amber-600/50"
               >
-                <HardDrive className="w-3.5 h-3.5" />
-                <span
-                  className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full border border-[#141414] ${
-                    driveConnected
-                      ? "bg-emerald-400 animate-pulse"
-                      : "bg-gray-500"
-                  }`}
-                />
+                {userInitial}
               </button>
 
-              {/* Prompt Link circle */}
-              <div className="relative" ref={promptPopoverRef}>
-                <button
-                  type="button"
-                  onClick={() => setShowPromptPopover(!showPromptPopover)}
-                  title="ChatGPT Prompt Link"
-                  className="w-8 h-8 rounded-full bg-[#1e1e1e] hover:bg-[#282828] border border-emerald-500/40 hover:border-emerald-400 flex items-center justify-center text-emerald-400 transition-all cursor-pointer shadow-sm"
-                >
-                  <Link2 className="w-3.5 h-3.5" />
-                </button>
-
-                {showPromptPopover && (
-                  <div className="absolute bottom-2 left-12 w-60 p-2.5 rounded-xl bg-[#1e1e1e] border border-[#333333] shadow-2xl z-50 animate-in fade-in zoom-in-95 space-y-1.5">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 px-1 pb-1 border-b border-[#2d2d2d]">
-                      ChatGPT Prompt Link
-                    </div>
-                    <a
-                      href={activePromptChatUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => setShowPromptPopover(false)}
-                      className="flex items-center justify-between px-2 py-1.5 text-xs text-gray-200 hover:text-white hover:bg-[#282828] rounded-lg transition-colors cursor-pointer"
-                    >
-                      <span className="flex items-center gap-2">
-                        <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Open in ChatGPT</span>
-                      </span>
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowPromptPopover(false);
-                        setIsEditPromptOpen(true);
-                      }}
-                      className="w-full flex items-center justify-between px-2 py-1.5 text-xs text-gray-200 hover:text-white hover:bg-[#282828] rounded-lg transition-colors cursor-pointer"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Pencil className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Edit Prompt URL</span>
-                      </span>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Settings circle */}
-              <button
-                type="button"
-                onClick={() => setIsSettingsOpen(true)}
-                title="Settings"
-                className="w-8 h-8 rounded-full bg-[#1e1e1e] hover:bg-[#282828] border border-[#333333] hover:border-gray-500 flex items-center justify-center text-gray-400 hover:text-white transition-all cursor-pointer shadow-sm"
-              >
-                <Settings className="w-3.5 h-3.5" />
-              </button>
-
-              {/* User Avatar circle (Orange with initials e.g. "H2" or "TO", matching screenshot!) */}
-              <div className="relative" ref={userPopoverRef}>
-                <button
-                  type="button"
-                  onClick={() => setShowUserPopover(!showUserPopover)}
-                  title={currentUserEmail}
-                  className="w-8 h-8 rounded-full bg-[#e65100] hover:bg-[#f57c00] text-white flex items-center justify-center text-[10px] font-bold transition-all cursor-pointer shadow-sm border border-amber-600/50"
-                >
-                  {userInitial}
-                </button>
-
-                {showUserPopover && (
-                  <div className="absolute bottom-2 left-12 w-64 p-2.5 rounded-xl bg-[#1e1e1e] border border-[#333333] shadow-2xl z-50 animate-in fade-in zoom-in-95 space-y-2">
-                    <div className="px-1 pb-1.5 border-b border-[#2d2d2d]">
-                      <p className="text-[10px] text-gray-400 font-medium">
-                        Signed in as
-                      </p>
-                      <p
-                        className="text-xs font-mono text-white truncate"
-                        title={currentUserEmail}
-                      >
-                        {currentUserEmail}
-                      </p>
-                    </div>
-                    <a
-                      href="/signout-with-chatgpt"
-                      className="flex items-center gap-2 px-2 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      <span>Sign out</span>
-                    </a>
-                  </div>
-                )}
-              </div>
+              {/* Popover Menu containing Drive, Prompt Link, Settings, Sign out */}
+              {showUserPopover && renderUserMenuPopover(true)}
             </div>
           </>
         )}
