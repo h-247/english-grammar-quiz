@@ -154,10 +154,11 @@ function QuizResultsContent() {
   const isPerfectScore = results.accuracy_percentage === 100 && results.incorrect_blanks === 0;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#212121]">
+    <div className="min-h-screen flex bg-[#212121] overflow-x-hidden">
       <Navbar />
 
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+        <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
         {/* Results Header Card */}
         <div className="bg-[#262626] border border-[#383838] rounded-xl p-6 sm:p-8 shadow-md">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-[#333333]">
@@ -386,6 +387,7 @@ function QuizResultsContent() {
           </div>
         </div>
       </main>
+      </div>
 
       {/* Quiz History & Score Statistics Modal */}
       <QuizHistoryModal

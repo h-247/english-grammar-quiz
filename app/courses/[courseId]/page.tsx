@@ -298,10 +298,11 @@ export default function BookDetailPage() {
   }, [quizzes, searchQuery, selectedStatus]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#212121] text-[#ececec]" suppressHydrationWarning>
+    <div className="min-h-screen flex bg-[#212121] text-[#ececec] overflow-x-hidden" suppressHydrationWarning>
       <Navbar driveConnected={true} />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
         {/* Breadcrumb Navigation */}
         <div className="flex items-center justify-between mb-4">
           <Link
@@ -891,6 +892,7 @@ export default function BookDetailPage() {
           </div>
         )}
       </main>
+    </div>
 
       {/* Delete Book Confirmation Modal */}
       <DeleteConfirmModal

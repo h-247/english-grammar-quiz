@@ -13,8 +13,9 @@ import {
   Bookmark,
   SlidersHorizontal,
   Tag,
+  PanelLeft,
 } from "lucide-react";
-import { Navbar } from "@/components/Navbar";
+import { Sidebar } from "@/components/Sidebar";
 import { CourseCard } from "@/components/CourseCard";
 import { ImportCourseModal } from "@/components/ImportCourseModal";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
@@ -298,176 +299,108 @@ export default function BooksDashboardPage() {
     }
   };
 
+  // Sidebar state
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("sidebar_open");
+    if (saved !== null) {
+      setIsSidebarOpen(saved === "true");
+    } else if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
+  }, []);
+
+  const handleToggleSidebar = () => {
+    setIsSidebarOpen((prev) => {
+      const next = !prev;
+      localStorage.setItem("sidebar_open", String(next));
+      return next;
+    });
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#212121] text-[#ececec]" suppressHydrationWarning>
-      {/* Top Navigation */}
-      <Navbar
-        onOpenImportCourse={() => setIsImportCourseOpen(true)}
+    <div className="min-h-screen flex bg-[#212121] text-[#ececec] overflow-x-hidden" suppressHydrationWarning>
+      {/* Sidebar on the Left (ChatGPT Style) */}
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onToggle={handleToggleSidebar}
+        booksCount={courses.length}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onRefresh={() => loadData(true)}
+        isRefreshing={isRefreshing}
+        onOpenManageGenres={() => setIsManageTypesOpen(true)}
+        onOpenImportBook={() => setIsImportCourseOpen(true)}
+        selectedStatus={selectedStatus}
+        onSelectStatus={setSelectedStatus}
+        statusCounts={statusCounts}
+        selectedGenre={selectedGenre}
+        onSelectGenre={setSelectedGenre}
+        availableGenres={availableGenres}
+        genreCounts={genreCounts}
         driveConnected={true}
       />
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-5">
-        {/* Single Line Header */}
-        <div className="flex items-center justify-between gap-3 mb-6">
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-lg font-bold text-white tracking-tight">Books</h1>
-            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#2a2a2a] text-gray-300 border border-[#3d3d3d]">
-              {courses.length}
-            </span>
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+        {/* ChatGPT Style Minimal Header Bar */}
+        <header className="sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6 h-13 bg-[#212121]/95 backdrop-blur-md border-b border-[#2a2a2a]/60 shrink-0">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleToggleSidebar}
+              title={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#2c2c2c] transition-colors cursor-pointer"
+            >
+              <PanelLeft className="w-4 h-4" />
+            </button>
+
+            {/* Active Filter Indicators */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-white tracking-tight">
+                {selectedGenre !== "all" ? selectedGenre : "Books"}
+              </span>
+              {selectedGenre !== "all" && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-600/30 text-purple-300 border border-purple-500/40">
+                  Genre: {selectedGenre}
+                </span>
+              )}
+              {selectedStatus !== "all" && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#2a2a2a] text-gray-300 border border-[#3d3d3d]">
+                  Status: {selectedStatus}
+                </span>
+              )}
+              {searchQuery && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#2a2a2a] text-amber-300 border border-amber-500/30">
+                  Search: &quot;{searchQuery}&quot;
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="relative w-52 sm:w-64">
-              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search books by title, author..."
-                className="w-full bg-[#1b1b1b] border border-[#333333] rounded-xl pl-8 pr-7 py-1.5 text-xs text-[#ececec] placeholder-gray-500 focus:outline-none focus:border-white transition-colors"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            <button
-              onClick={() => loadData(true)}
-              disabled={isRefreshing}
-              title="Refresh books"
-              className="p-1.5 rounded-xl bg-[#1b1b1b] border border-[#333333] hover:border-gray-500 text-gray-300 hover:text-white transition-all cursor-pointer disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-blue-400" : ""}`} />
-            </button>
-
-            <button
-              onClick={() => setIsManageTypesOpen(true)}
-              title="CRUD Genres of Books (Add, Edit, Delete genres in repo)"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#222222] text-purple-300 hover:text-white hover:bg-[#2c2c2c] border border-purple-500/30 transition-all cursor-pointer shrink-0"
-            >
-              <Tag className="w-3.5 h-3.5 text-purple-400" />
-              <span className="hidden sm:inline">Genres of Book</span>
-            </button>
-
-            <button
-              onClick={() => setIsImportCourseOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white text-black hover:bg-neutral-200 transition-all shadow-sm cursor-pointer shrink-0"
-            >
-              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span className="hidden sm:inline">Import Book</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Filters: Status & Genre Filters */}
-        {courses.length > 0 && (
-          <div className="space-y-3 mb-6 bg-[#181818] p-3.5 rounded-2xl border border-[#2a2a2a]">
-            {/* Status Filter Tabs */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-none">
-              <span className="text-xs font-semibold text-gray-400 shrink-0 min-w-[52px]">
-                Status:
-              </span>
-              {(
-                [
-                  { key: "all", label: "All Statuses", count: statusCounts.all },
-                  { key: "To do", label: "To do", count: statusCounts.todo },
-                  { key: "Doing", label: "Doing", count: statusCounts.doing },
-                  { key: "Done", label: "Done", count: statusCounts.done },
-                ] as const
-              ).map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setSelectedStatus(tab.key)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
-                    selectedStatus === tab.key
-                      ? "bg-white text-black shadow-sm"
-                      : "bg-[#222222] text-gray-400 hover:text-white border border-[#333333]"
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                  <span
-                    className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                      selectedStatus === tab.key
-                        ? "bg-neutral-200 text-black"
-                        : "bg-[#2c2c2c] text-gray-400"
-                    }`}
-                  >
-                    {tab.count}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {/* Genre Filter Tabs */}
-            {availableGenres.length > 0 && (
-              <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-none border-t border-[#262626] pt-2.5">
-                <span className="text-xs font-semibold text-purple-300 flex items-center gap-1 shrink-0 min-w-[52px]">
-                  <Bookmark className="w-3.5 h-3.5 text-purple-400" />
-                  Genre:
-                </span>
-                <button
-                  onClick={() => setSelectedGenre("all")}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
-                    selectedGenre === "all"
-                      ? "bg-purple-600 text-white shadow-sm"
-                      : "bg-[#222222] text-purple-300 hover:text-white border border-purple-500/25 hover:border-purple-500/50"
-                  }`}
-                >
-                  <span>All Genres</span>
-                  <span
-                    className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                      selectedGenre === "all"
-                        ? "bg-purple-700 text-white"
-                        : "bg-[#2a2a2a] text-purple-300"
-                    }`}
-                  >
-                    {genreCounts.all || courses.length}
-                  </span>
-                </button>
-
-                {availableGenres.map((genre) => (
-                  <button
-                    key={genre}
-                    onClick={() => setSelectedGenre(selectedGenre === genre ? "all" : genre)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
-                      selectedGenre === genre
-                        ? "bg-purple-600 text-white shadow-sm"
-                        : "bg-[#222222] text-purple-300 hover:text-white border border-purple-500/25 hover:border-purple-500/50"
-                    }`}
-                  >
-                    <span>{genre}</span>
-                    <span
-                      className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                        selectedGenre === genre
-                          ? "bg-purple-700 text-white"
-                          : "bg-[#2a2a2a] text-purple-300"
-                      }`}
-                    >
-                      {genreCounts[genre] || 0}
-                    </span>
-                  </button>
-                ))}
-
-                {/* CRUD Genres of Book Button */}
-                <button
-                  type="button"
-                  onClick={() => setIsManageTypesOpen(true)}
-                  className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-purple-500/20 text-purple-200 hover:bg-purple-500/30 border border-purple-500/40 transition-all flex items-center gap-1 shrink-0 cursor-pointer shadow-sm ml-1"
-                  title="CRUD Genres of Books (Add, Edit, Delete genres in repo)"
-                >
-                  <Plus className="w-3.5 h-3.5 text-purple-300" />
-                  <span>Add / Manage Genres</span>
-                </button>
-              </div>
+            {(selectedGenre !== "all" || selectedStatus !== "all" || searchQuery) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedGenre("all");
+                  setSelectedStatus("all");
+                  setSearchQuery("");
+                }}
+                className="text-xs text-purple-400 hover:text-purple-300 hover:underline cursor-pointer"
+              >
+                Clear Filters
+              </button>
             )}
+            <span className="text-xs text-gray-500 hidden sm:inline">
+              {filteredCourses.length} {filteredCourses.length === 1 ? "book" : "books"}
+            </span>
           </div>
-        )}
+        </header>
+
+        {/* Content Body */}
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
 
         {/* Content Loading / Error / Grid */}
         {isLoading ? (
@@ -545,6 +478,7 @@ export default function BooksDashboardPage() {
           </div>
         )}
       </main>
+    </div>
 
       {/* Import Book Modal */}
       <ImportCourseModal
