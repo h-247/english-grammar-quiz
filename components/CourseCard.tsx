@@ -188,10 +188,60 @@ export const CourseCard = memo(function CourseCard({
       className="group rounded-2xl bg-[#1c1c1c] border border-[#2e2e2e] hover:border-[#444444] transition-all duration-200 overflow-hidden flex flex-col justify-between shadow-xl shadow-black/40 cursor-pointer"
     >
       <div className="p-5 flex flex-col flex-1">
-        {/* Title */}
-        <h3 className="text-lg font-bold text-white group-hover:text-amber-300 transition-colors line-clamp-1 mb-3">
-          {course.title}
-        </h3>
+        {/* Title and Book Status */}
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <h3 className="text-lg font-bold text-white group-hover:text-amber-300 transition-colors leading-snug flex-1">
+            {course.title}
+          </h3>
+
+          <div className="shrink-0 pt-0.5">
+            {/* Current Book Status Button (One button) */}
+            {(() => {
+              const Icon =
+                activeBookStatus === "Done"
+                  ? CheckCircle2
+                  : activeBookStatus === "Doing"
+                  ? Clock
+                  : Circle;
+
+              const nextStatusCycle: ChapterStatus =
+                activeBookStatus === "To do"
+                  ? "Doing"
+                  : activeBookStatus === "Doing"
+                  ? "Done"
+                  : "To do";
+
+              return (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleBookStatusChange(nextStatusCycle);
+                  }}
+                  title={`Current Book status: ${activeBookStatus} (Click to change)`}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
+                    activeBookStatus === "Doing"
+                      ? "bg-[#25170b] text-amber-400 border-2 border-amber-500 shadow-sm shadow-amber-500/10"
+                      : activeBookStatus === "Done"
+                      ? "bg-emerald-950/40 text-emerald-400 border-2 border-emerald-500 shadow-sm shadow-emerald-500/10"
+                      : "bg-[#262626] text-white border-2 border-neutral-400 shadow-sm"
+                  }`}
+                >
+                  <Icon
+                    className={`w-3.5 h-3.5 shrink-0 ${
+                      activeBookStatus === "Doing"
+                        ? "text-amber-400 stroke-[2.2]"
+                        : activeBookStatus === "Done"
+                        ? "text-emerald-400 stroke-[2.2]"
+                        : "text-white stroke-[2.2]"
+                    }`}
+                  />
+                  <span>{activeBookStatus}</span>
+                </button>
+              );
+            })()}
+          </div>
+        </div>
 
         {/* Next Chapter Highlight */}
         {nextChapter && (
@@ -289,78 +339,34 @@ export const CourseCard = memo(function CourseCard({
             </div>
           )}
 
-          {/* Book Status and Genres at bottom of card */}
-          <div className="flex items-center gap-1.5 flex-wrap mt-auto pt-3">
-            {/* Current Book Status Button (One button) */}
-            {(() => {
-              const Icon =
-                activeBookStatus === "Done"
-                  ? CheckCircle2
-                  : activeBookStatus === "Doing"
-                  ? Clock
-                  : Circle;
-
-              const nextStatusCycle: ChapterStatus =
-                activeBookStatus === "To do"
-                  ? "Doing"
-                  : activeBookStatus === "Doing"
-                  ? "Done"
-                  : "To do";
-
-              return (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleBookStatusChange(nextStatusCycle);
-                  }}
-                  title={`Current Book status: ${activeBookStatus} (Click to change)`}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
-                    activeBookStatus === "Doing"
-                      ? "bg-[#25170b] text-amber-400 border-2 border-amber-500 shadow-sm shadow-amber-500/10"
-                      : activeBookStatus === "Done"
-                      ? "bg-emerald-950/40 text-emerald-400 border-2 border-emerald-500 shadow-sm shadow-emerald-500/10"
-                      : "bg-[#262626] text-white border-2 border-neutral-400 shadow-sm"
-                  }`}
-                >
-                  <Icon
-                    className={`w-3.5 h-3.5 shrink-0 ${
-                      activeBookStatus === "Doing"
-                        ? "text-amber-400 stroke-[2.2]"
-                        : activeBookStatus === "Done"
-                        ? "text-emerald-400 stroke-[2.2]"
-                        : "text-white stroke-[2.2]"
+          {/* Genres at bottom of card */}
+          {mainGenres.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap mt-auto pt-3">
+              {/* 2 Main Genres */}
+              {mainGenres.map((g, idx) => {
+                const isSelected =
+                  currentGenre && currentGenre.toLowerCase() === g.toLowerCase();
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelectGenre?.(isSelected ? "all" : g);
+                    }}
+                    title={`Filter books by genre "${g}"`}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-purple-600 text-white border border-purple-400 shadow-sm"
+                        : "bg-purple-500/15 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 hover:border-purple-400"
                     }`}
-                  />
-                  <span>{activeBookStatus}</span>
-                </button>
-              );
-            })()}
-
-            {/* 2 Main Genres */}
-            {mainGenres.map((g, idx) => {
-              const isSelected =
-                currentGenre && currentGenre.toLowerCase() === g.toLowerCase();
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleSelectGenre?.(isSelected ? "all" : g);
-                  }}
-                  title={`Filter books by genre "${g}"`}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
-                    isSelected
-                      ? "bg-purple-600 text-white border border-purple-400 shadow-sm"
-                      : "bg-purple-500/15 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 hover:border-purple-400"
-                  }`}
-                >
-                  {g}
-                </button>
-              );
-            })}
-          </div>
+                  >
+                    {g}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     );
