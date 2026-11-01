@@ -640,7 +640,6 @@ export function Sidebar({
               {/* Popover Menu containing Drive, Prompt Link, Settings, Sign out */}
               {showUserPopover && renderUserMenuPopover(false)}
             </div>
-          </div>
         </aside>
       )}
 
