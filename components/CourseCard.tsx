@@ -245,16 +245,10 @@ export const CourseCard = memo(function CourseCard({
                 </span>
               </div>
 
-              <h4 className="text-sm font-semibold text-[#ececec] line-clamp-1 mb-1">
+              <h4 className="text-sm font-semibold text-[#ececec] line-clamp-1 mb-3">
                 {nextChapter.unit_number != null ? `Ch. ${nextChapter.unit_number}: ` : ""}
                 {nextChapter.unit_title || nextChapter.title}
               </h4>
-
-              {nextChapter.instructions && (
-                <div className="text-[11px] text-[#888888] flex items-center gap-2 mb-3">
-                  <span>{nextChapter.instructions}</span>
-                </div>
-              )}
 
               {/* Action Buttons in Next Chapter Box */}
               <div className="space-y-2">
@@ -309,21 +303,21 @@ export const CourseCard = memo(function CourseCard({
                 {/* Chapter Action Links & Icons in One Line */}
                 <div className="flex items-center gap-2 flex-wrap">
                   {nextChapter.drive_file_id && (
-                    <div className="flex items-center rounded-lg bg-[#222222] border border-blue-900/30 p-0.5">
+                    <div className="inline-flex h-7 items-center overflow-hidden rounded-lg border border-blue-900/30 bg-[#222222]">
                       <a
                         href={`https://drive.google.com/file/d/${nextChapter.drive_file_id}/view`}
                         target="_blank"
                         rel="noreferrer"
                         title="View PDF in Google Drive"
-                        className="flex items-center justify-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
+                        aria-label="View PDF in Google Drive"
+                        className="inline-flex h-7 w-7 items-center justify-center hover:bg-white/10 text-blue-400 hover:text-blue-300 transition-colors"
                       >
-                        <HardDrive className="w-3 h-3" />
-                        <span>Drive</span>
+                        <HardDrive className="h-3.5 w-3.5" />
                       </a>
                       <CopyDriveLinkButton
                         fileId={nextChapter.drive_file_id}
                         title="Copy Drive PDF link"
-                        className="p-1 border-l border-blue-900/40 text-blue-400/80 hover:text-blue-200"
+                        className="inline-flex h-7 w-7 items-center justify-center border-l border-blue-900/40 text-blue-400/80 hover:text-blue-200 hover:bg-white/10 rounded-none p-0"
                       />
                     </div>
                   )}
