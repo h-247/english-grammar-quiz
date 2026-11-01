@@ -11,6 +11,7 @@ import {
   BookOpen,
   CheckCircle2,
   Clock,
+  Circle,
 } from "lucide-react";
 import { CourseSummary, QuizSummary, ChapterStatus } from "@/types/quiz";
 import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
@@ -27,6 +28,7 @@ interface CourseCardProps {
   onDeleteCourse: (course: CourseSummary) => void;
   onEditCourse?: (course: CourseSummary) => void;
   onStartQuiz?: (quiz: QuizSummary, mode: "timed" | "practice") => void;
+  onStatusChange?: (courseId: string, status: ChapterStatus) => void;
   selectedType?: string;
   onSelectType?: (type: string) => void;
   selectedGenre?: string;
@@ -40,6 +42,7 @@ export const CourseCard = memo(function CourseCard({
   quizzes = [],
   onSyncDrive,
   onDeleteCourse,
+  onStatusChange,
   selectedType,
   onSelectType,
   selectedGenre,
@@ -115,6 +118,26 @@ export const CourseCard = memo(function CourseCard({
       ? "Doing"
       : "To do");
 
+  const [activeBookStatus, setActiveBookStatus] = useState<ChapterStatus>(bookStatus);
+
+  useEffect(() => {
+    setActiveBookStatus(bookStatus);
+  }, [bookStatus]);
+
+  const handleBookStatusChange = async (newStatus: ChapterStatus) => {
+    setActiveBookStatus(newStatus);
+    if (nextChapter) {
+      try {
+        await updateChapterStatus(nextChapter.id, newStatus);
+        setChapterStatus(newStatus);
+        nextChapter.status = newStatus;
+      } catch (err) {
+        console.error("Failed to update status", err);
+      }
+    }
+    onStatusChange?.(course.id, newStatus);
+  };
+
   const currentGenre = selectedGenre ?? selectedType;
   const handleSelectGenre = onSelectGenre ?? onSelectType;
   const genresList = repoGenres ?? repoTypes;
@@ -143,25 +166,53 @@ export const CourseCard = memo(function CourseCard({
         {/* Top Badges: Book Status, Drive Linked, Goodreads, Rating */}
         <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
           <div className="flex items-center gap-1.5 flex-wrap">
-            {/* Book Reading Status Badge */}
-            <span
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                bookStatus === "Done"
-                  ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
-                  : bookStatus === "Doing"
-                  ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                  : "bg-[#252525] text-neutral-300 border-[#383838]"
-              }`}
-            >
-              {bookStatus === "Done" ? (
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              ) : bookStatus === "Doing" ? (
-                <Clock className="w-3.5 h-3.5 text-amber-300" />
-              ) : (
-                <BookOpen className="w-3.5 h-3.5 text-neutral-400" />
-              )}
-              <span>{bookStatus}</span>
-            </span>
+            {/* Status Buttons: To do, Doing, Done (matching screenshot) */}
+            <div className="flex items-center gap-1.5">
+              {(
+                [
+                  { key: "To do", label: "To do", icon: Circle },
+                  { key: "Doing", label: "Doing", icon: Clock },
+                  { key: "Done", label: "Done", icon: CheckCircle2 },
+                ] as const
+              ).map(({ key, label, icon: Icon }) => {
+                const isActive = activeBookStatus === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleBookStatusChange(key);
+                    }}
+                    title={`Set status to ${label}`}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
+                      isActive
+                        ? key === "Doing"
+                          ? "bg-[#25170b] text-amber-400 border-2 border-amber-500 shadow-sm shadow-amber-500/10"
+                          : key === "Done"
+                          ? "bg-emerald-950/40 text-emerald-400 border-2 border-emerald-500 shadow-sm shadow-emerald-500/10"
+                          : "bg-[#262626] text-white border-2 border-neutral-400 shadow-sm"
+                        : key === "To do" && activeBookStatus === "Doing"
+                        ? "bg-[#212121] text-white border border-[#383838] hover:border-gray-500"
+                        : "bg-[#212121] text-gray-400 border border-[#383838] hover:border-gray-500 hover:text-gray-200"
+                    }`}
+                  >
+                    <Icon
+                      className={`w-3.5 h-3.5 shrink-0 ${
+                        isActive
+                          ? key === "Doing"
+                            ? "text-amber-400 stroke-[2.2]"
+                            : key === "Done"
+                            ? "text-emerald-400 stroke-[2.2]"
+                            : "text-white stroke-[2.2]"
+                          : "text-gray-400 stroke-[2]"
+                      }`}
+                    />
+                    <span>{label}</span>
+                  </button>
+                );
+              })}
+            </div>
 
             {/* 2 Main Genres */}
             {mainGenres.map((g, idx) => {
@@ -313,24 +364,51 @@ export const CourseCard = memo(function CourseCard({
               {/* Action Buttons in Next Chapter Box */}
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <select
-                    aria-label="Chapter status"
-                    disabled={isUpdatingStatus}
-                    value={chapterStatus}
-                    onChange={(e) => handleStatusChange(e.target.value as ChapterStatus)}
-                    onClick={(e) => e.stopPropagation()}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold border cursor-pointer outline-none transition-colors ${
-                      chapterStatus === "Done"
-                        ? "bg-emerald-950/40 text-emerald-300 border-emerald-500/40"
-                        : chapterStatus === "Doing"
-                        ? "bg-amber-950/40 text-amber-300 border-amber-500/40"
-                        : "bg-[#262626] text-[#ECECEC] border-[#444444]"
-                    }`}
-                  >
-                    <option value="To do" className="bg-[#212121] text-white">To do</option>
-                    <option value="Doing" className="bg-[#212121] text-amber-300">Doing</option>
-                    <option value="Done" className="bg-[#212121] text-emerald-300">Done</option>
-                  </select>
+                  {(
+                    [
+                      { key: "To do", label: "To do", icon: Circle },
+                      { key: "Doing", label: "Doing", icon: Clock },
+                      { key: "Done", label: "Done", icon: CheckCircle2 },
+                    ] as const
+                  ).map(({ key, label, icon: Icon }) => {
+                    const isActive = chapterStatus === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        disabled={isUpdatingStatus}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStatusChange(key);
+                        }}
+                        title={`Set chapter status to ${label}`}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                          isActive
+                            ? key === "Doing"
+                              ? "bg-[#25170b] text-amber-400 border-2 border-amber-500 shadow-sm shadow-amber-500/10"
+                              : key === "Done"
+                              ? "bg-emerald-950/40 text-emerald-400 border-2 border-emerald-500 shadow-sm shadow-emerald-500/10"
+                              : "bg-[#262626] text-white border-2 border-neutral-400 shadow-sm"
+                            : key === "To do" && chapterStatus === "Doing"
+                            ? "bg-[#212121] text-white border border-[#383838] hover:border-gray-500"
+                            : "bg-[#212121] text-gray-400 border border-[#383838] hover:border-gray-500 hover:text-gray-200"
+                        }`}
+                      >
+                        <Icon
+                          className={`w-3 h-3 shrink-0 ${
+                            isActive
+                              ? key === "Doing"
+                                ? "text-amber-400 stroke-[2.2]"
+                                : key === "Done"
+                                ? "text-emerald-400 stroke-[2.2]"
+                                : "text-white stroke-[2.2]"
+                              : "text-gray-400 stroke-[2]"
+                          }`}
+                        />
+                        <span>{label}</span>
+                      </button>
+                    );
+                  })}
 
                   {nextChapter.drive_file_id && (
                     <div className="flex items-center rounded-lg bg-[#222222] border border-blue-900/30 p-0.5">

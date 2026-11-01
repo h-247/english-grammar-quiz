@@ -266,6 +266,32 @@ export default function BooksDashboardPage() {
     }
   };
 
+  // Handle Course / Book Status Change from Card buttons
+  const handleCourseStatusChange = async (courseId: string, newStatus: ChapterStatus) => {
+    const courseQuizzes = quizzesByCourse.get(courseId) || [];
+    if (courseQuizzes.length > 0) {
+      const targetQuiz =
+        courseQuizzes.find((q) => q.status === "Doing") ||
+        courseQuizzes.find((q) => q.status === "To do") ||
+        courseQuizzes[0];
+      if (targetQuiz) {
+        try {
+          await updateChapterStatus(targetQuiz.id, newStatus);
+          targetQuiz.status = newStatus;
+          await loadData(false);
+        } catch (err) {
+          console.error("Failed to update status", err);
+        }
+      }
+    } else {
+      setCourses((prev) =>
+        prev.map((c) =>
+          c.id === courseId ? { ...c, status: newStatus } : c
+        )
+      );
+    }
+  };
+
   // Handle Start Quiz / Chapter
   const handleStartQuiz = (quiz: QuizSummary, mode: "timed" | "practice") => {
     setSelectedQuizForStart(quiz);
@@ -445,6 +471,7 @@ export default function BooksDashboardPage() {
                 onDeleteCourse={handleDeleteCourseClick}
                 onEditCourse={(c) => setCourseToEdit(c)}
                 onStartQuiz={handleStartQuiz}
+                onStatusChange={handleCourseStatusChange}
                 selectedGenre={selectedGenre}
                 onSelectGenre={(g) => setSelectedGenre(g)}
                 selectedType={selectedGenre}
