@@ -162,6 +162,23 @@ export const CourseCard = memo(function CourseCard({
     onStatusChange?.(course.id, newStatus, nextChapter?.id, newStatus);
   };
 
+  const handleSync = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsSyncing(true);
+    try {
+      await onSyncDrive(course.id);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onDeleteCourse(course);
+  };
+
   const currentGenre = selectedGenre ?? selectedType;
   const handleSelectGenre = onSelectGenre ?? onSelectType;
   const genresList = repoGenres ?? repoTypes;
