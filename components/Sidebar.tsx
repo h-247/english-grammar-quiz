@@ -14,7 +14,6 @@ import {
   Tag,
   Bookmark,
   X,
-  PanelLeft,
   PanelLeftClose,
   Link2,
   ExternalLink,
@@ -81,8 +80,8 @@ export function Sidebar({
   isOpen: propIsOpen,
   onToggle: propOnToggle,
 }: SidebarProps) {
-  const [internalIsOpen, setInternalIsOpen] = useState<boolean>(true);
-  const isOpen = propOnToggle !== undefined ? (propIsOpen ?? true) : internalIsOpen;
+  const [internalIsOpen, setInternalIsOpen] = useState<boolean>(false);
+  const isOpen = propOnToggle !== undefined ? (propIsOpen ?? false) : internalIsOpen;
   const onToggle = propOnToggle || (() => setInternalIsOpen((prev) => !prev));
 
   const [currentUserEmail, setCurrentUserEmail] = useState<string>(
@@ -641,18 +640,6 @@ export function Sidebar({
               {showUserPopover && renderUserMenuPopover(false)}
             </div>
         </aside>
-      )}
-
-      {/* Floating Open Sidebar Button when Closed */}
-      {!isOpen && onToggle && (
-        <button
-          type="button"
-          onClick={onToggle}
-          title="Open sidebar (Alt+1)"
-          className="fixed top-3 left-3 z-40 p-2 rounded-xl text-gray-400 hover:text-white hover:bg-[#252525] bg-[#171717]/90 backdrop-blur border border-[#333333] transition-colors cursor-pointer shadow-md"
-        >
-          <PanelLeft className="w-5 h-5" />
-        </button>
       )}
 
       {/* Edit Prompt Chat Link Modal */}

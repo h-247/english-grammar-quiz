@@ -86,6 +86,45 @@ export default function BookDetailPage() {
   const [isConfigOpen, setIsConfigOpen] = useState<boolean>(false);
   const [isStartingQuiz, setIsStartingQuiz] = useState<boolean>(false);
 
+  // Sidebar state - default closed when opening books
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+
+  const handleToggleSidebar = useCallback(() => {
+    setIsSidebarOpen((prev) => !prev);
+  }, []);
+
+  // Global Keyboard shortcuts:
+  // - Alt+1 to toggle sidebar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (e.altKey) {
+        // Alt+1 to toggle sidebar
+        if (
+          e.key === "1" ||
+          e.code === "Digit1" ||
+          e.code === "Numpad1" ||
+          ((e.key === "a" || e.key === "A") && e.shiftKey)
+        ) {
+          e.preventDefault();
+          handleToggleSidebar();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleToggleSidebar]);
+
   // Fetch book details
   const loadCourse = useCallback(async (isSilent = false) => {
     if (!courseId) return;
@@ -299,7 +338,11 @@ export default function BookDetailPage() {
 
   return (
     <div className="min-h-screen flex bg-[#212121] text-[#ececec] overflow-x-hidden" suppressHydrationWarning>
-      <Navbar driveConnected={true} />
+      <Navbar
+        isOpen={isSidebarOpen}
+        onToggle={handleToggleSidebar}
+        driveConnected={true}
+      />
 
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
