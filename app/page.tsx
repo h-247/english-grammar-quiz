@@ -379,8 +379,8 @@ export default function BooksDashboardPage() {
   }, []);
 
   // Global Keyboard shortcuts:
-  // - Ctrl+` to open Import Book modal
-  // - Ctrl+1 to toggle sidebar
+  // - Alt+` to open Import Book modal
+  // - Alt+1 to toggle sidebar
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -393,8 +393,8 @@ export default function BooksDashboardPage() {
         return;
       }
 
-      if (e.ctrlKey || e.metaKey) {
-        // Ctrl+` to open Import Book
+      if (e.altKey) {
+        // Alt+` to open Import Book
         if (
           e.key === "`" ||
           e.code === "Backquote" ||
@@ -404,7 +404,7 @@ export default function BooksDashboardPage() {
           e.preventDefault();
           setIsImportCourseOpen(true);
         }
-        // Ctrl+1 to toggle sidebar
+        // Alt+1 to toggle sidebar
         else if (
           e.key === "1" ||
           e.code === "Digit1" ||

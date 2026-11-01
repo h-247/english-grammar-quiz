@@ -174,8 +174,8 @@ export function Sidebar({
   }, []);
 
   // Global shortcuts:
-  // - Ctrl+` to open Import Book modal
-  // - Ctrl+1 to toggle sidebar
+  // - Alt+` to open Import Book modal
+  // - Alt+1 to toggle sidebar
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -188,8 +188,8 @@ export function Sidebar({
         return;
       }
 
-      if (e.ctrlKey || e.metaKey) {
-        // Ctrl+` to open Import Book
+      if (e.altKey) {
+        // Alt+` to open Import Book
         if (
           e.key === "`" ||
           e.code === "Backquote" ||
@@ -201,7 +201,7 @@ export function Sidebar({
             handleOpenImport();
           }
         }
-        // Ctrl+1 to toggle sidebar
+        // Alt+1 to toggle sidebar
         else if (
           e.key === "1" ||
           e.code === "Digit1" ||
@@ -395,7 +395,7 @@ export function Sidebar({
                     <button
                       type="button"
                       onClick={onToggle}
-                      title="Close sidebar (Ctrl+1)"
+                      title="Close sidebar (Alt+1)"
                       className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#252525] transition-colors cursor-pointer"
                     >
                       <PanelLeftClose className="w-4 h-4" />
@@ -411,7 +411,7 @@ export function Sidebar({
                     <button
                       type="button"
                       onClick={handleOpenImport}
-                      title="Import Book (Ctrl+`)"
+                      title="Import Book (Alt+`)"
                       className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white text-black font-semibold text-xs hover:bg-neutral-200 transition-all shadow-sm cursor-pointer active:scale-98"
                     >
                       <Plus className="w-4 h-4 text-black stroke-[2.5]" />
@@ -658,7 +658,7 @@ export function Sidebar({
               <button
                 type="button"
                 onClick={onToggle}
-                title="Open sidebar (Ctrl+1)"
+                title="Open sidebar (Alt+1)"
                 className="w-10 h-10 rounded-xl text-gray-400 hover:text-white hover:bg-[#252525] flex items-center justify-center transition-colors cursor-pointer"
               >
                 <PanelLeft className="w-5 h-5" />
@@ -669,7 +669,7 @@ export function Sidebar({
                 <button
                   type="button"
                   onClick={handleOpenImport}
-                  title="Import Book (Ctrl+`)"
+                  title="Import Book (Alt+`)"
                   className="w-10 h-10 rounded-xl text-gray-400 hover:text-white hover:bg-[#252525] flex items-center justify-center transition-colors cursor-pointer"
                 >
                   <SquarePen className="w-4 h-4" />
