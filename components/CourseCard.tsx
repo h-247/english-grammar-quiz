@@ -194,7 +194,35 @@ export const CourseCard = memo(function CourseCard({
             {course.title}
           </h3>
 
-          <div className="shrink-0 pt-0.5">
+          <div className="shrink-0 pt-0.5 flex flex-col items-end gap-1.5">
+            {/* 2 Main Genres */}
+            {mainGenres.length > 0 && (
+              <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                {mainGenres.map((g, idx) => {
+                  const isSelected =
+                    currentGenre && currentGenre.toLowerCase() === g.toLowerCase();
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectGenre?.(isSelected ? "all" : g);
+                      }}
+                      title={`Filter books by genre "${g}"`}
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-purple-600 text-white border border-purple-400 shadow-sm"
+                          : "bg-purple-500/15 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 hover:border-purple-400"
+                      }`}
+                    >
+                      {g}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Current Book Status Button (One button) */}
             {(() => {
               const Icon =
@@ -336,35 +364,6 @@ export const CourseCard = memo(function CourseCard({
                   />
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Genres at bottom of card */}
-          {mainGenres.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap mt-auto pt-3">
-              {/* 2 Main Genres */}
-              {mainGenres.map((g, idx) => {
-                const isSelected =
-                  currentGenre && currentGenre.toLowerCase() === g.toLowerCase();
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSelectGenre?.(isSelected ? "all" : g);
-                    }}
-                    title={`Filter books by genre "${g}"`}
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
-                      isSelected
-                        ? "bg-purple-600 text-white border border-purple-400 shadow-sm"
-                        : "bg-purple-500/15 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 hover:border-purple-400"
-                    }`}
-                  >
-                    {g}
-                  </button>
-                );
-              })}
             </div>
           )}
         </div>

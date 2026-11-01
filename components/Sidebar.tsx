@@ -348,18 +348,12 @@ export function Sidebar({
       )}
 
       {/* Sidebar Container */}
-      <aside
-        className={`sticky top-0 left-0 z-50 h-screen bg-[#171717] border-r border-[#262626] flex flex-col justify-between transition-all duration-200 select-none shrink-0 ${
-          isOpen ? "w-72 sm:w-68" : "w-14"
-        }`}
-        suppressHydrationWarning
-      >
-        {isOpen ? (
-          /* ==============================================================
-             EXPANDED SIDEBAR (ChatGPT Style)
-             ============================================================== */
-          <>
-            {/* Top & Middle Section */}
+      {isOpen && (
+        <aside
+          className="sticky top-0 left-0 z-50 h-screen w-72 sm:w-68 bg-[#171717] border-r border-[#262626] flex flex-col justify-between transition-all duration-200 select-none shrink-0"
+          suppressHydrationWarning
+        >
+          {/* Top & Middle Section */}
             <div className="flex-1 flex flex-col min-h-0 p-3 space-y-3">
               {/* Header Row: Title Books, Count Badge, Refresh, Sidebar Collapse */}
               <div className="flex items-center justify-between pb-1 pt-1 px-1">
@@ -646,87 +640,21 @@ export function Sidebar({
               {/* Popover Menu containing Drive, Prompt Link, Settings, Sign out */}
               {showUserPopover && renderUserMenuPopover(false)}
             </div>
-          </>
-        ) : (
-          /* ==============================================================
-             COLLAPSED SIDEBAR (Narrow Rail matching ChatGPT screenshot)
-             ============================================================== */
-          <>
-            {/* Top Icons in Collapsed Rail */}
-            <div className="flex flex-col items-center gap-2 w-full pt-2 px-1">
-              {/* Sidebar Open Toggle Button */}
-              <button
-                type="button"
-                onClick={onToggle}
-                title="Open sidebar (Alt+1)"
-                className="w-10 h-10 rounded-xl text-gray-400 hover:text-white hover:bg-[#252525] flex items-center justify-center transition-colors cursor-pointer"
-              >
-                <PanelLeft className="w-5 h-5" />
-              </button>
+          </div>
+        </aside>
+      )}
 
-              {/* Import / New Book (SquarePen icon as in ChatGPT) */}
-              {handleOpenImport && (
-                <button
-                  type="button"
-                  onClick={handleOpenImport}
-                  title="Import Book (Alt+`)"
-                  className="w-10 h-10 rounded-xl text-gray-400 hover:text-white hover:bg-[#252525] flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <SquarePen className="w-4 h-4" />
-                </button>
-              )}
-
-              {/* Search Icon (Expands sidebar & focuses search) */}
-              {onSearchChange && (
-                <button
-                  type="button"
-                  onClick={onToggle}
-                  title="Search books"
-                  className="w-10 h-10 rounded-xl text-gray-400 hover:text-white hover:bg-[#252525] flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <Search className="w-4 h-4" />
-                </button>
-              )}
-
-              {/* Genres of Book Icon */}
-              {onOpenManageGenres && (
-                <button
-                  type="button"
-                  onClick={onOpenManageGenres}
-                  title="CRUD Genres of Books"
-                  className="w-10 h-10 rounded-xl text-purple-400 hover:text-purple-300 hover:bg-[#252525] flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <Tag className="w-4 h-4" />
-                </button>
-              )}
-
-              {/* Book Library Link */}
-              <Link
-                href="/"
-                title="Book Library"
-                className="w-10 h-10 rounded-xl text-gray-400 hover:text-white hover:bg-[#252525] flex items-center justify-center transition-colors cursor-pointer"
-              >
-                <BookOpen className="w-4 h-4" />
-              </Link>
-            </div>
-
-            {/* Bottom Icon in Collapsed Rail: ONLY the User Avatar ("LO")! Gộp all sections into this icon! */}
-            <div className="flex flex-col items-center w-full pb-3 px-1 relative" ref={userPopoverRef}>
-              <button
-                type="button"
-                onClick={() => setShowUserPopover(!showUserPopover)}
-                title={currentUserEmail}
-                className="w-8 h-8 rounded-full bg-[#e65100] hover:bg-[#f57c00] text-white flex items-center justify-center text-[10px] font-bold transition-all cursor-pointer shadow-sm border border-amber-600/50"
-              >
-                {userInitial}
-              </button>
-
-              {/* Popover Menu containing Drive, Prompt Link, Settings, Sign out */}
-              {showUserPopover && renderUserMenuPopover(true)}
-            </div>
-          </>
-        )}
-      </aside>
+      {/* Floating Open Sidebar Button when Closed */}
+      {!isOpen && onToggle && (
+        <button
+          type="button"
+          onClick={onToggle}
+          title="Open sidebar (Alt+1)"
+          className="fixed top-3 left-3 z-40 p-2 rounded-xl text-gray-400 hover:text-white hover:bg-[#252525] bg-[#171717]/90 backdrop-blur border border-[#333333] transition-colors cursor-pointer shadow-md"
+        >
+          <PanelLeft className="w-5 h-5" />
+        </button>
+      )}
 
       {/* Edit Prompt Chat Link Modal */}
       <EditPromptChatModal
