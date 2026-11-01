@@ -304,7 +304,10 @@ export const CourseCard = memo(function CourseCard({
                       </button>
                     );
                   })}
+                </div>
 
+                {/* Chapter Action Links & Icons in One Line */}
+                <div className="flex items-center gap-2 flex-wrap">
                   {nextChapter.drive_file_id && (
                     <div className="flex items-center rounded-lg bg-[#222222] border border-blue-900/30 p-0.5">
                       <a
@@ -326,10 +329,7 @@ export const CourseCard = memo(function CourseCard({
                   )}
 
                   <SharedPromptLinkSettings compact canEdit={false} />
-                </div>
 
-                {/* ChatGPT Conversation Pill */}
-                <div className="flex items-center gap-2">
                   <ChatGPTLinkActions
                     url={nextChapter.chatgpt_url}
                     chapterId={nextChapter.id}
