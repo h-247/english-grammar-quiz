@@ -28,7 +28,12 @@ interface CourseCardProps {
   onDeleteCourse: (course: CourseSummary) => void;
   onEditCourse?: (course: CourseSummary) => void;
   onStartQuiz?: (quiz: QuizSummary, mode: "timed" | "practice") => void;
-  onStatusChange?: (courseId: string, status: ChapterStatus) => void;
+  onStatusChange?: (
+    courseId: string,
+    newStatus: ChapterStatus,
+    chapterId?: string,
+    newChapterStatus?: ChapterStatus
+  ) => void;
   selectedType?: string;
   onSelectType?: (type: string) => void;
   selectedGenre?: string;
@@ -52,10 +57,23 @@ export const CourseCard = memo(function CourseCard({
 }: CourseCardProps) {
   const [isSyncing, setIsSyncing] = useState(false);
 
-  const totalChapters = course.total_chapters || course.total_quizzes || quizzes.length;
-  const doneChapters = course.done_chapters || course.completed_quizzes || 0;
-  const doingChapters = course.doing_chapters || 0;
-  const todoChapters = course.todo_chapters || Math.max(0, totalChapters - doneChapters - doingChapters);
+  // Derive chapter counts reactively from quizzes if available
+  const totalChapters =
+    quizzes.length > 0
+      ? quizzes.length
+      : course.total_chapters || course.total_quizzes || 0;
+  const doneChapters =
+    quizzes.length > 0
+      ? quizzes.filter((q) => q.status === "Done").length
+      : course.done_chapters || course.completed_quizzes || 0;
+  const doingChapters =
+    quizzes.length > 0
+      ? quizzes.filter((q) => q.status === "Doing").length
+      : course.doing_chapters || 0;
+  const todoChapters =
+    quizzes.length > 0
+      ? quizzes.filter((q) => q.status !== "Done" && q.status !== "Doing").length
+      : course.todo_chapters || Math.max(0, totalChapters - doneChapters - doingChapters);
 
   // Compute reading progress
   const progressPercent =
@@ -79,63 +97,69 @@ export const CourseCard = memo(function CourseCard({
     }
   }, [nextChapter?.status]);
 
+  const computedBookStatus: ChapterStatus =
+    totalChapters > 0 && doneChapters >= totalChapters
+      ? "Done"
+      : doneChapters > 0 || doingChapters > 0
+      ? "Doing"
+      : course.status || "To do";
+
+  const [activeBookStatus, setActiveBookStatus] = useState<ChapterStatus>(computedBookStatus);
+
+  useEffect(() => {
+    setActiveBookStatus(computedBookStatus);
+  }, [computedBookStatus]);
+
   const handleStatusChange = async (newStatus: ChapterStatus) => {
     if (!nextChapter) return;
     setIsUpdatingStatus(true);
+    setChapterStatus(newStatus);
+    nextChapter.status = newStatus;
+
+    // Immediately compute new book status from updated chapter status
+    const updatedDoing = quizzes.filter((q) =>
+      q.id === nextChapter.id ? newStatus === "Doing" : q.status === "Doing"
+    ).length;
+    const updatedDone = quizzes.filter((q) =>
+      q.id === nextChapter.id ? newStatus === "Done" : q.status === "Done"
+    ).length;
+    const updatedTotal = totalChapters;
+
+    const newBookStatus: ChapterStatus =
+      updatedTotal > 0 && updatedDone >= updatedTotal
+        ? "Done"
+        : updatedDone > 0 || updatedDoing > 0
+        ? "Doing"
+        : "To do";
+
+    setActiveBookStatus(newBookStatus);
+
     try {
       await updateChapterStatus(nextChapter.id, newStatus);
-      setChapterStatus(newStatus);
-      nextChapter.status = newStatus;
     } catch (err) {
       console.error("Failed to update status", err);
     } finally {
       setIsUpdatingStatus(false);
     }
+
+    onStatusChange?.(course.id, newBookStatus, nextChapter.id, newStatus);
   };
-
-  const handleSync = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsSyncing(true);
-    try {
-      await onSyncDrive(course.id);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleDelete = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onDeleteCourse(course);
-  };
-
-  const bookStatus: ChapterStatus =
-    course.status ||
-    (totalChapters > 0 && doneChapters >= totalChapters
-      ? "Done"
-      : doneChapters > 0 || doingChapters > 0
-      ? "Doing"
-      : "To do");
-
-  const [activeBookStatus, setActiveBookStatus] = useState<ChapterStatus>(bookStatus);
-
-  useEffect(() => {
-    setActiveBookStatus(bookStatus);
-  }, [bookStatus]);
 
   const handleBookStatusChange = async (newStatus: ChapterStatus) => {
     setActiveBookStatus(newStatus);
     if (nextChapter) {
+      setIsUpdatingStatus(true);
+      setChapterStatus(newStatus);
+      nextChapter.status = newStatus;
       try {
         await updateChapterStatus(nextChapter.id, newStatus);
-        setChapterStatus(newStatus);
-        nextChapter.status = newStatus;
       } catch (err) {
         console.error("Failed to update status", err);
+      } finally {
+        setIsUpdatingStatus(false);
       }
     }
-    onStatusChange?.(course.id, newStatus);
+    onStatusChange?.(course.id, newStatus, nextChapter?.id, newStatus);
   };
 
   const currentGenre = selectedGenre ?? selectedType;
@@ -336,17 +360,6 @@ export const CourseCard = memo(function CourseCard({
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-xs font-semibold text-amber-400 flex items-center gap-1">
                   📖 Next Chapter
-                </span>
-                <span
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase ${
-                    nextChapter.status === "Done"
-                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                      : nextChapter.status === "Doing"
-                      ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                      : "bg-neutral-800 text-neutral-300 border border-neutral-700"
-                  }`}
-                >
-                  {nextChapter.status || "To do"}
                 </span>
               </div>
 

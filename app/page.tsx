@@ -266,29 +266,63 @@ export default function BooksDashboardPage() {
     }
   };
 
-  // Handle Course / Book Status Change from Card buttons
-  const handleCourseStatusChange = async (courseId: string, newStatus: ChapterStatus) => {
-    const courseQuizzes = quizzesByCourse.get(courseId) || [];
-    if (courseQuizzes.length > 0) {
+  // Handle Course / Book Status Change from Card buttons or Next Chapter buttons
+  const handleCourseStatusChange = async (
+    courseId: string,
+    newStatus: ChapterStatus,
+    chapterId?: string,
+    newChapterStatus?: ChapterStatus
+  ) => {
+    // 1. Optimistically update quizzes state if chapter status changed
+    if (chapterId && newChapterStatus) {
+      setQuizzes((prev) =>
+        prev.map((q) =>
+          q.id === chapterId ? { ...q, status: newChapterStatus } : q
+        )
+      );
+    } else {
+      const courseQuizzes = quizzesByCourse.get(courseId) || [];
       const targetQuiz =
         courseQuizzes.find((q) => q.status === "Doing") ||
         courseQuizzes.find((q) => q.status === "To do") ||
         courseQuizzes[0];
       if (targetQuiz) {
-        try {
-          await updateChapterStatus(targetQuiz.id, newStatus);
-          targetQuiz.status = newStatus;
-          await loadData(false);
-        } catch (err) {
-          console.error("Failed to update status", err);
-        }
+        setQuizzes((prev) =>
+          prev.map((q) =>
+            q.id === targetQuiz.id ? { ...q, status: newStatus } : q
+          )
+        );
       }
-    } else {
-      setCourses((prev) =>
-        prev.map((c) =>
-          c.id === courseId ? { ...c, status: newStatus } : c
-        )
-      );
+    }
+
+    // 2. Optimistically update courses state
+    setCourses((prev) =>
+      prev.map((c) => {
+        if (c.id !== courseId) return c;
+        const cQuizzes = (quizzesByCourse.get(courseId) || []).map((q) =>
+          chapterId && q.id === chapterId
+            ? { ...q, status: newChapterStatus! }
+            : q
+        );
+        const doneCount = cQuizzes.filter((q) => q.status === "Done").length;
+        const doingCount = cQuizzes.filter((q) => q.status === "Doing").length;
+        const total = cQuizzes.length || c.total_chapters || 0;
+        const todoCount = Math.max(0, total - doneCount - doingCount);
+        return {
+          ...c,
+          status: newStatus,
+          done_chapters: doneCount,
+          doing_chapters: doingCount,
+          todo_chapters: todoCount,
+        };
+      })
+    );
+
+    // 3. Sync with backend in background
+    try {
+      await loadData(false);
+    } catch (err) {
+      console.error("Failed to sync status with server", err);
     }
   };
 
@@ -336,7 +370,17 @@ export default function BooksDashboardPage() {
     }
   }, []);
 
-  // Keyboard shortcut Ctrl+Shift to open Import Book modal
+  const handleToggleSidebar = useCallback(() => {
+    setIsSidebarOpen((prev) => {
+      const next = !prev;
+      localStorage.setItem("sidebar_open", String(next));
+      return next;
+    });
+  }, []);
+
+  // Global Keyboard shortcuts:
+  // - Ctrl+Shift+Z to open Import Book modal
+  // - Ctrl+Shift+A to toggle sidebar
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -351,32 +395,19 @@ export default function BooksDashboardPage() {
 
       if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
         const key = e.key.toLowerCase();
-        if (
-          e.key === "Shift" ||
-          e.key === "Control" ||
-          e.code.startsWith("Shift") ||
-          e.code.startsWith("Control") ||
-          key === "i" ||
-          key === "o" ||
-          key === "b"
-        ) {
+        if (key === "z") {
           e.preventDefault();
           setIsImportCourseOpen(true);
+        } else if (key === "a") {
+          e.preventDefault();
+          handleToggleSidebar();
         }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
-  const handleToggleSidebar = () => {
-    setIsSidebarOpen((prev) => {
-      const next = !prev;
-      localStorage.setItem("sidebar_open", String(next));
-      return next;
-    });
-  };
+  }, [handleToggleSidebar]);
 
   return (
     <div className="min-h-screen flex bg-[#212121] text-[#ececec] overflow-x-hidden" suppressHydrationWarning>

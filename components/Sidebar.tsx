@@ -173,9 +173,10 @@ export function Sidebar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Global shortcut Ctrl+Shift to open Import Book modal
+  // Global shortcuts:
+  // - Ctrl+Shift+Z to open Import Book modal
+  // - Ctrl+Shift+A to toggle sidebar
   useEffect(() => {
-    if (!handleOpenImport) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (
@@ -189,24 +190,23 @@ export function Sidebar({
 
       if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
         const key = e.key.toLowerCase();
-        if (
-          e.key === "Shift" ||
-          e.key === "Control" ||
-          e.code.startsWith("Shift") ||
-          e.code.startsWith("Control") ||
-          key === "i" ||
-          key === "o" ||
-          key === "b"
-        ) {
-          e.preventDefault();
-          handleOpenImport();
+        if (key === "z") {
+          if (handleOpenImport) {
+            e.preventDefault();
+            handleOpenImport();
+          }
+        } else if (key === "a") {
+          if (onToggle) {
+            e.preventDefault();
+            onToggle();
+          }
         }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleOpenImport]);
+  }, [handleOpenImport, onToggle]);
 
   const isMainDashboard = Boolean(onSelectStatus || onSelectGenre);
 
@@ -383,7 +383,7 @@ export function Sidebar({
                     <button
                       type="button"
                       onClick={onToggle}
-                      title="Close sidebar"
+                      title="Close sidebar (Ctrl+Shift+A)"
                       className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#252525] transition-colors cursor-pointer"
                     >
                       <PanelLeftClose className="w-4 h-4" />
@@ -399,16 +399,11 @@ export function Sidebar({
                     <button
                       type="button"
                       onClick={handleOpenImport}
-                      title="Import Book (Ctrl+Shift)"
-                      className="w-full flex items-center justify-between py-2 px-3 rounded-xl bg-white text-black font-semibold text-xs hover:bg-neutral-200 transition-all shadow-sm cursor-pointer active:scale-98 group"
+                      title="Import Book (Ctrl+Shift+Z)"
+                      className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white text-black font-semibold text-xs hover:bg-neutral-200 transition-all shadow-sm cursor-pointer active:scale-98"
                     >
-                      <div className="flex items-center gap-2">
-                        <Plus className="w-4 h-4 text-black stroke-[2.5]" />
-                        <span>Import Book</span>
-                      </div>
-                      <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/10 text-neutral-700 border border-black/10 group-hover:bg-black/15 transition-colors">
-                        Ctrl+Shift
-                      </kbd>
+                      <Plus className="w-4 h-4 text-black stroke-[2.5]" />
+                      <span>Import Book</span>
                     </button>
                   )}
 
@@ -651,7 +646,7 @@ export function Sidebar({
               <button
                 type="button"
                 onClick={onToggle}
-                title="Open sidebar"
+                title="Open sidebar (Ctrl+Shift+A)"
                 className="w-10 h-10 rounded-xl text-gray-400 hover:text-white hover:bg-[#252525] flex items-center justify-center transition-colors cursor-pointer"
               >
                 <PanelLeft className="w-5 h-5" />
@@ -662,7 +657,7 @@ export function Sidebar({
                 <button
                   type="button"
                   onClick={handleOpenImport}
-                  title="Import Book (Ctrl+Shift)"
+                  title="Import Book (Ctrl+Shift+Z)"
                   className="w-10 h-10 rounded-xl text-gray-400 hover:text-white hover:bg-[#252525] flex items-center justify-center transition-colors cursor-pointer"
                 >
                   <SquarePen className="w-4 h-4" />
