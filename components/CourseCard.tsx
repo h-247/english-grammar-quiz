@@ -207,53 +207,51 @@ export const CourseCard = memo(function CourseCard({
         {/* Top Badges: Book Status, Drive Linked, Goodreads, Rating */}
         <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
           <div className="flex items-center gap-1.5 flex-wrap">
-            {/* Status Buttons: To do, Doing, Done (matching screenshot) */}
-            <div className="flex items-center gap-1.5">
-              {(
-                [
-                  { key: "To do", label: "To do", icon: Circle },
-                  { key: "Doing", label: "Doing", icon: Clock },
-                  { key: "Done", label: "Done", icon: CheckCircle2 },
-                ] as const
-              ).map(({ key, label, icon: Icon }) => {
-                const isActive = activeBookStatus === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleBookStatusChange(key);
-                    }}
-                    title={`Set status to ${label}`}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
-                      isActive
-                        ? key === "Doing"
-                          ? "bg-[#25170b] text-amber-400 border-2 border-amber-500 shadow-sm shadow-amber-500/10"
-                          : key === "Done"
-                          ? "bg-emerald-950/40 text-emerald-400 border-2 border-emerald-500 shadow-sm shadow-emerald-500/10"
-                          : "bg-[#262626] text-white border-2 border-neutral-400 shadow-sm"
-                        : key === "To do" && activeBookStatus === "Doing"
-                        ? "bg-[#212121] text-white border border-[#383838] hover:border-gray-500"
-                        : "bg-[#212121] text-gray-400 border border-[#383838] hover:border-gray-500 hover:text-gray-200"
+            {/* Current Book Status Button (One button) */}
+            {(() => {
+              const Icon =
+                activeBookStatus === "Done"
+                  ? CheckCircle2
+                  : activeBookStatus === "Doing"
+                  ? Clock
+                  : Circle;
+
+              const nextStatusCycle: ChapterStatus =
+                activeBookStatus === "To do"
+                  ? "Doing"
+                  : activeBookStatus === "Doing"
+                  ? "Done"
+                  : "To do";
+
+              return (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleBookStatusChange(nextStatusCycle);
+                  }}
+                  title={`Current Book status: ${activeBookStatus} (Click to change)`}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
+                    activeBookStatus === "Doing"
+                      ? "bg-[#25170b] text-amber-400 border-2 border-amber-500 shadow-sm shadow-amber-500/10"
+                      : activeBookStatus === "Done"
+                      ? "bg-emerald-950/40 text-emerald-400 border-2 border-emerald-500 shadow-sm shadow-emerald-500/10"
+                      : "bg-[#262626] text-white border-2 border-neutral-400 shadow-sm"
+                  }`}
+                >
+                  <Icon
+                    className={`w-3.5 h-3.5 shrink-0 ${
+                      activeBookStatus === "Doing"
+                        ? "text-amber-400 stroke-[2.2]"
+                        : activeBookStatus === "Done"
+                        ? "text-emerald-400 stroke-[2.2]"
+                        : "text-white stroke-[2.2]"
                     }`}
-                  >
-                    <Icon
-                      className={`w-3.5 h-3.5 shrink-0 ${
-                        isActive
-                          ? key === "Doing"
-                            ? "text-amber-400 stroke-[2.2]"
-                            : key === "Done"
-                            ? "text-emerald-400 stroke-[2.2]"
-                            : "text-white stroke-[2.2]"
-                          : "text-gray-400 stroke-[2]"
-                      }`}
-                    />
-                    <span>{label}</span>
-                  </button>
-                );
-              })}
-            </div>
+                  />
+                  <span>{activeBookStatus}</span>
+                </button>
+              );
+            })()}
 
             {/* 2 Main Genres */}
             {mainGenres.map((g, idx) => {
