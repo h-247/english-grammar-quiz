@@ -8,7 +8,6 @@ import {
   Trash2,
   ArrowRight,
   HardDrive,
-  BookOpen,
   CheckCircle2,
   Clock,
   Circle,
@@ -203,83 +202,9 @@ export const CourseCard = memo(function CourseCard({
 
   return (
     <div className="group rounded-2xl bg-[#1c1c1c] border border-[#2e2e2e] hover:border-[#444444] transition-all duration-200 overflow-hidden flex flex-col justify-between shadow-xl shadow-black/40">
-      <div className="p-5">
-        {/* Top Badges: Book Status, Drive Linked, Goodreads, Rating */}
-        <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {/* Current Book Status Button (One button) */}
-            {(() => {
-              const Icon =
-                activeBookStatus === "Done"
-                  ? CheckCircle2
-                  : activeBookStatus === "Doing"
-                  ? Clock
-                  : Circle;
-
-              const nextStatusCycle: ChapterStatus =
-                activeBookStatus === "To do"
-                  ? "Doing"
-                  : activeBookStatus === "Doing"
-                  ? "Done"
-                  : "To do";
-
-              return (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleBookStatusChange(nextStatusCycle);
-                  }}
-                  title={`Current Book status: ${activeBookStatus} (Click to change)`}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
-                    activeBookStatus === "Doing"
-                      ? "bg-[#25170b] text-amber-400 border-2 border-amber-500 shadow-sm shadow-amber-500/10"
-                      : activeBookStatus === "Done"
-                      ? "bg-emerald-950/40 text-emerald-400 border-2 border-emerald-500 shadow-sm shadow-emerald-500/10"
-                      : "bg-[#262626] text-white border-2 border-neutral-400 shadow-sm"
-                  }`}
-                >
-                  <Icon
-                    className={`w-3.5 h-3.5 shrink-0 ${
-                      activeBookStatus === "Doing"
-                        ? "text-amber-400 stroke-[2.2]"
-                        : activeBookStatus === "Done"
-                        ? "text-emerald-400 stroke-[2.2]"
-                        : "text-white stroke-[2.2]"
-                    }`}
-                  />
-                  <span>{activeBookStatus}</span>
-                </button>
-              );
-            })()}
-
-            {/* 2 Main Genres */}
-            {mainGenres.map((g, idx) => {
-              const isSelected =
-                currentGenre && currentGenre.toLowerCase() === g.toLowerCase();
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleSelectGenre?.(isSelected ? "all" : g);
-                  }}
-                  title={`Filter books by genre "${g}"`}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
-                    isSelected
-                      ? "bg-purple-600 text-white border border-purple-400 shadow-sm"
-                      : "bg-purple-500/15 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 hover:border-purple-400"
-                  }`}
-                >
-                  {g}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-          {/* Title & Author */}
-          <div className="flex items-start justify-between gap-2 mb-1">
+      <div className="p-5 flex flex-col flex-1">
+        {/* Title */}
+        <div className="flex items-start justify-between gap-2 mb-3">
             <a
               href={bookGoodreadsUrl}
               target="_blank"
@@ -309,64 +234,6 @@ export const CourseCard = memo(function CourseCard({
                 </a>
               </div>
             )}
-          </div>
-
-          {course.author && (
-            <p className="text-xs font-medium text-gray-400 mb-2">
-              by{" "}
-              {authorGoodreadsUrl ? (
-                <a
-                  href={authorGoodreadsUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  title={`View "${course.author}" on Goodreads`}
-                  className="text-amber-400/90 hover:text-amber-300 hover:underline transition-colors cursor-pointer"
-                >
-                  {course.author}
-                </a>
-              ) : (
-                <span className="text-gray-300">{course.author}</span>
-              )}
-            </p>
-          )}
-
-          <p className="text-xs text-[#9CA3AF] line-clamp-2 mb-4">
-            {course.description || "Interactive book chapters and reading management."}
-          </p>
-
-          {/* Reading Progress */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between text-xs text-[#9CA3AF] mb-1.5">
-              <span>Chapter Progress</span>
-              <span className="font-semibold text-white">
-                {doneChapters} / {totalChapters} chapters ({progressPercent}%)
-              </span>
-            </div>
-            <div className="w-full bg-[#2a2a2a] h-2 rounded-full overflow-hidden">
-              <div
-                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Chapter Status Breakdown Badges */}
-          <div className="flex items-center gap-1.5 flex-wrap mb-4">
-            <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-[#242424] text-[#ececec] border border-[#333333]">
-              {totalChapters} Chapters
-            </span>
-            <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-[#222222] text-gray-300 border border-gray-700">
-              {todoChapters} To do
-            </span>
-            {doingChapters > 0 && (
-              <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                {doingChapters} Doing
-              </span>
-            )}
-            <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-              {doneChapters} Done
-            </span>
           </div>
 
           {/* Next Chapter Highlight */}
@@ -458,14 +325,6 @@ export const CourseCard = memo(function CourseCard({
                     </div>
                   )}
 
-                  <Link
-                    href={`/courses/${course.id}`}
-                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-black hover:bg-neutral-200 transition-colors cursor-pointer"
-                  >
-                    <BookOpen className="w-3 h-3 text-black" />
-                    <span>Read</span>
-                  </Link>
-
                   <SharedPromptLinkSettings compact canEdit={false} />
                 </div>
 
@@ -483,6 +342,79 @@ export const CourseCard = memo(function CourseCard({
               </div>
             </div>
           )}
+
+          {/* Book Status and Genres at bottom of card */}
+          <div className="flex items-center gap-1.5 flex-wrap mt-auto pt-3">
+            {/* Current Book Status Button (One button) */}
+            {(() => {
+              const Icon =
+                activeBookStatus === "Done"
+                  ? CheckCircle2
+                  : activeBookStatus === "Doing"
+                  ? Clock
+                  : Circle;
+
+              const nextStatusCycle: ChapterStatus =
+                activeBookStatus === "To do"
+                  ? "Doing"
+                  : activeBookStatus === "Doing"
+                  ? "Done"
+                  : "To do";
+
+              return (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleBookStatusChange(nextStatusCycle);
+                  }}
+                  title={`Current Book status: ${activeBookStatus} (Click to change)`}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
+                    activeBookStatus === "Doing"
+                      ? "bg-[#25170b] text-amber-400 border-2 border-amber-500 shadow-sm shadow-amber-500/10"
+                      : activeBookStatus === "Done"
+                      ? "bg-emerald-950/40 text-emerald-400 border-2 border-emerald-500 shadow-sm shadow-emerald-500/10"
+                      : "bg-[#262626] text-white border-2 border-neutral-400 shadow-sm"
+                  }`}
+                >
+                  <Icon
+                    className={`w-3.5 h-3.5 shrink-0 ${
+                      activeBookStatus === "Doing"
+                        ? "text-amber-400 stroke-[2.2]"
+                        : activeBookStatus === "Done"
+                        ? "text-emerald-400 stroke-[2.2]"
+                        : "text-white stroke-[2.2]"
+                    }`}
+                  />
+                  <span>{activeBookStatus}</span>
+                </button>
+              );
+            })()}
+
+            {/* 2 Main Genres */}
+            {mainGenres.map((g, idx) => {
+              const isSelected =
+                currentGenre && currentGenre.toLowerCase() === g.toLowerCase();
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSelectGenre?.(isSelected ? "all" : g);
+                  }}
+                  title={`Filter books by genre "${g}"`}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
+                    isSelected
+                      ? "bg-purple-600 text-white border border-purple-400 shadow-sm"
+                      : "bg-purple-500/15 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 hover:border-purple-400"
+                  }`}
+                >
+                  {g}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Card Footer */}
