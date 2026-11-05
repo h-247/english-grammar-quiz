@@ -648,6 +648,11 @@ export default function BookDetailPage() {
                     url={nextChapter.chatgpt_url}
                     chapterId={nextChapter.id}
                     chapterTitle={nextChapter.unit_title || nextChapter.title}
+                    onLinkClick={() => {
+                      if (nextChapter.status !== "Doing") {
+                        handleStatusChange(nextChapter.id, "Doing");
+                      }
+                    }}
                     onSaved={(newUrl) => {
                       setCourse((prev) => {
                         if (!prev) return prev;
@@ -915,6 +920,11 @@ export default function BookDetailPage() {
                             url={quiz.chatgpt_url}
                             chapterId={quiz.id}
                             chapterTitle={quiz.unit_title || quiz.title}
+                            onLinkClick={() => {
+                              if (quiz.status !== "Doing") {
+                                handleStatusChange(quiz.id, "Doing");
+                              }
+                            }}
                             onSaved={(newUrl) => {
                               setCourse((prev) => {
                                 if (!prev) return prev;

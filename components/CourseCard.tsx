@@ -4,9 +4,6 @@ import React, { useState, useEffect, memo } from "react";
 import { useRouter } from "next/navigation";
 import {
   HardDrive,
-  CheckCircle2,
-  Clock,
-  Circle,
 } from "lucide-react";
 import { CourseSummary, QuizSummary, ChapterStatus } from "@/types/quiz";
 import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
@@ -225,13 +222,6 @@ export const CourseCard = memo(function CourseCard({
 
             {/* Current Book Status Button (One button) */}
             {(() => {
-              const Icon =
-                activeBookStatus === "Done"
-                  ? CheckCircle2
-                  : activeBookStatus === "Doing"
-                  ? Clock
-                  : Circle;
-
               const nextStatusCycle: ChapterStatus =
                 activeBookStatus === "To do"
                   ? "Doing"
@@ -247,7 +237,7 @@ export const CourseCard = memo(function CourseCard({
                     handleBookStatusChange(nextStatusCycle);
                   }}
                   title={`Current Book status: ${activeBookStatus} (Click to change)`}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
+                  className={`flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
                     activeBookStatus === "Doing"
                       ? "bg-[#25170b] text-amber-400 border-2 border-amber-500 shadow-sm shadow-amber-500/10"
                       : activeBookStatus === "Done"
@@ -255,15 +245,6 @@ export const CourseCard = memo(function CourseCard({
                       : "bg-[#262626] text-white border-2 border-neutral-400 shadow-sm"
                   }`}
                 >
-                  <Icon
-                    className={`w-3.5 h-3.5 shrink-0 ${
-                      activeBookStatus === "Doing"
-                        ? "text-amber-400 stroke-[2.2]"
-                        : activeBookStatus === "Done"
-                        ? "text-emerald-400 stroke-[2.2]"
-                        : "text-white stroke-[2.2]"
-                    }`}
-                  />
                   <span>{activeBookStatus}</span>
                 </button>
               );
@@ -284,11 +265,11 @@ export const CourseCard = memo(function CourseCard({
                 <div className="flex flex-wrap items-center gap-2">
                   {(
                     [
-                      { key: "To do", label: "To do", icon: Circle },
-                      { key: "Doing", label: "Doing", icon: Clock },
-                      { key: "Done", label: "Done", icon: CheckCircle2 },
+                      { key: "To do", label: "To do" },
+                      { key: "Doing", label: "Doing" },
+                      { key: "Done", label: "Done" },
                     ] as const
-                  ).map(({ key, label, icon: Icon }) => {
+                  ).map(({ key, label }) => {
                     const isActive = chapterStatus === key;
                     return (
                       <button
@@ -300,7 +281,7 @@ export const CourseCard = memo(function CourseCard({
                           handleStatusChange(key);
                         }}
                         title={`Set chapter status to ${label}`}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        className={`flex items-center px-2.5 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                           isActive
                             ? key === "Doing"
                               ? "bg-[#25170b] text-amber-400 border-2 border-amber-500 shadow-sm shadow-amber-500/10"
@@ -312,17 +293,6 @@ export const CourseCard = memo(function CourseCard({
                             : "bg-[#212121] text-gray-400 border border-[#383838] hover:border-gray-500 hover:text-gray-200"
                         }`}
                       >
-                        <Icon
-                          className={`w-3 h-3 shrink-0 ${
-                            isActive
-                              ? key === "Doing"
-                                ? "text-amber-400 stroke-[2.2]"
-                                : key === "Done"
-                                ? "text-emerald-400 stroke-[2.2]"
-                                : "text-white stroke-[2.2]"
-                              : "text-gray-400 stroke-[2]"
-                          }`}
-                        />
                         <span>{label}</span>
                       </button>
                     );
@@ -358,6 +328,11 @@ export const CourseCard = memo(function CourseCard({
                     url={nextChapter.chatgpt_url}
                     chapterId={nextChapter.id}
                     chapterTitle={nextChapter.unit_title || nextChapter.title}
+                    onLinkClick={() => {
+                      if (chapterStatus !== "Doing") {
+                        handleStatusChange("Doing");
+                      }
+                    }}
                     onSaved={(newUrl) => {
                       nextChapter.chatgpt_url = newUrl;
                     }}

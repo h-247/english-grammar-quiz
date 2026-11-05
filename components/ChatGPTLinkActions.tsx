@@ -11,6 +11,7 @@ interface ChatGPTLinkActionsProps {
   chapterTitle?: string;
   onSaved?: (newUrl: string | null) => void;
   onEdit?: () => void;
+  onLinkClick?: () => void;
   className?: string;
 }
 
@@ -20,6 +21,7 @@ export function ChatGPTLinkActions({
   chapterTitle,
   onSaved,
   onEdit,
+  onLinkClick,
   className = "",
 }: ChatGPTLinkActionsProps) {
   const { showToast } = useToast();
@@ -121,6 +123,7 @@ export function ChatGPTLinkActions({
             href={url}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => onLinkClick?.()}
             title="Open ChatGPT conversation"
             aria-label="Open ChatGPT conversation"
             className="inline-flex h-7 w-7 items-center justify-center hover:bg-white/10 transition-colors focus-visible:outline-none"
