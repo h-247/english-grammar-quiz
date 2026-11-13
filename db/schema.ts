@@ -20,6 +20,7 @@ export const courses = sqliteTable(
     driveFolderId: text('drive_folder_id'),
     driveFolderUrl: text('drive_folder_url'),
     bannerUrl: text('banner_url'),
+    status: text('status').notNull().default('To do'),
     deletedAt: text('deleted_at'),
     userId: text('user_id'),
     createdAt: text('created_at').notNull(),

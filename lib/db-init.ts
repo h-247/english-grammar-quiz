@@ -294,6 +294,9 @@ export async function ensureDatabaseInitialized(): Promise<void> {
         console.error('Failed to seed default book types:', e);
       }
 
+      try {
+        await db.run(sql`ALTER TABLE courses ADD COLUMN status TEXT DEFAULT 'To do'`);
+      } catch {}
       tablesChecked = true;
     })();
   }

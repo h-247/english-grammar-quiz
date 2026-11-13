@@ -31,7 +31,7 @@ import {
   getBookTypes,
   updateCourse,
 } from "@/lib/api";
-import { CourseSummary, QuizSummary, BookTypeItem } from "@/types/quiz";
+import { CourseSummary, QuizSummary, BookTypeItem, ChapterStatus } from "@/types/quiz";
 import { useToast } from "@/components/Toast";
 import { getBookMainTypes } from "@/lib/utils";
 

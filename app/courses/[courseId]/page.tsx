@@ -81,6 +81,41 @@ export default function BookDetailPage() {
   const [updatingChapterId, setUpdatingChapterId] = useState<string | null>(null);
   const [openStatusMenuId, setOpenStatusMenuId] = useState<string | null>(null);
 
+  // Book Status State for books without Google Drive
+  const [isBookStatusMenuOpen, setIsBookStatusMenuOpen] = useState(false);
+  const [isUpdatingBookStatus, setIsUpdatingBookStatus] = useState(false);
+  const bookStatusRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (bookStatusRef.current && !bookStatusRef.current.contains(event.target as Node)) {
+        setIsBookStatusMenuOpen(false);
+      }
+    };
+    if (isBookStatusMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isBookStatusMenuOpen]);
+
+  const handleBookStatusUpdate = async (newStatus: ChapterStatus) => {
+    if (!course) return;
+    setIsBookStatusMenuOpen(false);
+    setIsUpdatingBookStatus(true);
+    setCourse((prev) => (prev ? { ...prev, status: newStatus } : prev));
+    try {
+      await updateCourse(course.id, { status: newStatus });
+      showToast(`Book status updated to "${newStatus}"`, "success", 2500);
+    } catch {
+      showToast("Failed to update book status", "error", 4000);
+      loadCourse(true);
+    } finally {
+      setIsUpdatingBookStatus(false);
+    }
+  };
+
   // Quiz Start Configuration Modal
   const [selectedQuizForStart, setSelectedQuizForStart] = useState<QuizSummary | null>(null);
   const [isConfigOpen, setIsConfigOpen] = useState<boolean>(false);
