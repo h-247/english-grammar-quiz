@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -295,11 +295,13 @@ export default function BookDetailPage() {
   const todoCount = quizzes.filter((q) => q.status !== "Done" && q.status !== "Doing").length;
 
   const bookStatus: ChapterStatus =
-    totalChapters > 0 && doneCount >= totalChapters
-      ? "Done"
-      : doneCount > 0 || doingCount > 0
-      ? "Doing"
-      : "To do";
+    totalChapters > 0
+      ? doneCount >= totalChapters
+        ? "Done"
+        : doneCount > 0 || doingCount > 0
+        ? "Doing"
+        : "To do"
+      : (course?.status as ChapterStatus) || "To do";
 
   const mainTypes = getBookMainTypes(course);
   const bookGoodreadsUrl = getBookGoodreadsUrl(course);
@@ -406,24 +408,78 @@ export default function BookDetailPage() {
                         {t}
                       </span>
                     ))}
-                    <span
-                      className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
-                        bookStatus === "Done"
-                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                          : bookStatus === "Doing"
-                          ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                          : "bg-neutral-800 text-neutral-300 border-neutral-700"
-                      }`}
-                    >
-                      {bookStatus === "Done" ? (
-                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                      ) : bookStatus === "Doing" ? (
-                        <Clock className="w-3 h-3 text-amber-400" />
-                      ) : (
-                        <BookOpen className="w-3 h-3 text-neutral-400" />
-                      )}
-                      <span>{bookStatus}</span>
-                    </span>
+                    {!hasValidDriveFolder || totalChapters === 0 ? (
+                      <div className="relative" ref={bookStatusRef}>
+                        <button
+                          type="button"
+                          onClick={() => setIsBookStatusMenuOpen((prev) => !prev)}
+                          disabled={isUpdatingBookStatus}
+                          title="Click to edit book status"
+                          className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border transition-all cursor-pointer hover:brightness-110 select-none ${
+                            bookStatus === "Done"
+                              ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                              : bookStatus === "Doing"
+                              ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                              : "bg-neutral-800 text-neutral-300 border-neutral-700"
+                          }`}
+                        >
+                          {isUpdatingBookStatus ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : bookStatus === "Done" ? (
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                          ) : bookStatus === "Doing" ? (
+                            <Clock className="w-3 h-3 text-amber-400" />
+                          ) : (
+                            <BookOpen className="w-3 h-3 text-neutral-400" />
+                          )}
+                          <span>{bookStatus}</span>
+                          <ChevronDown className="w-3 h-3 ml-0.5 opacity-60" />
+                        </button>
+
+                        {isBookStatusMenuOpen && (
+                          <div className="absolute left-0 mt-1 w-36 bg-[#1f1f1f] border border-[#383838] rounded-xl shadow-2xl py-1 z-30 animate-in fade-in zoom-in-95 duration-100">
+                            {(["To do", "Doing", "Done"] as ChapterStatus[]).map((st) => (
+                              <button
+                                key={st}
+                                type="button"
+                                onClick={() => handleBookStatusUpdate(st)}
+                                className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold hover:bg-[#2b2b2b] transition-colors ${
+                                  bookStatus === st
+                                    ? st === "Done"
+                                      ? "text-emerald-400"
+                                      : st === "Doing"
+                                      ? "text-amber-400"
+                                      : "text-white"
+                                    : "text-gray-300"
+                                }`}
+                              >
+                                <span>{st}</span>
+                                {bookStatus === st && <Check className="w-3.5 h-3.5" />}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span
+                        className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                          bookStatus === "Done"
+                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                            : bookStatus === "Doing"
+                            ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                            : "bg-neutral-800 text-neutral-300 border-neutral-700"
+                        }`}
+                      >
+                        {bookStatus === "Done" ? (
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                        ) : bookStatus === "Doing" ? (
+                          <Clock className="w-3 h-3 text-amber-400" />
+                        ) : (
+                          <BookOpen className="w-3 h-3 text-neutral-400" />
+                        )}
+                        <span>{bookStatus}</span>
+                      </span>
+                    )}
                     {course.rating && (
                       <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30">
                         <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />

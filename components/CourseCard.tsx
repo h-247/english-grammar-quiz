@@ -9,7 +9,7 @@ import { CourseSummary, QuizSummary, ChapterStatus } from "@/types/quiz";
 import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
 import { SharedPromptLinkSettings } from "@/components/SharedPromptLinkSettings";
 import { ChatGPTLinkActions } from "@/components/ChatGPTLinkActions";
-import { updateChapterStatus } from "@/lib/api";
+import { updateChapterStatus, updateCourse } from "@/lib/api";
 import { getBookMainTypes } from "@/lib/utils";
 
 interface CourseCardProps {

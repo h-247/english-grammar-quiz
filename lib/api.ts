@@ -108,6 +108,7 @@ export async function updateCourse(
     author_goodreads_url?: string;
     main_type?: string;
     genres?: string[];
+    status?: ChapterStatus | string;
   }
 ): Promise<CourseSummary> {
   return fetchApi<CourseSummary>(`/courses/${courseId}`, {

@@ -120,7 +120,7 @@ export async function GET(
           ? 'Done'
           : stats.done_chapters > 0 || stats.doing_chapters > 0
           ? 'Doing'
-          : 'To do',
+          : course.status || 'To do',
       total_quizzes: stats.total_quizzes,
       ready_quizzes: stats.ready_quizzes,
       pending_quizzes: stats.pending_quizzes,
@@ -308,6 +308,12 @@ export async function PATCH(
     if (body.author_goodreads_url !== undefined) {
       updateData.authorGoodreadsUrl = body.author_goodreads_url ? String(body.author_goodreads_url).trim() : null;
     }
+    if (body.status !== undefined) {
+      const valid = ['To do', 'Doing', 'Done'];
+      const st = valid.includes(String(body.status)) ? String(body.status) : 'To do';
+      updateData.status = st;
+      updateData.readingStatus = st;
+    }
 
     await db.update(courses).set(updateData).where(eq(courses.id, courseId));
 
@@ -346,7 +352,7 @@ export async function PATCH(
           ? 'Done'
           : stats.done_chapters > 0 || stats.doing_chapters > 0
           ? 'Doing'
-          : 'To do',
+          : updated!.status || 'To do',
       total_quizzes: stats.total_quizzes,
       ready_quizzes: stats.ready_quizzes,
       pending_quizzes: stats.pending_quizzes,

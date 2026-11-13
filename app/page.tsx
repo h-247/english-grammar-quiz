@@ -29,6 +29,7 @@ import {
   syncCourseDrive,
   startAttempt,
   getBookTypes,
+  updateCourse,
 } from "@/lib/api";
 import { CourseSummary, QuizSummary, BookTypeItem } from "@/types/quiz";
 import { useToast } from "@/components/Toast";
@@ -125,7 +126,7 @@ export default function BooksDashboardPage() {
 
       if (total > 0 && done >= total) return "Done";
       if (done > 0 || doing > 0) return "Doing";
-      return "To do";
+      return (course.status as "To do" | "Doing" | "Done") || "To do";
     },
     [quizzesByCourse]
   );
@@ -320,6 +321,10 @@ export default function BooksDashboardPage() {
 
     // 3. Sync with backend in background
     try {
+      const courseQuizzes = quizzesByCourse.get(courseId) || [];
+      if (!chapterId && courseQuizzes.length === 0) {
+        await updateCourse(courseId, { status: newStatus });
+      }
       await loadData(false);
     } catch (err) {
       console.error("Failed to sync status with server", err);

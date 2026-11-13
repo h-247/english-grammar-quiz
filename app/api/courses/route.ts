@@ -67,7 +67,7 @@ export async function GET() {
               ? 'Done'
               : stats.done_chapters > 0 || stats.doing_chapters > 0
               ? 'Doing'
-              : 'To do',
+              : c.status || 'To do',
           // Backwards-compatible aliases
           total_quizzes: stats.total_quizzes,
           ready_quizzes: stats.ready_quizzes,

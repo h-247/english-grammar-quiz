@@ -9,7 +9,8 @@ import {
   Check,
   Tag,
 } from "lucide-react";
-import { CourseSummary, BookTypeItem } from "@/types/quiz";
+import { CourseSummary, BookTypeItem, ChapterStatus } from "@/types/quiz";
+import { extractDriveFolderId } from "@/lib/course-manifest";
 import { DEFAULT_COURSE_BANNER } from "@/lib/course-manifest";
 import { updateCourse, getBookTypes } from "@/lib/api";
 import { getBookMainTypes, DEFAULT_REPO_BOOK_TYPES } from "@/lib/utils";
@@ -40,6 +41,7 @@ export function EditCourseModal({
   const [description, setDescription] = useState("");
   const [goodreadsUrl, setGoodreadsUrl] = useState("");
   const [selectedBanner, setSelectedBanner] = useState(DEFAULT_COURSE_BANNER);
+  const [status, setStatus] = useState<ChapterStatus>("To do");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,6 +82,7 @@ export function EditCourseModal({
       setDescription(course.description || "");
       setGoodreadsUrl(course.goodreads_url || "");
       setSelectedBanner(course.cover_url || course.banner_url || DEFAULT_COURSE_BANNER);
+      setStatus((course.status as ChapterStatus) || "To do");
       setError(null);
     }
   }, [course, isOpen]);
@@ -98,6 +101,12 @@ export function EditCourseModal({
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen, isSaving, onClose]);
+
+  const hasValidDriveFolder = Boolean(
+    course?.drive_folder_id &&
+    extractDriveFolderId(course.drive_folder_id) &&
+    !course.drive_folder_id.includes("goodreads")
+  );
 
   if (!isOpen || !mounted || !course) return null;
 
@@ -224,6 +233,35 @@ export function EditCourseModal({
               className="w-full bg-[#161616] border border-[#333333] rounded-xl px-3.5 py-2.5 text-sm text-[#ececec] placeholder-gray-500 focus:outline-none focus:border-white transition-colors"
             />
           </div>
+
+          {/* Book Status (for books without Google Drive) */}
+          {(!hasValidDriveFolder || (course.total_chapters || 0) === 0) && (
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] block mb-1.5">
+                Book Status
+              </label>
+              <div className="flex items-center gap-2">
+                {(["To do", "Doing", "Done"] as const).map((st) => (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => setStatus(st)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      status === st
+                        ? st === "Done"
+                          ? "bg-emerald-950/60 text-emerald-300 border-2 border-emerald-500 shadow-sm"
+                          : st === "Doing"
+                          ? "bg-[#25170b] text-amber-300 border-2 border-amber-500 shadow-sm"
+                          : "bg-[#262626] text-white border-2 border-neutral-400 shadow-sm"
+                        : "bg-[#161616] text-gray-400 border border-[#333333] hover:border-gray-500 hover:text-gray-200"
+                    }`}
+                  >
+                    {st}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Book Genre (Repo Genres Only) */}
           <div className="space-y-2">
