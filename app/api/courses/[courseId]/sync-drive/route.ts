@@ -3,6 +3,7 @@ import { getDb } from '@/db';
 import { courses, quizzes } from '@/db/schema';
 import { ensureDatabaseInitialized } from '@/lib/db-init';
 import { syncCourseDriveQuizzes, calculateCourseStats } from '@/lib/course-service';
+import { extractDriveFolderId } from '@/lib/course-manifest';
 import { eq, asc } from 'drizzle-orm';
 import { getAuthenticatedUserOrLocal } from '@/app/chatgpt-auth';
 
@@ -54,6 +55,21 @@ export async function POST(
     const offset = offsetParam != null ? parseInt(String(offsetParam), 10) : undefined;
     const batchSize = batchSizeParam != null ? parseInt(String(batchSizeParam), 10) : undefined;
     const forceRefresh = forceParam === 'true' || forceParam === true;
+
+    const rawDrive = body.drive_folder_url || body.drive_folder_id;
+    if (rawDrive) {
+      const folderId = extractDriveFolderId(String(rawDrive).trim());
+      if (folderId) {
+        await db
+          .update(courses)
+          .set({
+            driveFolderId: folderId,
+            driveFolderUrl: `https://drive.google.com/drive/folders/${folderId}`,
+            updatedAt: new Date().toISOString(),
+          })
+          .where(eq(courses.id, courseId));
+      }
+    }
 
     const syncResult = await syncCourseDriveQuizzes(courseId, db, {
       offset,

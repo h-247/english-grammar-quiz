@@ -231,6 +231,11 @@ export default function BooksDashboardPage() {
 
   // Handle Sync Book with Drive
   const handleSyncDrive = async (courseId: string) => {
+    const target = courses.find((c) => c.id === courseId);
+    if (!target?.drive_folder_id) {
+      if (target) setEditingCourse(target);
+      return;
+    }
     try {
       const updated = await syncCourseDrive(courseId);
       showToast(

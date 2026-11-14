@@ -11,8 +11,8 @@ import {
   attemptResults,
 } from '@/db/schema';
 import { ensureDatabaseInitialized } from '@/lib/db-init';
-import { calculateCourseStats } from '@/lib/course-service';
-import { DEFAULT_COURSE_BANNER } from '@/lib/course-manifest';
+import { calculateCourseStats, syncCourseDriveQuizzes } from '@/lib/course-service';
+import { DEFAULT_COURSE_BANNER, extractDriveFolderId } from '@/lib/course-manifest';
 import { eq, asc, inArray } from 'drizzle-orm';
 import { getAuthenticatedUserOrLocal } from '@/app/chatgpt-auth';
 
@@ -273,6 +273,17 @@ export async function PATCH(
 
     const nowIso = new Date().toISOString();
     const updateData: Record<string, any> = { updatedAt: nowIso };
+    let newlyLinkedDrive = false;
+
+    if (body.drive_folder_url !== undefined || body.drive_folder_id !== undefined) {
+      const rawDrive = body.drive_folder_url || body.drive_folder_id;
+      const folderId = rawDrive ? extractDriveFolderId(String(rawDrive).trim()) : null;
+      updateData.driveFolderId = folderId || null;
+      updateData.driveFolderUrl = folderId ? `https://drive.google.com/drive/folders/${folderId}` : null;
+      if (folderId && folderId !== course.driveFolderId) {
+        newlyLinkedDrive = true;
+      }
+    }
 
     if (trimmedTitle !== undefined) {
       updateData.title = trimmedTitle;
@@ -316,6 +327,14 @@ export async function PATCH(
     }
 
     await db.update(courses).set(updateData).where(eq(courses.id, courseId));
+
+    if (newlyLinkedDrive || body.sync_chapters) {
+      try {
+        await syncCourseDriveQuizzes(courseId, db, { forceRefresh: true });
+      } catch (syncErr) {
+        console.warn('Auto-sync chapters after updating drive folder failed:', syncErr);
+      }
+    }
 
     const updated = await db
       .select()

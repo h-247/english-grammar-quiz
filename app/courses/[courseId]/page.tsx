@@ -29,6 +29,7 @@ import { Navbar } from "@/components/Navbar";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { QuizConfigModal } from "@/components/QuizConfigModal";
 import { EditCourseModal } from "@/components/EditCourseModal";
+import { LinkDriveModal } from "@/components/LinkDriveModal";
 import { CopyDriveLinkButton } from "@/components/CopyDriveLinkButton";
 import { SharedPromptLinkSettings } from "@/components/SharedPromptLinkSettings";
 import { ChatGPTLinkActions } from "@/components/ChatGPTLinkActions";
@@ -76,6 +77,7 @@ export default function BookDetailPage() {
   const [isDeleteCourseOpen, setIsDeleteCourseOpen] = useState<boolean>(false);
   const [isDeletingCourse, setIsDeletingCourse] = useState<boolean>(false);
   const [isEditCourseOpen, setIsEditCourseOpen] = useState<boolean>(false);
+  const [isLinkDriveModalOpen, setIsLinkDriveModalOpen] = useState<boolean>(false);
 
   // Status updating state
   const [updatingChapterId, setUpdatingChapterId] = useState<string | null>(null);
@@ -586,14 +588,24 @@ export default function BookDetailPage() {
                     <span>Edit Book</span>
                   </button>
 
-                  <button
-                    onClick={handleSyncDrive}
-                    disabled={isSyncing}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#262626] hover:bg-[#303030] text-gray-200 border border-[#383838] transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-blue-400" : ""}`} />
-                    <span>{isSyncing ? "Syncing..." : "Sync Drive Chapters"}</span>
-                  </button>
+                  {!hasValidDriveFolder ? (
+                    <button
+                      onClick={() => setIsLinkDriveModalOpen(true)}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-sm border border-blue-500/50 transition-all cursor-pointer"
+                    >
+                      <HardDrive className="w-3.5 h-3.5" />
+                      <span>Import Google Drive Link</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSyncDrive}
+                      disabled={isSyncing}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#262626] hover:bg-[#303030] text-gray-200 border border-[#383838] transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-blue-400" : ""}`} />
+                      <span>{isSyncing ? "Syncing..." : "Sync Drive Chapters"}</span>
+                    </button>
+                  )}
 
                   <button
                     onClick={() => setIsDeleteCourseOpen(true)}
@@ -839,18 +851,44 @@ export default function BookDetailPage() {
 
               {/* Chapters List */}
               {filteredQuizzes.length === 0 ? (
-                <div className="py-12 text-center text-gray-400">
-                  <p className="text-sm">No chapters match your filter criteria.</p>
-                  <button
-                    onClick={() => {
-                      setSearchQuery("");
-                      setSelectedStatus("all");
-                    }}
-                    className="mt-2 text-xs text-blue-400 hover:underline cursor-pointer"
-                  >
-                    Reset filters
-                  </button>
-                </div>
+                !hasValidDriveFolder && totalChapters === 0 ? (
+                  <div className="py-12 px-6 rounded-2xl bg-[#181818] border border-[#2b2b2b] text-center space-y-4 shadow-xl">
+                    <div className="w-14 h-14 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center mx-auto border border-blue-500/20">
+                      <HardDrive className="w-7 h-7" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <h3 className="text-base sm:text-lg font-bold text-white">
+                        Import Google Drive Link
+                      </h3>
+                      <p className="text-xs sm:text-sm text-gray-400 max-w-md mx-auto leading-relaxed">
+                        This book was imported with Goodreads. Link a Google Drive folder containing chapter PDFs or manifest to generate chapters and quizzes.
+                      </p>
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => setIsLinkDriveModalOpen(true)}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-md cursor-pointer"
+                      >
+                        <HardDrive className="w-4 h-4" />
+                        <span>Import Google Drive Link</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-12 text-center text-gray-400">
+                    <p className="text-sm">No chapters match your filter criteria.</p>
+                    <button
+                      onClick={() => {
+                        setSearchQuery("");
+                        setSelectedStatus("all");
+                      }}
+                      className="mt-2 text-xs text-blue-400 hover:underline cursor-pointer"
+                    >
+                      Reset filters
+                    </button>
+                  </div>
+                )
               ) : (
                 <div className="divide-y divide-[#2a2a2a]">
                   {filteredQuizzes.map((quiz) => {
@@ -1057,6 +1095,21 @@ export default function BookDetailPage() {
         description="Are you sure you want to delete this chapter?"
         isDeleting={isDeletingQuiz}
       />
+
+      {/* Link Google Drive Modal */}
+      {course && (
+        <LinkDriveModal
+          isOpen={isLinkDriveModalOpen}
+          onClose={() => setIsLinkDriveModalOpen(false)}
+          courseId={course.id}
+          courseTitle={course.title}
+          currentDriveUrl={course.drive_folder_url}
+          onSuccess={(updated) => {
+            setCourse(updated);
+            loadCourse(true);
+          }}
+        />
+      )}
 
       {/* Edit Book Modal */}
       {course && (

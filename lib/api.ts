@@ -109,6 +109,9 @@ export async function updateCourse(
     main_type?: string;
     genres?: string[];
     status?: ChapterStatus | string;
+    drive_folder_url?: string | null;
+    drive_folder_id?: string | null;
+    sync_chapters?: boolean;
   }
 ): Promise<CourseSummary> {
   return fetchApi<CourseSummary>(`/courses/${courseId}`, {

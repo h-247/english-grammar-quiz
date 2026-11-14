@@ -12,7 +12,7 @@ import {
 import { CourseSummary, BookTypeItem, ChapterStatus } from "@/types/quiz";
 import { extractDriveFolderId } from "@/lib/course-manifest";
 import { DEFAULT_COURSE_BANNER } from "@/lib/course-manifest";
-import { updateCourse, getBookTypes } from "@/lib/api";
+import { updateCourse, getBookTypes, getDriveFolderInfo } from "@/lib/api";
 import { getBookMainTypes, DEFAULT_REPO_BOOK_TYPES } from "@/lib/utils";
 import { useToast } from "@/components/Toast";
 
@@ -42,6 +42,9 @@ export function EditCourseModal({
   const [goodreadsUrl, setGoodreadsUrl] = useState("");
   const [selectedBanner, setSelectedBanner] = useState(DEFAULT_COURSE_BANNER);
   const [status, setStatus] = useState<ChapterStatus>("To do");
+  const [driveUrl, setDriveUrl] = useState("");
+  const [isResolvingDrive, setIsResolvingDrive] = useState(false);
+  const [detectedDriveName, setDetectedDriveName] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,6 +89,39 @@ export function EditCourseModal({
       setError(null);
     }
   }, [course, isOpen]);
+
+  // Auto-resolve drive folder name
+  useEffect(() => {
+    const trimmed = driveUrl.trim();
+    if (!trimmed) {
+      setDetectedDriveName(null);
+      return;
+    }
+    const folderId = extractDriveFolderId(trimmed);
+    if (!folderId) {
+      setDetectedDriveName(null);
+      return;
+    }
+
+    let isCancelled = false;
+    setIsResolvingDrive(true);
+    getDriveFolderInfo(folderId)
+      .then((info) => {
+        if (!isCancelled && info?.name) {
+          setDetectedDriveName(info.name);
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) setDetectedDriveName(null);
+      })
+      .finally(() => {
+        if (!isCancelled) setIsResolvingDrive(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [driveUrl]);
 
   // Handle Escape key
   useEffect(() => {
@@ -331,6 +367,38 @@ export function EditCourseModal({
               placeholder="https://www.goodreads.com/book/show/..."
               className="w-full bg-[#161616] border border-[#333333] rounded-xl px-3.5 py-2 text-sm text-[#ececec] placeholder-gray-500 focus:outline-none focus:border-white transition-colors"
             />
+          </div>
+
+          {/* Google Drive Folder Link (Chapters) */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
+                <HardDrive className="w-3.5 h-3.5" />
+                <span>Google Drive Folder Link (Chapters)</span>
+              </label>
+              {isResolvingDrive && (
+                <span className="flex items-center gap-1 text-[11px] text-blue-400">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span>Checking...</span>
+                </span>
+              )}
+            </div>
+            <input
+              type="text"
+              value={driveUrl}
+              onChange={(e) => setDriveUrl(e.target.value)}
+              placeholder="https://drive.google.com/drive/folders/..."
+              className="w-full bg-[#161616] border border-[#333333] rounded-xl px-3.5 py-2 text-sm text-[#ececec] placeholder-gray-500 focus:outline-none focus:border-blue-400 transition-colors"
+            />
+            {detectedDriveName && (
+              <div className="text-[11px] text-emerald-400 flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1.5 rounded-lg border border-emerald-500/20">
+                <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Folder: {detectedDriveName}</span>
+              </div>
+            )}
+            <p className="text-[10px] text-gray-400">
+              Link or update the Google Drive folder to import and sync book chapters.
+            </p>
           </div>
 
           {/* Description Field */}
