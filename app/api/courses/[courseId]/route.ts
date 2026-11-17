@@ -14,7 +14,7 @@ import { ensureDatabaseInitialized } from '@/lib/db-init';
 import { calculateCourseStats, syncCourseDriveQuizzes } from '@/lib/course-service';
 import { DEFAULT_COURSE_BANNER, extractDriveFolderId } from '@/lib/course-manifest';
 import { eq, asc, inArray } from 'drizzle-orm';
-import { getAuthenticatedUserOrLocal } from '@/app/chatgpt-auth';
+import { getAuthenticatedUserOrLocal, isLocalUser } from '@/app/chatgpt-auth';
 
 export async function GET(
   request: Request,
@@ -39,11 +39,9 @@ export async function GET(
       );
     }
 
-    if (
-      user.userId !== 'local-user' &&
-      course.userId &&
-      course.userId !== user.userId
-    ) {
+    const isLocal = isLocalUser(user);
+    const isCourseLocal = !course.userId || isLocalUser(course.userId);
+    if (!isLocal && !isCourseLocal && course.userId !== user.userId) {
       return NextResponse.json(
         { detail: `Book with ID ${courseId} not found.` },
         { status: 404 }
@@ -158,11 +156,9 @@ export async function DELETE(
       );
     }
 
-    if (
-      user.userId !== 'local-user' &&
-      course.userId &&
-      course.userId !== user.userId
-    ) {
+    const isLocal = isLocalUser(user);
+    const isCourseLocal = !course.userId || isLocalUser(course.userId);
+    if (!isLocal && !isCourseLocal && course.userId !== user.userId) {
       return NextResponse.json(
         { detail: 'You do not have permission to delete this book.' },
         { status: 403 }
@@ -249,11 +245,9 @@ export async function PATCH(
       );
     }
 
-    if (
-      user.userId !== 'local-user' &&
-      course.userId &&
-      course.userId !== user.userId
-    ) {
+    const isLocal = isLocalUser(user);
+    const isCourseLocal = !course.userId || isLocalUser(course.userId);
+    if (!isLocal && !isCourseLocal && course.userId !== user.userId) {
       return NextResponse.json(
         { detail: 'You do not have permission to modify this book.' },
         { status: 403 }

@@ -52,6 +52,21 @@ export async function getAuthenticatedUserOrLocal(): Promise<ChatGPTUser> {
   };
 }
 
+export function isLocalUser(userOrId?: ChatGPTUser | string | null): boolean {
+  if (!userOrId) return true;
+  const userId = typeof userOrId === 'string' ? userOrId : userOrId.userId;
+  const email = typeof userOrId === 'string' ? '' : (userOrId.email || '');
+  return (
+    !userId ||
+    userId === 'local-user' ||
+    userId === 'local_seedy' ||
+    userId.startsWith('local') ||
+    email === 'local-user@chatgpt.internal' ||
+    email === 'seedy@sites.test' ||
+    email.endsWith('@sites.test')
+  );
+}
+
 export async function requireChatGPTUser(
   returnTo: string,
 ): Promise<ChatGPTUser> {

@@ -1,3 +1,4 @@
+import { isLocalUser } from '@/app/chatgpt-auth';
 import { eq, and, desc, asc, inArray, sql } from 'drizzle-orm';
 import {
   courses,
@@ -118,7 +119,7 @@ export async function getAttemptState(
     throw new Error(`Attempt with ID ${attemptId} not found.`);
   }
 
-  if (userId && userId !== 'local-user' && attempt.userId && attempt.userId !== userId) {
+  if (userId && !isLocalUser(userId) && attempt.userId && !isLocalUser(attempt.userId) && attempt.userId !== userId) {
     throw new Error(`Attempt with ID ${attemptId} not found.`);
   }
 
@@ -160,7 +161,7 @@ export async function saveAttemptAnswers(
     throw new Error(`Attempt with ID ${attemptId} not found.`);
   }
 
-  if (userId && userId !== 'local-user' && attempt.userId && attempt.userId !== userId) {
+  if (userId && !isLocalUser(userId) && attempt.userId && !isLocalUser(attempt.userId) && attempt.userId !== userId) {
     throw new Error(`Attempt with ID ${attemptId} not found.`);
   }
 
@@ -299,7 +300,7 @@ export async function checkQuestionAnswers(
     throw new Error(`Attempt with ID ${attemptId} not found.`);
   }
 
-  if (userId && userId !== 'local-user' && attempt.userId && attempt.userId !== userId) {
+  if (userId && !isLocalUser(userId) && attempt.userId && !isLocalUser(attempt.userId) && attempt.userId !== userId) {
     throw new Error(`Attempt with ID ${attemptId} not found.`);
   }
 
@@ -389,7 +390,7 @@ export async function submitAttempt(
     throw new Error(`Attempt with ID ${attemptId} not found.`);
   }
 
-  if (userId && userId !== 'local-user' && attempt.userId && attempt.userId !== userId) {
+  if (userId && !isLocalUser(userId) && attempt.userId && !isLocalUser(attempt.userId) && attempt.userId !== userId) {
     throw new Error(`Attempt with ID ${attemptId} not found.`);
   }
 
@@ -460,7 +461,7 @@ export async function getAttemptResult(
     throw new Error(`Attempt with ID ${attemptId} not found.`);
   }
 
-  if (userId && userId !== 'local-user' && attempt.userId && attempt.userId !== userId) {
+  if (userId && !isLocalUser(userId) && attempt.userId && !isLocalUser(attempt.userId) && attempt.userId !== userId) {
     throw new Error(`Attempt with ID ${attemptId} not found.`);
   }
 
@@ -498,7 +499,7 @@ export async function listAttemptHistory(
   db: DbInstance,
   userId?: string
 ) {
-  const isFilteredUser = userId && userId !== 'local-user';
+  const isFilteredUser = userId && !isLocalUser(userId);
   const userCondition = isFilteredUser ? eq(quizAttempts.userId, userId) : undefined;
 
   // Use SQL count(*) instead of loading all attempts into memory
@@ -588,7 +589,7 @@ export async function getQuizAttemptHistory(
     throw new Error(`Quiz with ID ${quizId} not found.`);
   }
 
-  const isFilteredUser = userId && userId !== 'local-user';
+  const isFilteredUser = userId && !isLocalUser(userId);
   const conditions = [eq(quizAttempts.quizId, quizId)];
   if (isFilteredUser) {
     conditions.push(eq(quizAttempts.userId, userId));
@@ -1073,7 +1074,7 @@ export async function getUserTopicMastery(
   overallAccuracy: number;
   totalCompletedAttempts: number;
 }> {
-  const isLocal = userId === 'local-user';
+  const isLocal = !userId || isLocalUser(userId);
   const query = db
     .select({
       id: quizAttempts.id,
@@ -1292,7 +1293,7 @@ export async function createCourseMistakesPracticeAttempt(
   db: DbInstance,
   userId: string = 'local-user'
 ): Promise<{ attemptId: string; quizId: string; mistakeCount: number }> {
-  const isLocal = userId === 'local-user';
+  const isLocal = !userId || isLocalUser(userId);
   const course = await db
     .select()
     .from(courses)

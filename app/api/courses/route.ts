@@ -15,7 +15,7 @@ import {
 import { fetchDriveFolderMetadata } from '@/lib/gdrive-service';
 import { CourseCreateSchema } from '@/lib/validation';
 import { asc, eq, or, isNull, and } from 'drizzle-orm';
-import { getAuthenticatedUserOrLocal } from '@/app/chatgpt-auth';
+import { getAuthenticatedUserOrLocal, isLocalUser } from '@/app/chatgpt-auth';
 
 export async function GET() {
   try {
@@ -24,11 +24,18 @@ export async function GET() {
     const user = await getAuthenticatedUserOrLocal();
     await ensureDefaultCourseExists(db);
 
-    const isLocal = user.userId === 'local-user';
+    const isLocal = isLocalUser(user);
     const query = db.select().from(courses);
     const accessibleCoursesQuery = isLocal
       ? query
-      : query.where(or(eq(courses.userId, user.userId), isNull(courses.userId)));
+      : query.where(
+          or(
+            eq(courses.userId, user.userId),
+            isNull(courses.userId),
+            eq(courses.userId, 'local-user'),
+            eq(courses.userId, 'local_seedy')
+          )
+        );
 
     const allCourses = await accessibleCoursesQuery
       .orderBy(asc(courses.createdAt))
@@ -140,10 +147,15 @@ export async function POST(request: Request) {
       finalTitle = folderId ? `Book (${folderId.slice(0, 8)})` : DEFAULT_COURSE_TITLE;
     }
 
-    const userScope =
-      user.userId === 'local-user'
-        ? undefined
-        : or(eq(courses.userId, user.userId), isNull(courses.userId));
+    const isLocal = isLocalUser(user);
+    const userScope = isLocal
+      ? undefined
+      : or(
+          eq(courses.userId, user.userId),
+          isNull(courses.userId),
+          eq(courses.userId, 'local-user'),
+          eq(courses.userId, 'local_seedy')
+        );
 
     // Check if a book already exists by Google Drive Folder ID for this user
     if (folderId) {

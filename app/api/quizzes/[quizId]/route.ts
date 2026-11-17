@@ -11,7 +11,7 @@ import {
 } from '@/db/schema';
 import { ensureDatabaseInitialized } from '@/lib/db-init';
 import { eq, asc, inArray } from 'drizzle-orm';
-import { getAuthenticatedUserOrLocal } from '@/app/chatgpt-auth';
+import { getAuthenticatedUserOrLocal, isLocalUser } from '@/app/chatgpt-auth';
 
 export async function GET(
   request: Request,
@@ -41,11 +41,9 @@ export async function GET(
       );
     }
 
-    if (
-      user.userId !== 'local-user' &&
-      row.courseUserId &&
-      row.courseUserId !== user.userId
-    ) {
+    const isLocal = isLocalUser(user);
+    const isCourseLocal = !row.courseUserId || isLocalUser(row.courseUserId);
+    if (!isLocal && !isCourseLocal && row.courseUserId !== user.userId) {
       return NextResponse.json(
         { detail: `Chapter/Quiz with ID ${quizId} not found.` },
         { status: 404 }
@@ -154,9 +152,11 @@ export async function DELETE(
       );
     }
 
-    if (quiz.courseId && user.userId !== 'local-user') {
+    const isLocal = isLocalUser(user);
+    if (quiz.courseId && !isLocal) {
       const c = await db.select().from(courses).where(eq(courses.id, quiz.courseId)).get();
-      if (c && c.userId && c.userId !== user.userId) {
+      const isCourseLocal = !c?.userId || isLocalUser(c.userId);
+      if (c && !isCourseLocal && c.userId !== user.userId) {
         return NextResponse.json(
           { detail: 'You do not have permission to delete this chapter.' },
           { status: 403 }
@@ -226,9 +226,11 @@ export async function PATCH(
       );
     }
 
-    if (quiz.courseId && user.userId !== 'local-user') {
+    const isLocal = isLocalUser(user);
+    if (quiz.courseId && !isLocal) {
       const c = await db.select().from(courses).where(eq(courses.id, quiz.courseId)).get();
-      if (c && c.userId && c.userId !== user.userId) {
+      const isCourseLocal = !c?.userId || isLocalUser(c.userId);
+      if (c && !isCourseLocal && c.userId !== user.userId) {
         return NextResponse.json(
           { detail: 'You do not have permission to modify this chapter.' },
           { status: 403 }

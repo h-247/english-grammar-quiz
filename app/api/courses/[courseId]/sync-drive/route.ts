@@ -5,7 +5,7 @@ import { ensureDatabaseInitialized } from '@/lib/db-init';
 import { syncCourseDriveQuizzes, calculateCourseStats } from '@/lib/course-service';
 import { extractDriveFolderId } from '@/lib/course-manifest';
 import { eq, asc } from 'drizzle-orm';
-import { getAuthenticatedUserOrLocal } from '@/app/chatgpt-auth';
+import { getAuthenticatedUserOrLocal, isLocalUser } from '@/app/chatgpt-auth';
 
 export async function POST(
   request: Request,
@@ -30,11 +30,9 @@ export async function POST(
       );
     }
 
-    if (
-      user.userId !== 'local-user' &&
-      course.userId &&
-      course.userId !== user.userId
-    ) {
+    const isLocal = isLocalUser(user);
+    const isCourseLocal = !course.userId || isLocalUser(course.userId);
+    if (!isLocal && !isCourseLocal && course.userId !== user.userId) {
       return NextResponse.json(
         { detail: 'You do not have permission to sync this course.' },
         { status: 403 }

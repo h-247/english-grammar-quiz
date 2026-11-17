@@ -3,7 +3,7 @@ import { getDb } from '@/db';
 import { quizzes, courses, quizAttempts, attemptResults } from '@/db/schema';
 import { ensureDatabaseInitialized } from '@/lib/db-init';
 import { eq, and, asc, desc, or, isNull, inArray } from 'drizzle-orm';
-import { getAuthenticatedUserOrLocal } from '@/app/chatgpt-auth';
+import { getAuthenticatedUserOrLocal, isLocalUser } from '@/app/chatgpt-auth';
 
 export async function GET(request: Request) {
   try {
@@ -15,11 +15,13 @@ export async function GET(request: Request) {
     const courseId = url.searchParams.get('course_id');
     const status = url.searchParams.get('status');
 
+    const isLocal = isLocalUser(user);
     let conditions = [];
     if (courseId) {
-      if (user.userId !== 'local-user') {
+      if (!isLocal) {
         const c = await db.select().from(courses).where(eq(courses.id, courseId)).get();
-        if (c && c.userId && c.userId !== user.userId) {
+        const isCourseLocal = !c?.userId || isLocalUser(c.userId);
+        if (c && !isCourseLocal && c.userId !== user.userId) {
           return NextResponse.json(
             { detail: `Course with ID ${courseId} not found.` },
             { status: 404 }
@@ -27,11 +29,13 @@ export async function GET(request: Request) {
         }
       }
       conditions.push(eq(quizzes.courseId, courseId));
-    } else if (user.userId !== 'local-user') {
+    } else if (!isLocal) {
       conditions.push(
         or(
           eq(courses.userId, user.userId),
           isNull(courses.userId),
+          eq(courses.userId, 'local-user'),
+          eq(courses.userId, 'local_seedy'),
           isNull(quizzes.courseId)
         )
       );
@@ -64,7 +68,7 @@ export async function GET(request: Request) {
 
     if (rows.length > 0) {
       const quizIds = rows.map((r) => r.quiz.id);
-      const isLocal = !user.userId || user.userId === 'local-user';
+      const isLocal = isLocalUser(user);
       const CHUNK_SIZE = 50;
 
       for (let i = 0; i < quizIds.length; i += CHUNK_SIZE) {

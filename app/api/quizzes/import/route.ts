@@ -3,7 +3,7 @@ import { getDb } from '@/db';
 import { courses } from '@/db/schema';
 import { ensureDatabaseInitialized } from '@/lib/db-init';
 import { importQuizData } from '@/lib/importer';
-import { getAuthenticatedUserOrLocal } from '@/app/chatgpt-auth';
+import { getAuthenticatedUserOrLocal, isLocalUser } from '@/app/chatgpt-auth';
 import { eq } from 'drizzle-orm';
 
 export async function POST(request: Request) {
@@ -16,7 +16,8 @@ export async function POST(request: Request) {
     const overwrite = url.searchParams.get('overwrite') === 'true';
     const courseId = url.searchParams.get('course_id') || undefined;
 
-    if (courseId && user.userId !== 'local-user') {
+    const isLocal = isLocalUser(user);
+    if (courseId && !isLocal) {
       const c = await db.select().from(courses).where(eq(courses.id, courseId)).get();
       if (!c) {
         return NextResponse.json(
@@ -24,7 +25,8 @@ export async function POST(request: Request) {
           { status: 404 }
         );
       }
-      if (c.userId && c.userId !== user.userId) {
+      const isCourseLocal = !c.userId || isLocalUser(c.userId);
+      if (!isCourseLocal && c.userId !== user.userId) {
         return NextResponse.json(
           { detail: 'You do not have permission to import into this course.' },
           { status: 403 }
