@@ -114,11 +114,12 @@ export function Sidebar({
       setCurrentUserEmail(propUserEmail);
     } else {
       fetch("/api/auth/me")
-        .then((res) => res.json())
+        .then((res) => res.json().catch(() => null))
         .then((data: any) => {
-          if (data?.email) {
+          if (!data) return;
+          if (data.email) {
             setCurrentUserEmail(data.email);
-          } else if (data?.userId) {
+          } else if (data.userId) {
             setCurrentUserEmail(data.userId);
           }
         })

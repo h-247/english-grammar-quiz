@@ -103,9 +103,9 @@ export function LinkDriveModal({
       });
 
       const count =
-        updated.total_chapters ||
-        updated.total_quizzes ||
-        (updated.chapters || []).length ||
+        updated?.total_chapters ||
+        updated?.total_quizzes ||
+        (updated?.chapters || []).length ||
         0;
 
       showToast(
@@ -113,7 +113,9 @@ export function LinkDriveModal({
         "success",
         5000
       );
-      onSuccess?.(updated);
+      if (updated) {
+        onSuccess?.(updated);
+      }
       onClose();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to import Google Drive link.";

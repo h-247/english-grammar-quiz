@@ -170,7 +170,12 @@ export default function BookDetailPage() {
 
     try {
       const data = await getCourse(courseId);
-      setCourse(data);
+      if (!data) {
+        setError("Book details not found.");
+        setCourse(null);
+      } else {
+        setCourse(data);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load book details.";
       setError(msg);

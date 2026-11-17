@@ -69,7 +69,13 @@ export async function getCourse(courseId: string): Promise<CourseDetail> {
 
 export async function syncCourseDrive(
   courseId: string,
-  options?: { offset?: number; batchSize?: number; forceRefresh?: boolean }
+  options?: {
+    offset?: number;
+    batchSize?: number;
+    forceRefresh?: boolean;
+    drive_folder_url?: string;
+    drive_folder_id?: string;
+  }
 ): Promise<CourseDetail> {
   const query = new URLSearchParams();
   if (options?.offset != null) query.append("offset", String(options.offset));
@@ -78,6 +84,7 @@ export async function syncCourseDrive(
   const qStr = query.toString();
   return fetchApi<CourseDetail>(`/courses/${courseId}/sync-drive${qStr ? `?${qStr}` : ""}`, {
     method: "POST",
+    body: options ? JSON.stringify(options) : undefined,
   });
 }
 

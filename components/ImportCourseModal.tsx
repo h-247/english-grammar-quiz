@@ -202,6 +202,10 @@ export function ImportCourseModal({
 
     try {
       const data: GoodreadsBookDetails = await fetchGoodreadsInfo(targetUrl);
+      if (!data) {
+        setError("Failed to fetch metadata from Goodreads.");
+        return;
+      }
       if (data.title) setTitle(data.title);
       if (data.author) setAuthor(data.author);
       if (data.authorGoodreadsUrl) setAuthorGoodreadsUrl(data.authorGoodreadsUrl);
@@ -221,7 +225,7 @@ export function ImportCourseModal({
 
       setGoodreadsSuccess(true);
     } catch (err: any) {
-      setError(err.message || "Failed to fetch metadata from Goodreads.");
+      setError(err?.message || "Failed to fetch metadata from Goodreads.");
     } finally {
       setIsFetchingGoodreads(false);
     }
@@ -256,27 +260,29 @@ export function ImportCourseModal({
       if (trimmedGd && (!bookTitle || !goodreadsSuccess)) {
         try {
           const data: GoodreadsBookDetails = await fetchGoodreadsInfo(trimmedGd);
-          if (data.title) bookTitle = data.title;
-          if (data.author) bookAuthor = data.author;
-          if (data.authorGoodreadsUrl) bookAuthorGd = data.authorGoodreadsUrl;
-          if (data.description) bookDesc = data.description;
-          if (data.coverUrl) bookCover = data.coverUrl;
-          if (data.rating) bookRating = data.rating;
-          if (data.pageCount) bookPageCount = data.pageCount;
-          if (data.publishedYear) bookPublishedYear = data.publishedYear;
-          if (data.isbn) bookIsbn = data.isbn;
+          if (data) {
+            if (data.title) bookTitle = data.title;
+            if (data.author) bookAuthor = data.author;
+            if (data.authorGoodreadsUrl) bookAuthorGd = data.authorGoodreadsUrl;
+            if (data.description) bookDesc = data.description;
+            if (data.coverUrl) bookCover = data.coverUrl;
+            if (data.rating) bookRating = data.rating;
+            if (data.pageCount) bookPageCount = data.pageCount;
+            if (data.publishedYear) bookPublishedYear = data.publishedYear;
+            if (data.isbn) bookIsbn = data.isbn;
 
-          const rawGdGenres = data.genres || [];
-          if (data.mainType && !rawGdGenres.includes(data.mainType)) {
-            rawGdGenres.unshift(data.mainType);
-          }
-          if (repoTypes.length > 0) {
-            const matched = getBookMainTypes(
-              { title: bookTitle, genres: rawGdGenres },
-              repoTypes.map((t) => t.name)
-            );
-            if (matched && matched.length > 0) {
-              bookGenres = matched;
+            const rawGdGenres = data.genres || [];
+            if (data.mainType && !rawGdGenres.includes(data.mainType)) {
+              rawGdGenres.unshift(data.mainType);
+            }
+            if (repoTypes.length > 0) {
+              const matched = getBookMainTypes(
+                { title: bookTitle, genres: rawGdGenres },
+                repoTypes.map((t) => t.name)
+              );
+              if (matched && matched.length > 0) {
+                bookGenres = matched;
+              }
             }
           }
         } catch (fetchErr: any) {

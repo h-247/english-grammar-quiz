@@ -318,8 +318,8 @@ export async function fetchDriveFolderMetadata(
       `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folderId)}?fields=id,name,mimeType`
     );
     if (res && res.ok) {
-      const data = (await res.json()) as { id: string; name: string };
-      if (data?.name) {
+      const data = (await res.json().catch(() => null)) as { id: string; name: string } | null;
+      if (data && data.name) {
         const result = { id: folderId, name: data.name };
         setInCache(metadataCache, folderId, { data: result, timestamp: now });
         return result;
@@ -381,8 +381,8 @@ export async function listDriveFolderFiles(
 
     const res = await fetchWithDriveAuth(url);
     if (res && res.ok) {
-      const data = (await res.json()) as { files?: DriveFileItem[] };
-      const files = data.files || [];
+      const data = (await res.json().catch(() => null)) as { files?: DriveFileItem[] } | null;
+      const files = (data && data.files) || [];
       setInCache(filesCache, folderId, { data: files, timestamp: now });
       return files;
     }

@@ -14,6 +14,12 @@ export async function GET(request: Request) {
     }
 
     const data = await fetchGoodreadsBookDetails(url);
+    if (!data) {
+      return NextResponse.json(
+        { detail: 'Could not retrieve Goodreads book details.' },
+        { status: 404 }
+      );
+    }
     return NextResponse.json(data);
   } catch (err: any) {
     return NextResponse.json(
@@ -36,6 +42,12 @@ export async function POST(request: Request) {
     }
 
     const data = await fetchGoodreadsBookDetails(url);
+    if (!data) {
+      return NextResponse.json(
+        { detail: 'Could not retrieve Goodreads book details.' },
+        { status: 404 }
+      );
+    }
     return NextResponse.json(data);
   } catch (err: any) {
     return NextResponse.json(

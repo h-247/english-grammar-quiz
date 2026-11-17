@@ -68,6 +68,8 @@ export async function POST(
             updatedAt: new Date().toISOString(),
           })
           .where(eq(courses.id, courseId));
+        course.driveFolderId = folderId;
+        course.driveFolderUrl = `https://drive.google.com/drive/folders/${folderId}`;
       }
     }
 
@@ -113,9 +115,14 @@ export async function POST(
       ready_quizzes: stats.ready_quizzes,
       pending_quizzes: stats.pending_quizzes,
       completed_quizzes: stats.completed_quizzes,
+      total_chapters: stats.total_quizzes,
+      ready_chapters: stats.ready_quizzes,
+      pending_chapters: stats.pending_quizzes,
+      completed_chapters: stats.completed_quizzes,
       created_at: course.createdAt,
       updated_at: course.updatedAt,
       quizzes: quizSummaries,
+      chapters: quizSummaries,
       sync_result: syncResult,
     });
   } catch (err: any) {

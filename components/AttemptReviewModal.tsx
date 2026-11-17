@@ -51,6 +51,7 @@ export function AttemptReviewModal({
       setIsLoading(true);
       getAttemptResults(attemptId)
         .then((data) => {
+          if (!data) return;
           setResults(data);
           if (data.incorrect_blanks > 0) {
             setFilterMode("incorrect");

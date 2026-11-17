@@ -73,8 +73,8 @@ export default function BooksDashboardPage() {
         getCourses(),
         getQuizzes(),
       ]);
-      setCourses(coursesData);
-      setQuizzes(quizzesData);
+      setCourses(coursesData || []);
+      setQuizzes(quizzesData || []);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load books.";
       setError(msg);
